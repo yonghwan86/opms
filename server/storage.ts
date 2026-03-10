@@ -224,6 +224,8 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteUser(id: number): Promise<void> {
+    await db.delete(loginLogs).where(eq(loginLogs.userId, id));
+    await db.update(auditLogs).set({ userId: null }).where(eq(auditLogs.userId, id));
     await db.delete(users).where(eq(users.id, id));
   }
 
