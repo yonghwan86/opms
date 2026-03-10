@@ -12,6 +12,7 @@ export interface AuthUser {
   headquartersId?: number | null;
   teamId?: number | null;
   enabled: boolean;
+  mustChangePassword: boolean;
 }
 
 export function useAuth() {
@@ -24,8 +25,20 @@ export function useAuth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (creds: { username: string; password: string }) => {
+    mutationFn: async (creds: { email: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/login", creds);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (!data.needsPasswordSetup) {
+        qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      }
+    },
+  });
+
+  const setupPasswordMutation = useMutation({
+    mutationFn: async (payload: { email: string; newPassword: string }) => {
+      const res = await apiRequest("POST", "/api/auth/setup-password", payload);
       return res.json();
     },
     onSuccess: () => {
@@ -48,6 +61,8 @@ export function useAuth() {
     login: loginMutation.mutateAsync,
     loginPending: loginMutation.isPending,
     loginError: loginMutation.error,
+    setupPassword: setupPasswordMutation.mutateAsync,
+    setupPasswordPending: setupPasswordMutation.isPending,
     logout: logoutMutation.mutateAsync,
     isMaster: user?.role === "MASTER",
   };

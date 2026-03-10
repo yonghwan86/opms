@@ -28,9 +28,10 @@ export async function seedDatabase() {
   ]).returning();
 
   const masterHash = await bcrypt.hash("master1234!", 10);
-  const userHash = await bcrypt.hash("user1234!", 10);
 
   // 사용자 생성
+  // master: 비밀번호 설정됨 (mustChangePassword: false)
+  // HQ_USER들: 비밀번호 미설정 (mustChangePassword: true) - 최초 로그인 시 본인이 설정
   await db.insert(users).values([
     {
       username: "master",
@@ -43,10 +44,11 @@ export async function seedDatabase() {
       headquartersId: hq1.id,
       teamId: team1.id,
       enabled: true,
+      mustChangePassword: false,
     },
     {
-      username: "seoul1_user",
-      passwordHash: userHash,
+      username: "kim.seoul",
+      passwordHash: null,
       displayName: "김서울",
       email: "kim.seoul@example.com",
       positionName: "주임",
@@ -55,10 +57,11 @@ export async function seedDatabase() {
       headquartersId: hq1.id,
       teamId: team1.id,
       enabled: true,
+      mustChangePassword: true,
     },
     {
-      username: "seoul2_user",
-      passwordHash: userHash,
+      username: "lee.hangang",
+      passwordHash: null,
       displayName: "이한강",
       email: "lee.hangang@example.com",
       positionName: "대리",
@@ -67,10 +70,11 @@ export async function seedDatabase() {
       headquartersId: hq1.id,
       teamId: team2.id,
       enabled: true,
+      mustChangePassword: true,
     },
     {
-      username: "busan1_user",
-      passwordHash: userHash,
+      username: "park.busan",
+      passwordHash: null,
       displayName: "박부산",
       email: "park.busan@example.com",
       positionName: "과장",
@@ -79,10 +83,11 @@ export async function seedDatabase() {
       headquartersId: hq2.id,
       teamId: team3.id,
       enabled: true,
+      mustChangePassword: true,
     },
     {
-      username: "daegu1_user",
-      passwordHash: userHash,
+      username: "choi.daegu",
+      passwordHash: null,
       displayName: "최대구",
       email: "choi.daegu@example.com",
       positionName: "사원",
@@ -91,6 +96,7 @@ export async function seedDatabase() {
       headquartersId: hq3.id,
       teamId: team5.id,
       enabled: true,
+      mustChangePassword: true,
     },
   ]);
 
@@ -134,7 +140,7 @@ export async function seedDatabase() {
       doName: "부산광역시", siName: null, gunName: null, guName: "서구",
       regionName: "부산광역시 서구", enabled: true,
     },
-    // 부산2팀 - 동구, 영도구
+    // 부산2팀 - 동구
     {
       headquartersId: hq2.id, teamId: team4.id,
       doName: "부산광역시", siName: null, gunName: null, guName: "동구",

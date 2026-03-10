@@ -35,7 +35,8 @@ export type Team = typeof teams.$inferSelect;
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: varchar("username", { length: 100 }).notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  // passwordHash는 nullable: 최초 생성/초기화 시 null, 비밀번호 설정 후 해시값 저장
+  passwordHash: text("password_hash"),
   displayName: text("display_name").notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   positionName: text("position_name"),
@@ -44,6 +45,8 @@ export const users = pgTable("users", {
   headquartersId: integer("headquarters_id").references(() => headquarters.id),
   teamId: integer("team_id").references(() => teams.id),
   enabled: boolean("enabled").notNull().default(true),
+  // 최초 로그인 시 비밀번호 설정 필요 여부 (엑셀 임포트/초기화 후 true)
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

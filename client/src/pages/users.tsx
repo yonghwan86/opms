@@ -12,13 +12,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Pencil, User2, ChevronLeft, ChevronRight, KeyRound, Eye } from "lucide-react";
+import { Plus, Search, Pencil, User2, ChevronLeft, ChevronRight, KeyRound, Eye, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: number; username: string; displayName: string; email: string; positionName?: string;
-  departmentName?: string; role: string; headquartersId?: number; teamId?: number; enabled: boolean; createdAt: string;
+  departmentName?: string; role: string; headquartersId?: number; teamId?: number;
+  enabled: boolean; mustChangePassword: boolean; createdAt: string;
 }
 interface Headquarters { id: number; name: string; code: string; }
 interface Team { id: number; name: string; code: string; headquartersId: number; }
@@ -36,10 +37,9 @@ export default function UsersPage() {
   const [detailUser, setDetailUser] = useState<User | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
   const [resetPwUserId, setResetPwUserId] = useState<number | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [resetResult, setResetResult] = useState<string | null>(null);
+  const [resetDone, setResetDone] = useState(false);
   const [form, setForm] = useState({
-    username: "", password: "", displayName: "", email: "",
+    displayName: "", email: "",
     positionName: "", departmentName: "", role: "HQ_USER",
     headquartersId: "", teamId: "", enabled: true
   });
@@ -81,14 +81,13 @@ export default function UsersPage() {
         teamId: form.teamId ? Number(form.teamId) : null,
       };
       if (editing) {
-        if (!payload.password) delete payload.password;
         return apiRequest("PATCH", `/api/users/${editing.id}`, payload).then(r => r.json());
       }
       return apiRequest("POST", "/api/users", payload).then(r => r.json());
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: editing ? "사용자가 수정되었습니다." : "사용자가 등록되었습니다." });
+      toast({ title: editing ? "사용자가 수정되었습니다." : "사용자가 등록되었습니다. 최초 로그인 시 비밀번호를 직접 설정합니다." });
       closeDialog();
     },
     onError: async (err: any) => {
@@ -99,11 +98,11 @@ export default function UsersPage() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (userId: number) => {
-      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, { password: newPassword || undefined });
+      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, {});
       return res.json();
     },
-    onSuccess: (data) => {
-      setResetResult(data.temporaryPassword);
+    onSuccess: () => {
+      setResetDone(true);
       qc.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: () => toast({ title: "비밀번호 초기화 실패", variant: "destructive" }),
@@ -111,13 +110,13 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ username: "", password: "", displayName: "", email: "", positionName: "", departmentName: "", role: "HQ_USER", headquartersId: "", teamId: "", enabled: true });
+    setForm({ displayName: "", email: "", positionName: "", departmentName: "", role: "HQ_USER", headquartersId: "", teamId: "", enabled: true });
     setDialogOpen(true);
   };
 
   const openEdit = (u: User) => {
     setEditing(u);
-    setForm({ username: u.username, password: "", displayName: u.displayName, email: u.email, positionName: u.positionName || "", departmentName: u.departmentName || "", role: u.role, headquartersId: u.headquartersId ? String(u.headquartersId) : "", teamId: u.teamId ? String(u.teamId) : "", enabled: u.enabled });
+    setForm({ displayName: u.displayName, email: u.email, positionName: u.positionName || "", departmentName: u.departmentName || "", role: u.role, headquartersId: u.headquartersId ? String(u.headquartersId) : "", teamId: u.teamId ? String(u.teamId) : "", enabled: u.enabled });
     setDialogOpen(true);
   };
 
@@ -138,7 +137,7 @@ export default function UsersPage() {
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="이름, 아이디, 이메일 검색" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" data-testid="input-search-user" />
+            <Input placeholder="이름, 이메일 검색" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" data-testid="input-search-user" />
           </div>
           <Select value={filterHq} onValueChange={v => { setFilterHq(v); setFilterTeam("all"); setPage(1); }}>
             <SelectTrigger className="w-36" data-testid="select-filter-user-hq"><SelectValue placeholder="전체 본부" /></SelectTrigger>
@@ -168,7 +167,6 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead>아이디</TableHead>
                 <TableHead>이름</TableHead>
                 <TableHead>이메일</TableHead>
                 <TableHead>권한</TableHead>
@@ -181,11 +179,11 @@ export default function UsersPage() {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>{Array.from({ length: 8 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                 ))
               ) : data?.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     <User2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     사용자 데이터가 없습니다.
                   </TableCell>
@@ -193,8 +191,16 @@ export default function UsersPage() {
               ) : (
                 data?.data.map((user) => (
                   <TableRow key={user.id} className="hover:bg-muted/20" data-testid={`row-user-${user.id}`}>
-                    <TableCell className="font-mono text-sm">{user.username}</TableCell>
-                    <TableCell className="font-medium">{user.displayName}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {user.displayName}
+                        {user.mustChangePassword && (
+                          <span title="비밀번호 설정 필요">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
                       <Badge variant={user.role === "MASTER" ? "default" : "secondary"} className="text-xs">
@@ -208,7 +214,7 @@ export default function UsersPage() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailUser(user)} title="상세보기"><Eye className="w-3.5 h-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(user)} data-testid={`button-edit-user-${user.id}`}><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-500 hover:text-orange-600" onClick={() => { setResetPwUserId(user.id); setNewPassword(""); setResetResult(null); }} title="비밀번호 초기화">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-500 hover:text-orange-600" onClick={() => { setResetPwUserId(user.id); setResetDone(false); }} title="비밀번호 초기화" data-testid={`button-reset-pw-${user.id}`}>
                           <KeyRound className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -244,12 +250,17 @@ export default function UsersPage() {
                 </div>
                 <div>
                   <p className="font-semibold">{detailUser.displayName}</p>
-                  <p className="text-sm text-muted-foreground">@{detailUser.username}</p>
+                  <p className="text-sm text-muted-foreground">{detailUser.email}</p>
                 </div>
                 <Badge variant={detailUser.role === "MASTER" ? "default" : "secondary"} className="ml-auto">{detailUser.role}</Badge>
               </div>
+              {detailUser.mustChangePassword && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  비밀번호 미설정 — 최초 로그인 시 설정 필요
+                </div>
+              )}
               {[
-                ["이메일", detailUser.email],
                 ["직책", detailUser.positionName || "-"],
                 ["부서", detailUser.departmentName || "-"],
                 ["본부", getHqName(detailUser.headquartersId)],
@@ -266,29 +277,32 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 비밀번호 초기화 */}
-      <Dialog open={!!resetPwUserId} onOpenChange={() => { setResetPwUserId(null); setResetResult(null); }}>
+      {/* 비밀번호 초기화 확인 */}
+      <Dialog open={!!resetPwUserId} onOpenChange={() => { setResetPwUserId(null); setResetDone(false); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>비밀번호 초기화</DialogTitle></DialogHeader>
-          {resetResult ? (
+          {resetDone ? (
             <div className="py-4 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto">
                 <KeyRound className="w-6 h-6 text-green-600" />
               </div>
-              <p className="text-sm text-muted-foreground">초기화된 임시 비밀번호:</p>
-              <code className="block text-lg font-bold font-mono bg-muted px-4 py-2 rounded-lg">{resetResult}</code>
-              <p className="text-xs text-muted-foreground">사용자에게 이 임시 비밀번호를 전달하세요.</p>
+              <p className="font-medium">초기화 완료</p>
+              <p className="text-sm text-muted-foreground">해당 사용자가 다음 로그인 시 이메일로 로그인하면 비밀번호를 직접 설정할 수 있습니다.</p>
+              <Button className="w-full" onClick={() => { setResetPwUserId(null); setResetDone(false); }}>확인</Button>
             </div>
           ) : (
             <>
               <div className="space-y-3 py-2">
-                <p className="text-sm text-muted-foreground">새 비밀번호를 입력하거나 빈칸으로 두면 자동 생성됩니다.</p>
-                <Input placeholder="새 비밀번호 (선택)" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} data-testid="input-new-password" />
+                <p className="text-sm text-muted-foreground">비밀번호를 초기화하면 해당 사용자가 다음 로그인 시 이메일로 접속하여 비밀번호를 직접 설정하게 됩니다.</p>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setResetPwUserId(null)}>취소</Button>
-                <Button onClick={() => resetPwUserId && resetPasswordMutation.mutate(resetPwUserId)} disabled={resetPasswordMutation.isPending}>
-                  초기화
+                <Button
+                  onClick={() => resetPwUserId && resetPasswordMutation.mutate(resetPwUserId)}
+                  disabled={resetPasswordMutation.isPending}
+                  data-testid="button-confirm-reset-pw"
+                >
+                  {resetPasswordMutation.isPending ? "처리 중..." : "초기화"}
                 </Button>
               </DialogFooter>
             </>
@@ -300,26 +314,23 @@ export default function UsersPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "사용자 수정" : "사용자 등록"}</DialogTitle></DialogHeader>
+          {!editing && (
+            <div className="flex items-start gap-2 px-1 py-2 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              등록 후 사용자가 이메일로 최초 로그인 시 비밀번호를 직접 설정합니다.
+            </div>
+          )}
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>아이디 *</Label>
-                <Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="username" disabled={!!editing} data-testid="input-user-username" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{editing ? "비밀번호 (변경 시)" : "비밀번호 *"}</Label>
-                <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" data-testid="input-user-password" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 col-span-2">
                 <Label>이름 *</Label>
                 <Input value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} placeholder="홍길동" data-testid="input-user-name" />
               </div>
-              <div className="space-y-1.5">
-                <Label>이메일 *</Label>
-                <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="user@example.com" data-testid="input-user-email" />
-              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>이메일 *</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="user@example.com" data-testid="input-user-email" disabled={!!editing} />
+              {!editing && <p className="text-xs text-muted-foreground">로그인 아이디로 사용됩니다.</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -367,7 +378,11 @@ export default function UsersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>취소</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.username || !form.displayName || !form.email || (!editing && !form.password)} data-testid="button-save-user">
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !form.displayName || !form.email}
+              data-testid="button-save-user"
+            >
               {editing ? "수정" : "등록"}
             </Button>
           </DialogFooter>

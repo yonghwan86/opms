@@ -13,10 +13,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Pencil, Trash2, MapPin, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, MapPin, ChevronLeft, ChevronRight, Info, Upload, Download, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useRef } from "react";
 
 // 주요 행정구역 도 목록
 const DO_LIST = [
@@ -64,6 +65,10 @@ export default function RegionPermissionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<RegionPerm | null>(null);
+  const [uploadResultOpen, setUploadResultOpen] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ addedCount: number; skippedCount: number; results: { row: number; status: string; reason?: string }[] } | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const [uploadPending, setUploadPending] = useState(false);
   const [form, setForm] = useState({
     headquartersId: "",
     teamId: "",
@@ -167,6 +172,33 @@ export default function RegionPermissionsPage() {
 
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setUploadPending(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/hq-team-region-permissions/upload-excel", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "업로드 실패", description: data.message, variant: "destructive" });
+        return;
+      }
+      setUploadResult(data);
+      setUploadResultOpen(true);
+      qc.invalidateQueries({ queryKey: ["/api/hq-team-region-permissions"] });
+    } catch {
+      toast({ title: "업로드 실패", description: "파일 업로드 중 오류가 발생했습니다.", variant: "destructive" });
+    } finally {
+      setUploadPending(false);
+    }
+  };
+
   const getHqName = (id: number) => hqList?.find(h => h.id === id)?.name || String(id);
   const getTeamName = (id: number) => {
     // HQ_USER의 경우 teamList가 없으므로 id를 그대로 표시
@@ -180,9 +212,36 @@ export default function RegionPermissionsPage() {
     <Layout>
       <PageHeader title="본부 권한 관리" description="본부+팀 조합별 접근 가능한 지역을 도/시/군/구 단위로 관리합니다.">
         {isMaster && (
-          <Button onClick={openCreate} size="sm" data-testid="button-create-region">
-            <Plus className="w-4 h-4 mr-1" /> 지역 추가
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open("/api/hq-team-region-permissions/upload-template", "_blank")}
+              data-testid="button-download-region-template"
+            >
+              <Download className="w-4 h-4 mr-1" /> 템플릿
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => uploadInputRef.current?.click()}
+              disabled={uploadPending}
+              data-testid="button-upload-region-excel"
+            >
+              {uploadPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+              엑셀 업로드
+            </Button>
+            <Button onClick={openCreate} size="sm" data-testid="button-create-region">
+              <Plus className="w-4 h-4 mr-1" /> 지역 추가
+            </Button>
+          </div>
         )}
       </PageHeader>
 
@@ -471,6 +530,38 @@ export default function RegionPermissionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 엑셀 업로드 결과 */}
+      <Dialog open={uploadResultOpen} onOpenChange={setUploadResultOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>엑셀 업로드 결과</DialogTitle></DialogHeader>
+          {uploadResult && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-300">{uploadResult.addedCount}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">추가 성공</p>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{uploadResult.skippedCount}</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">건너뜀</p>
+                </div>
+              </div>
+              {uploadResult.results.filter(r => r.status === "fail").length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  <p className="text-xs font-medium text-muted-foreground">오류 내역:</p>
+                  {uploadResult.results.filter(r => r.status === "fail").map((r, i) => (
+                    <div key={i} className="text-xs text-destructive bg-destructive/10 px-2 py-1 rounded">
+                      행 {r.row}: {r.reason}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button className="w-full" onClick={() => setUploadResultOpen(false)}>확인</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

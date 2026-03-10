@@ -28,7 +28,7 @@ export async function initDb() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(100) NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
+        password_hash TEXT,
         display_name TEXT NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         position_name TEXT,
@@ -37,6 +37,7 @@ export async function initDb() {
         headquarters_id INTEGER REFERENCES headquarters(id),
         team_id INTEGER REFERENCES teams(id),
         enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
@@ -80,6 +81,20 @@ export async function initDb() {
         ADD COLUMN IF NOT EXISTS gun_name TEXT,
         ADD COLUMN IF NOT EXISTS gu_name TEXT;
     `);
+
+    // must_change_password 컬럼 추가 (기존 DB에 없을 경우만)
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
+
+    // password_hash NOT NULL 제약 조건 제거 (비밀번호 미설정 사용자 지원)
+    await client.query(`
+      ALTER TABLE users
+        ALTER COLUMN password_hash DROP NOT NULL;
+    `).catch(() => {
+      // 이미 nullable인 경우 무시
+    });
 
     console.log("DB 테이블 초기화 완료");
   } finally {

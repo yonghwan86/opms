@@ -60,23 +60,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── 인증 ─────────────────────────────────────────────────────────────────
 
-  // POST /api/auth/login
+  // POST /api/auth/login (이메일 로그인)
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { username, password } = req.body;
-      if (!username || !password) {
-        return res.status(400).json({ message: "아이디와 비밀번호를 입력해주세요." });
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ message: "이메일과 비밀번호를 입력해주세요." });
       }
-      const user = await storage.getUserByUsername(username);
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
       if (!user) {
-        return res.status(401).json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." });
+        return res.status(401).json({ message: "이메일 또는 비밀번호가 올바르지 않습니다." });
       }
       if (!user.enabled) {
         return res.status(403).json({ message: "비활성화된 계정입니다. 관리자에게 문의하세요." });
       }
+
+      // 비밀번호 미설정 또는 최초 로그인 필요 시 → 비밀번호 설정 화면으로
+      if (!user.passwordHash || user.mustChangePassword) {
+        return res.json({ needsPasswordSetup: true });
+      }
+
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) {
-        return res.status(401).json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." });
+        return res.status(401).json({ message: "이메일 또는 비밀번호가 올바르지 않습니다." });
       }
 
       req.session.userId = user.id;
@@ -85,13 +91,57 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       req.session.headquartersId = user.headquartersId;
       req.session.teamId = user.teamId;
 
-      // 로그인 로그 기록
       const ip = req.ip || req.socket.remoteAddress;
       const ua = req.headers["user-agent"];
       await storage.createLoginLog(user.id, ip, ua);
-      await storage.createAuditLog(user.id, "LOGIN", "user", user.id, { username: user.username });
+      await storage.createAuditLog(user.id, "LOGIN", "user", user.id, { email: user.email });
 
       const { passwordHash: _, ...safeUser } = user;
+      res.json({ user: safeUser });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류가 발생했습니다." });
+    }
+  });
+
+  // POST /api/auth/setup-password (최초 비밀번호 설정 / 초기화 후 재설정)
+  app.post("/api/auth/setup-password", async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) {
+        return res.status(400).json({ message: "이메일과 새 비밀번호를 입력해주세요." });
+      }
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "비밀번호는 8자 이상이어야 합니다." });
+      }
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      }
+      if (!user.enabled) {
+        return res.status(403).json({ message: "비활성화된 계정입니다. 관리자에게 문의하세요." });
+      }
+      if (user.passwordHash && !user.mustChangePassword) {
+        return res.status(400).json({ message: "비밀번호가 이미 설정되어 있습니다." });
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(user.id, passwordHash);
+
+      // 비밀번호 설정 후 자동 로그인
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      req.session.role = user.role;
+      req.session.headquartersId = user.headquartersId;
+      req.session.teamId = user.teamId;
+
+      const ip = req.ip || req.socket.remoteAddress;
+      const ua = req.headers["user-agent"];
+      await storage.createLoginLog(user.id, ip, ua);
+      await storage.createAuditLog(user.id, "SET_PASSWORD", "user", user.id, { email: user.email });
+
+      const updatedUser = await storage.getUserById(user.id);
+      const { passwordHash: _, ...safeUser } = updatedUser!;
       res.json({ user: safeUser });
     } catch (e) {
       console.error(e);
@@ -268,26 +318,39 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/users
   app.post("/api/users", requireMaster, async (req, res) => {
     try {
-      const { username, password, displayName, email, positionName, departmentName, role, headquartersId, teamId, enabled } = req.body;
-      if (!username || !password || !displayName || !email) {
-        return res.status(400).json({ message: "아이디, 비밀번호, 이름, 이메일은 필수입니다." });
+      const { displayName, email, positionName, departmentName, role, headquartersId, teamId, enabled } = req.body;
+      if (!displayName || !email) {
+        return res.status(400).json({ message: "이름과 이메일은 필수입니다." });
       }
-      const dupUser = await storage.getUserByUsername(username);
-      if (dupUser) return res.status(409).json({ message: "이미 사용 중인 아이디입니다." });
-      const dupEmail = await storage.getUserByEmail(email);
+      const dupEmail = await storage.getUserByEmail(email.trim().toLowerCase());
       if (dupEmail) return res.status(409).json({ message: "이미 사용 중인 이메일입니다." });
-      const passwordHash = await bcrypt.hash(password, 10);
+
+      // username 자동 생성 (이메일 앞부분, 중복 시 숫자 추가)
+      const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase();
+      let username = baseUsername;
+      let suffix = 1;
+      while (await storage.getUserByUsername(username)) {
+        username = `${baseUsername}${suffix++}`;
+      }
+
       const user = await storage.createUser({
-        username, passwordHash, displayName, email, positionName, departmentName,
+        username,
+        passwordHash: null,
+        displayName,
+        email: email.trim().toLowerCase(),
+        positionName,
+        departmentName,
         role: role || "HQ_USER",
         headquartersId: headquartersId ? Number(headquartersId) : null,
         teamId: teamId ? Number(teamId) : null,
         enabled: enabled !== false,
+        mustChangePassword: true,
       });
       await storage.createAuditLog(req.session.userId!, "CREATE", "user", user.id, { username, email, role });
       const { passwordHash: _, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (e) {
+      console.error(e);
       res.status(500).json({ message: "서버 오류" });
     }
   });
@@ -310,15 +373,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/users/:id/reset-password
+  // POST /api/users/:id/reset-password (비밀번호 초기화 → 다음 로그인 시 본인이 재설정)
   app.post("/api/users/:id/reset-password", requireMaster, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const newPassword = req.body.password || Math.random().toString(36).slice(-8) + "A1!";
-      const passwordHash = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(id, { passwordHash });
+      await storage.resetUserPassword(id);
       await storage.createAuditLog(req.session.userId!, "RESET_PASSWORD", "user", id, {});
-      res.json({ message: "비밀번호가 초기화되었습니다.", temporaryPassword: newPassword });
+      res.json({ message: "비밀번호가 초기화되었습니다. 사용자가 다음 로그인 시 비밀번호를 직접 설정합니다." });
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
     }
@@ -328,11 +389,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ["username", "display_name", "email", "position_name", "department_name", "headquarters_code", "team_code", "role", "enabled", "initial_password"];
+      const headers = ["display_name", "email", "position_name", "department_name", "headquarters_code", "team_code", "role", "enabled"];
       const sampleData = [
-        ["user001", "홍길동", "hong@example.com", "사원", "영업부", "HQ_SEOUL", "SEOUL_T1", "HQ_USER", "TRUE", "Pass1234!"],
-        ["user002", "김철수", "kim@example.com", "주임", "마케팅부", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE", "Pass1234!"],
-        ["user003", "이영희", "lee@example.com", "대리", "IT운영부", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE", ""],
+        ["홍길동", "hong@example.com", "사원", "영업부", "HQ_SEOUL", "SEOUL_T1", "HQ_USER", "TRUE"],
+        ["김철수", "kim@example.com", "주임", "마케팅부", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
+        ["이영희", "lee@example.com", "대리", "IT운영부", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
       XLSX.utils.book_append_sheet(wb, ws, "사용자_업로드");
@@ -356,7 +417,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-      const requiredCols = ["username", "display_name", "email", "position_name", "department_name", "headquarters_code", "team_code", "role", "enabled", "initial_password"];
+      const requiredCols = ["display_name", "email", "headquarters_code", "team_code", "role", "enabled"];
       if (rows.length === 0) return res.status(400).json({ message: "데이터가 없습니다." });
 
       const firstRow = rows[0];
@@ -366,7 +427,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const results: { row: number; status: "success" | "fail"; reason?: string }[] = [];
-      const usernamesInFile = new Set<string>();
       const emailsInFile = new Set<string>();
       let successCount = 0;
       let failCount = 0;
@@ -374,36 +434,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
-        const username = String(row.username || "").trim();
         const displayName = String(row.display_name || "").trim();
-        const email = String(row.email || "").trim();
+        const email = String(row.email || "").trim().toLowerCase();
         const positionName = String(row.position_name || "").trim();
         const departmentName = String(row.department_name || "").trim();
         const hqCode = String(row.headquarters_code || "").trim();
         const teamCode = String(row.team_code || "").trim();
         const role = String(row.role || "HQ_USER").trim();
         const enabled = String(row.enabled || "TRUE").toUpperCase() !== "FALSE";
-        const initialPassword = String(row.initial_password || "").trim();
 
         // 빈 행 건너뜀
-        if (!username && !email) {
+        if (!email && !displayName) {
           results.push({ row: rowNum, status: "fail", reason: "빈 행" });
           failCount++;
           continue;
         }
 
         // 유효성 검사
-        if (!username) { results.push({ row: rowNum, status: "fail", reason: "username 누락" }); failCount++; continue; }
+        if (!displayName) { results.push({ row: rowNum, status: "fail", reason: "display_name 누락" }); failCount++; continue; }
         if (!email) { results.push({ row: rowNum, status: "fail", reason: "email 누락" }); failCount++; continue; }
         if (!["MASTER", "HQ_USER"].includes(role)) { results.push({ row: rowNum, status: "fail", reason: `role 값 오류: ${role}` }); failCount++; continue; }
 
-        // 파일 내 중복
-        if (usernamesInFile.has(username)) { results.push({ row: rowNum, status: "fail", reason: "파일 내 username 중복" }); failCount++; continue; }
+        // 파일 내 이메일 중복
         if (emailsInFile.has(email)) { results.push({ row: rowNum, status: "fail", reason: "파일 내 email 중복" }); failCount++; continue; }
 
-        // DB 중복
-        const dupUser = await storage.getUserByUsername(username);
-        if (dupUser) { results.push({ row: rowNum, status: "fail", reason: "username 이미 사용 중" }); failCount++; continue; }
+        // DB 이메일 중복
         const dupEmail = await storage.getUserByEmail(email);
         if (dupEmail) { results.push({ row: rowNum, status: "fail", reason: "email 이미 사용 중" }); failCount++; continue; }
 
@@ -416,12 +471,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!team) { results.push({ row: rowNum, status: "fail", reason: `팀 코드 없음: ${teamCode}` }); failCount++; continue; }
         if (team.headquartersId !== hq.id) { results.push({ row: rowNum, status: "fail", reason: "팀이 해당 본부에 속하지 않음" }); failCount++; continue; }
 
-        // 비밀번호 생성
-        const password = initialPassword || Math.random().toString(36).slice(-8) + "A1!";
-        const passwordHash = await bcrypt.hash(password, 10);
+        // username 자동 생성 (이메일 앞부분)
+        const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase();
+        let username = baseUsername;
+        let suffix = 1;
+        while (await storage.getUserByUsername(username)) {
+          username = `${baseUsername}${suffix++}`;
+        }
 
-        await storage.createUser({ username, passwordHash, displayName: displayName || username, email, positionName, departmentName, role, headquartersId: hq.id, teamId: team.id, enabled });
-        usernamesInFile.add(username);
+        // 비밀번호 미설정 (최초 로그인 시 본인이 설정)
+        await storage.createUser({
+          username,
+          passwordHash: null,
+          displayName: displayName || username,
+          email,
+          positionName,
+          departmentName,
+          role,
+          headquartersId: hq.id,
+          teamId: team.id,
+          enabled,
+          mustChangePassword: true,
+        });
         emailsInFile.add(email);
         results.push({ row: rowNum, status: "success" });
         successCount++;
@@ -436,6 +507,102 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ── 지역 권한 ─────────────────────────────────────────────────────────────
+
+  // GET /api/hq-team-region-permissions/upload-template (본부 권한 엑셀 템플릿)
+  app.get("/api/hq-team-region-permissions/upload-template", requireMaster, async (req, res) => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const headers = ["본부명", "팀명", "도", "시", "군", "구"];
+      const sampleData = [
+        ["서울본부", "서울1팀", "서울특별시", "", "", "종로구"],
+        ["서울본부", "서울1팀", "경기도", "수원시", "", "팔달구"],
+        ["부산본부", "부산1팀", "부산광역시", "", "", "중구"],
+        ["서울본부", "서울2팀", "강원특별자치도", "", "양구군", ""],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+      ws["!cols"] = [{ wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, ws, "본부권한_업로드");
+      const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+      res.setHeader("Content-Disposition", "attachment; filename=region_permission_template.xlsx");
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.send(buffer);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // POST /api/hq-team-region-permissions/upload-excel (본부 권한 엑셀 일괄 등록)
+  app.post("/api/hq-team-region-permissions/upload-excel", requireMaster, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "파일을 선택해주세요." });
+      if (!req.file.originalname.endsWith(".xlsx")) {
+        return res.status(400).json({ message: "xlsx 파일만 업로드 가능합니다." });
+      }
+      const wb = XLSX.read(req.file.buffer, { type: "buffer" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      if (rows.length === 0) return res.status(400).json({ message: "데이터가 없습니다." });
+
+      // 모든 본부/팀 미리 로드 (이름 → ID 매핑)
+      const allHq = await storage.getHeadquartersAll();
+      const allTeams = await storage.getTeamsAll();
+      const hqByName = new Map(allHq.map(h => [h.name, h]));
+      const teamByNameAndHq = new Map(allTeams.map(t => [`${t.headquartersId}:${t.name}`, t]));
+
+      const results: { row: number; status: "success" | "fail"; reason?: string }[] = [];
+      let addedCount = 0;
+      let skippedCount = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const hqName = String(row["본부명"] || "").trim();
+        const teamName = String(row["팀명"] || "").trim();
+        const doName = String(row["도"] || "").trim() || null;
+        const siName = String(row["시"] || "").trim() || null;
+        const gunName = String(row["군"] || "").trim() || null;
+        const guName = String(row["구"] || "").trim() || null;
+
+        // 빈 행 건너뜀
+        if (!hqName && !teamName && !doName) {
+          skippedCount++;
+          continue;
+        }
+
+        if (!hqName) { results.push({ row: rowNum, status: "fail", reason: "본부명 누락" }); skippedCount++; continue; }
+        if (!teamName) { results.push({ row: rowNum, status: "fail", reason: "팀명 누락" }); skippedCount++; continue; }
+        if (!doName) { results.push({ row: rowNum, status: "fail", reason: "도 누락 (필수)" }); skippedCount++; continue; }
+
+        const hq = hqByName.get(hqName);
+        if (!hq) { results.push({ row: rowNum, status: "fail", reason: `본부 없음: ${hqName}` }); skippedCount++; continue; }
+
+        const team = teamByNameAndHq.get(`${hq.id}:${teamName}`);
+        if (!team) { results.push({ row: rowNum, status: "fail", reason: `팀 없음: ${teamName}` }); skippedCount++; continue; }
+
+        const regionName = [doName, siName, gunName, guName].filter(Boolean).join(" ");
+
+        await storage.createRegionPermission({
+          headquartersId: hq.id,
+          teamId: team.id,
+          doName,
+          siName,
+          gunName,
+          guName,
+          regionName,
+          enabled: true,
+        });
+        results.push({ row: rowNum, status: "success" });
+        addedCount++;
+      }
+
+      await storage.createAuditLog(req.session.userId!, "EXCEL_UPLOAD", "region_permission", undefined, { addedCount, skippedCount });
+      res.json({ addedCount, skippedCount, results });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
 
   // GET /api/hq-team-region-permissions
   app.get("/api/hq-team-region-permissions", requireAuth, async (req, res) => {
@@ -468,12 +635,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/hq-team-region-permissions
   app.post("/api/hq-team-region-permissions", requireMaster, async (req, res) => {
     try {
-      const { headquartersId, teamId, sidoCode, sigunCode, regionName, enabled } = req.body;
+      const { headquartersId, teamId, doName, siName, gunName, guName, sidoCode, sigunCode, regionName, enabled } = req.body;
       if (!headquartersId || !teamId || !regionName) {
         return res.status(400).json({ message: "본부, 팀, 지역명은 필수입니다." });
       }
       const perm = await storage.createRegionPermission({
         headquartersId: Number(headquartersId), teamId: Number(teamId),
+        doName: doName || null, siName: siName || null, gunName: gunName || null, guName: guName || null,
         sidoCode, sigunCode, regionName, enabled: enabled !== false,
       });
       await storage.createAuditLog(req.session.userId!, "CREATE", "region_permission", perm.id, { regionName });
