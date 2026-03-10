@@ -24,6 +24,13 @@ export function useAuth() {
     staleTime: 60 * 1000,
   });
 
+  const checkEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiRequest("POST", "/api/auth/check-email", { email });
+      return res.json() as Promise<{ exists: boolean; needsPasswordSetup?: boolean }>;
+    },
+  });
+
   const loginMutation = useMutation({
     mutationFn: async (creds: { email: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/login", creds);
@@ -58,6 +65,8 @@ export function useAuth() {
   return {
     user: user ?? null,
     isLoading,
+    checkEmail: checkEmailMutation.mutateAsync,
+    checkEmailPending: checkEmailMutation.isPending,
     login: loginMutation.mutateAsync,
     loginPending: loginMutation.isPending,
     loginError: loginMutation.error,

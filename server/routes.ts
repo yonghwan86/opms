@@ -60,6 +60,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── 인증 ─────────────────────────────────────────────────────────────────
 
+  // POST /api/auth/check-email (이메일 존재 여부 + 비밀번호 설정 필요 여부 확인)
+  app.post("/api/auth/check-email", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "이메일을 입력해주세요." });
+      }
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      if (!user || !user.enabled) {
+        return res.json({ exists: false });
+      }
+      return res.json({
+        exists: true,
+        needsPasswordSetup: !user.passwordHash || user.mustChangePassword,
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "서버 오류가 발생했습니다." });
+    }
+  });
+
   // POST /api/auth/login (이메일 로그인)
   app.post("/api/auth/login", async (req, res) => {
     try {

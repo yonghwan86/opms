@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "login" | "setup-password";
+type Step = "email" | "password" | "setup-password";
 
 export default function LoginPage() {
-  const [step, setStep] = useState<Step>("login");
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -19,23 +19,39 @@ export default function LoginPage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [, navigate] = useLocation();
-  const { login, loginPending, setupPassword, setupPasswordPending } = useAuth();
+  const { checkEmail, checkEmailPending, login, loginPending, setupPassword, setupPasswordPending } = useAuth();
   const { toast } = useToast();
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const result = await checkEmail(email.trim().toLowerCase());
+      if (!result.exists) {
+        toast({ title: "로그인 실패", description: "등록되지 않은 이메일입니다.", variant: "destructive" });
+        return;
+      }
+      if (result.needsPasswordSetup) {
+        setStep("setup-password");
+      } else {
+        setStep("password");
+      }
+    } catch (err: any) {
+      toast({ title: "오류", description: err?.message || "서버 오류가 발생했습니다.", variant: "destructive" });
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const result = await login({ email: email.trim().toLowerCase(), password });
       if (result.needsPasswordSetup) {
-        // 최초 로그인 또는 초기화 → 비밀번호 설정 단계로
         setStep("setup-password");
         setPassword("");
       } else {
         navigate("/");
       }
     } catch (err: any) {
-      const msg = err?.message || "로그인에 실패했습니다.";
-      toast({ title: "로그인 실패", description: msg, variant: "destructive" });
+      toast({ title: "로그인 실패", description: err?.message || "비밀번호가 올바르지 않습니다.", variant: "destructive" });
     }
   };
 
@@ -53,9 +69,15 @@ export default function LoginPage() {
       await setupPassword({ email: email.trim().toLowerCase(), newPassword });
       navigate("/");
     } catch (err: any) {
-      const msg = err?.message || "비밀번호 설정에 실패했습니다.";
-      toast({ title: "오류", description: msg, variant: "destructive" });
+      toast({ title: "오류", description: err?.message || "비밀번호 설정에 실패했습니다.", variant: "destructive" });
     }
+  };
+
+  const goBackToEmail = () => {
+    setStep("email");
+    setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -101,14 +123,15 @@ export default function LoginPage() {
             <span className="text-lg font-bold">유가관리 시스템</span>
           </div>
 
-          {step === "login" ? (
+          {/* Step 1: 이메일 입력 */}
+          {step === "email" && (
             <>
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-foreground">로그인</h2>
-                <p className="text-muted-foreground mt-1.5 text-sm">이메일과 비밀번호를 입력하세요</p>
+                <p className="text-muted-foreground mt-1.5 text-sm">이메일을 입력하세요</p>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-sm font-medium">이메일</Label>
                   <Input
@@ -118,12 +141,47 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoFocus
                     autoComplete="email"
                     data-testid="input-email"
                     className="h-11"
                   />
                 </div>
 
+                <Button
+                  type="submit"
+                  className="w-full h-11 font-medium"
+                  disabled={checkEmailPending}
+                  data-testid="button-next"
+                >
+                  {checkEmailPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  다음
+                </Button>
+              </form>
+
+              <div className="mt-8 p-4 bg-muted/50 rounded-lg border border-border">
+                <p className="text-xs text-muted-foreground font-medium mb-2">테스트 계정</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">마스터:</span> master@example.com
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">일반 사용자:</span> kim.seoul@example.com
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Step 2-A: 비밀번호 입력 */}
+          {step === "password" && (
+            <>
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-foreground">비밀번호 입력</h2>
+                <p className="text-sm text-primary font-medium mt-1.5">{email}</p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="password" className="text-sm font-medium">비밀번호</Label>
                   <div className="relative">
@@ -134,6 +192,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      autoFocus
                       autoComplete="current-password"
                       data-testid="input-password"
                       className="h-11 pr-10"
@@ -160,21 +219,22 @@ export default function LoginPage() {
                   {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   로그인
                 </Button>
-              </form>
 
-              <div className="mt-8 p-4 bg-muted/50 rounded-lg border border-border">
-                <p className="text-xs text-muted-foreground font-medium mb-2">테스트 계정</p>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">마스터:</span> master@example.com / master1234!
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">일반 사용자:</span> kim.seoul@example.com (최초 로그인 → 비밀번호 설정)
-                  </p>
-                </div>
-              </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={goBackToEmail}
+                  data-testid="button-back-email"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" /> 이메일 변경
+                </Button>
+              </form>
             </>
-          ) : (
+          )}
+
+          {/* Step 2-B: 비밀번호 설정 (최초 로그인 / 초기화) */}
+          {step === "setup-password" && (
             <>
               <div className="mb-8">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -198,6 +258,7 @@ export default function LoginPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
+                      autoFocus
                       minLength={8}
                       data-testid="input-new-password"
                       className="h-11 pr-10"
@@ -244,10 +305,10 @@ export default function LoginPage() {
                   type="button"
                   variant="ghost"
                   className="w-full"
-                  onClick={() => { setStep("login"); setNewPassword(""); setConfirmPassword(""); }}
-                  data-testid="button-back-login"
+                  onClick={goBackToEmail}
+                  data-testid="button-back-email"
                 >
-                  <ArrowLeft className="w-4 h-4 mr-1" /> 로그인으로 돌아가기
+                  <ArrowLeft className="w-4 h-4 mr-1" /> 이메일 변경
                 </Button>
               </form>
             </>
