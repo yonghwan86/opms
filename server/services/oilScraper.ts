@@ -1,90 +1,128 @@
-import axios from "axios";
+import { chromium } from "playwright";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
-const BASE_URL = "https://www.opinet.co.kr";
-const DOWNLOAD_PAGE = `${BASE_URL}/user/opdown/opDownload.do`;
-const DOWNLOAD_CSV = `${BASE_URL}/user/main/main_download_csv_big.do`;
-
-function parseCookies(headers: Record<string, string | string[] | undefined>): string {
-  const setCookie = headers["set-cookie"];
-  if (!setCookie) return "";
-  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
-  return cookies
-    .map((c) => c.split(";")[0])
-    .join("; ");
-}
+const CHROMIUM_PATH =
+  "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium";
+const DOWNLOAD_PAGE =
+  "https://www.opinet.co.kr/user/opdown/opDownload.do";
 
 export async function downloadOilPriceCSV(
   startDate: string,
   endDate: string
 ): Promise<Buffer | null> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "opinet-"));
+  let browser;
+
   try {
-    const pageRes = await axios.get(DOWNLOAD_PAGE, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ko,en-US;q=0.9,en;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-      },
-      timeout: 30000,
-      maxRedirects: 5,
+    console.log(`[OilScraper] 브라우저 시작 (${startDate} ~ ${endDate})`);
+    browser = await chromium.launch({
+      executablePath: CHROMIUM_PATH,
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-setuid-sandbox",
+        "--no-first-run",
+        "--no-zygote",
+      ],
     });
 
-    const cookieHeader = parseCookies(pageRes.headers as Record<string, string | string[] | undefined>);
-    if (!cookieHeader) {
-      console.error("[OilScraper] 세션 쿠키를 받지 못했습니다.");
+    const context = await browser.newContext({
+      acceptDownloads: true,
+      downloadsPath: tmpDir,
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      locale: "ko-KR",
+    });
+
+    const page = await context.newPage();
+
+    // confirm() 다이얼로그 자동 수락 — fn_Download() 내부 confirm에서 필요
+    page.on("dialog", async (dialog) => {
+      console.log(`[OilScraper] 다이얼로그 수락: ${dialog.message().substring(0, 80)}`);
+      await dialog.accept();
+    });
+
+    console.log("[OilScraper] 페이지 로딩...");
+    await page.goto(DOWNLOAD_PAGE, {
+      waitUntil: "load",
+      timeout: 30000,
+    });
+
+    // NetFunnel(B1) 완료 대기 — AJAX 콘텐츠(fn_Download 함수)가 로드될 때까지
+    await page.waitForFunction(
+      () => typeof (window as any).fn_Download === "function",
+      { timeout: 20000 }
+    ).catch(() => {
+      console.log("[OilScraper] fn_Download 함수 대기 타임아웃 — 계속 진행");
+    });
+
+    console.log("[OilScraper] fn_Download 함수 확인 완료");
+
+    // 날짜 필드 설정
+    // form1.START_DT / END_DT (hidden, checkDate 검증용)
+    // span_start_date_picker / span_end_date_picker (date range 계산용)
+    await page.evaluate(
+      ({ start, end }: { start: string; end: string }) => {
+        const form = document.forms.namedItem("form1") as HTMLFormElement;
+        if (form) {
+          const startEl = form.elements.namedItem("START_DT") as HTMLInputElement | null;
+          const endEl = form.elements.namedItem("END_DT") as HTMLInputElement | null;
+          if (startEl) startEl.value = start;
+          if (endEl) endEl.value = end;
+        }
+        // 날짜 범위 계산용 datepicker 필드
+        const sp = document.getElementById("span_start_date_picker") as HTMLInputElement | null;
+        const ep = document.getElementById("span_end_date_picker") as HTMLInputElement | null;
+        if (sp) sp.value = start;
+        if (ep) ep.value = end;
+      },
+      { start: startDate, end: endDate }
+    );
+
+    console.log(`[OilScraper] 날짜 설정: ${startDate} ~ ${endDate}`);
+
+    // rdo4 라디오 버튼: 일별(X) 선택 확인 (과거판매가격 섹션)
+    await page.evaluate(() => {
+      const rdo4 = document.getElementById("rdo4") as HTMLInputElement | null;
+      if (rdo4) rdo4.checked = true;
+    });
+
+    // 다운로드 이벤트를 먼저 등록한 후 fn_Download(6) 호출
+    console.log("[OilScraper] fn_Download(6) 호출 + 다운로드 대기...");
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 90000 }),
+      page.evaluate(() => {
+        (window as any).fn_Download(6);
+      }),
+    ]);
+
+    console.log(`[OilScraper] 다운로드 시작: ${download.suggestedFilename()}`);
+
+    const downloadPath = await download.path();
+    if (!downloadPath) {
+      const failure = await download.failure();
+      console.error("[OilScraper] 다운로드 실패:", failure);
       return null;
     }
 
-    console.log(`[OilScraper] 쿠키 획득: ${cookieHeader.substring(0, 60)}...`);
+    const buffer = fs.readFileSync(downloadPath);
+    console.log(
+      `[OilScraper] 다운로드 완료: ${buffer.byteLength} bytes, 파일명: ${download.suggestedFilename()}`
+    );
 
-    const params = new URLSearchParams({
-      LPG_CD: "A",
-      DATE_DIV_CD: "X",
-      PAGE_DIV: "PAGE_DIV_6",
-      SIDO_NM: "시/도",
-      SIGUN_NM: "시/군/구",
-      API_GBN: "30",
-      rdo1: "A",
-      rdo2: "A",
-      rdo3: "A",
-      rdo4: "N",
-      START_DT: startDate,
-      END_DT: endDate,
-      SIDO_CD: "",
-      SIGUN_CD: "",
-    });
-
-    const csvRes = await axios.post(DOWNLOAD_CSV, params.toString(), {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "ko,en-US;q=0.9,en;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Cookie": cookieHeader,
-        "Referer": DOWNLOAD_PAGE,
-        "Origin": BASE_URL,
-        "Upgrade-Insecure-Requests": "1",
-      },
-      responseType: "arraybuffer",
-      timeout: 60000,
-      maxRedirects: 5,
-    });
-
-    const contentType = (csvRes.headers["content-type"] || "").toLowerCase();
-    const contentDisposition = csvRes.headers["content-disposition"] || "";
-
-    if (contentType.includes("application/download") || contentDisposition.includes(".csv")) {
-      console.log(`[OilScraper] CSV 다운로드 성공 — ${csvRes.data.byteLength} bytes`);
-      return Buffer.from(csvRes.data);
-    }
-
-    const preview = Buffer.from(csvRes.data).slice(0, 200).toString("utf-8", 0, 200);
-    console.error(`[OilScraper] 예상치 못한 응답 (content-type: ${contentType}): ${preview}`);
-    return null;
+    return buffer;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[OilScraper] 다운로드 실패:", msg);
+    console.error("[OilScraper] 오류:", msg);
     return null;
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {}
   }
 }

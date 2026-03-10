@@ -31,13 +31,15 @@ Opinet 유가 정보 자동 수집·분석·DB 저장 기능 포함. 향후 웹 
 
 ## 유가 수집 파이프라인
 - **소스:** Opinet (www.opinet.co.kr) EUC-KR CSV
-- **수집:** `server/services/oilScraper.ts` — axios 쿠키 세션으로 POST 다운로드
+- **수집:** `server/services/oilScraper.ts` — Playwright 헤드리스 Chromium으로 자동화 다운로드
+  - `fn_Download(6)` 직접 호출 (NetFunnel B7 토큰 자동 처리, confirm 다이얼로그 자동 수락)
+  - Chromium: `/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium`
 - **파싱:** `server/services/oilParser.ts` — iconv-lite EUC-KR→UTF-8, 0값=미판매 처리
 - **분석:** `server/services/oilAnalyzer.ts`
   - MAX_MIN: 연료종류별 최고가/최저가 top 10
   - CHANGE: 전일대비 가격 상승/하락 top 10
   - DIFF: 휘발유-경유 가격차 큰/작은 top 10
-- **스케줄:** `server/services/oilScheduler.ts` — 매일 오전 8시 KST 자동 실행
+- **스케줄:** `server/services/oilScheduler.ts` — 매일 오전 9시 10분 KST 자동 실행 (`"10 9 * * *"`)
 - **수동 실행:** `POST /api/oil-prices/refresh` (MASTER)
 
 ## 주요 API

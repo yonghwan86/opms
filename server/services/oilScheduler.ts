@@ -61,12 +61,12 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
 }
 
 export function startOilScheduler(): void {
-  cron.schedule("0 8 * * *", async () => {
-    console.log("[OilScheduler] 정기 수집 시작 (매일 오전 8시)");
+  cron.schedule("10 9 * * *", async () => {
+    console.log("[OilScheduler] 정기 수집 시작 (매일 오전 9시 10분)");
     const result = await runOilPriceJob();
     console.log("[OilScheduler] 정기 수집 완료:", result);
   }, {
     timezone: "Asia/Seoul",
   });
-  console.log("[OilScheduler] 스케줄러 등록 완료 (매일 오전 8시 KST)");
+  console.log("[OilScheduler] 스케줄러 등록 완료 (매일 오전 9시 10분 KST)");
 }
