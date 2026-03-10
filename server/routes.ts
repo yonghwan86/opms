@@ -410,8 +410,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.delete("/api/users/:id", requireMaster, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      if (id === req.session.userId) {
-        return res.status(400).json({ message: "자기 자신은 삭제할 수 없습니다." });
+      const target = await storage.getUserById(id);
+      if (!target) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      }
+      if (target.role === "MASTER") {
+        const masters = await storage.getUsers({ role: "MASTER", pageSize: 999 });
+        if (masters.total <= 1) {
+          return res.status(400).json({ message: "마스터 계정이 하나뿐이라 삭제할 수 없습니다." });
+        }
       }
       await storage.deleteUser(id);
       await storage.createAuditLog(req.session.userId!, "DELETE", "user", id, {});
