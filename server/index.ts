@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initDb } from "./initDb";
 import { seedDatabase } from "./seed";
+import { startOilScheduler } from "./services/oilScheduler";
 
 const app = express();
 const httpServer = createServer(app);
@@ -67,6 +68,9 @@ app.use((req, res, next) => {
   await seedDatabase();
 
   await registerRoutes(httpServer, app);
+
+  // 유가 수집 스케줄러 시작
+  startOilScheduler();
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

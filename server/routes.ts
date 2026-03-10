@@ -768,5 +768,50 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 유가 분석 API ───────────────────────────────────────────────────────────
+
+  // POST /api/oil-prices/refresh — MASTER 전용 수동 수집
+  app.post("/api/oil-prices/refresh", requireMaster, async (req, res) => {
+    try {
+      const { runOilPriceJob } = await import("./services/oilScheduler");
+      const { today, yesterday } = req.body as { today?: string; yesterday?: string };
+      const result = await runOilPriceJob(today, yesterday);
+      if (!result.success) {
+        return res.status(502).json({ message: result.error || "수집 실패" });
+      }
+      res.json(result);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "서버 오류";
+      res.status(500).json({ message: msg });
+    }
+  });
+
+  // GET /api/oil-prices/latest-date — 최근 분석 날짜 조회
+  app.get("/api/oil-prices/latest-date", requireAuth, async (req, res) => {
+    try {
+      const date = await storage.getOilPriceLatestDate();
+      res.json({ date });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/oil-prices/analysis — 분석 결과 조회
+  app.get("/api/oil-prices/analysis", requireAuth, async (req, res) => {
+    try {
+      const { analysisDate, analysisType, subType, fuelType, sido } = req.query as Record<string, string>;
+      const results = await storage.getOilPriceAnalysis({
+        analysisDate: analysisDate || undefined,
+        analysisType: analysisType || undefined,
+        subType: subType || undefined,
+        fuelType: fuelType || undefined,
+        sido: sido || undefined,
+      });
+      res.json(results);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   return httpServer;
 }

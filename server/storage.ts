@@ -3,11 +3,14 @@ import { eq, and, ilike, or, desc, asc, count, sql } from "drizzle-orm";
 import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs,
+  oilPriceRaw, oilPriceAnalysis,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
   type HqTeamRegionPermission, type InsertHqTeamRegionPermission,
   type LoginLog, type AuditLog,
+  type InsertOilPriceRaw, type OilPriceRaw,
+  type InsertOilPriceAnalysis, type OilPriceAnalysis,
 } from "@shared/schema";
 
 // ─── 페이징 공통 타입 ─────────────────────────────────────────────────────────
@@ -73,6 +76,20 @@ export interface IStorage {
     usersCount: number;
     recentLoginCount: number;
   }>;
+
+  // 유가 원본 데이터
+  saveOilPriceRaw(rows: InsertOilPriceRaw[]): Promise<void>;
+  getOilPriceLatestDate(): Promise<string | null>;
+
+  // 유가 분석 결과
+  saveOilPriceAnalysis(results: InsertOilPriceAnalysis[]): Promise<void>;
+  getOilPriceAnalysis(params: {
+    analysisDate?: string;
+    analysisType?: string;
+    subType?: string;
+    fuelType?: string;
+    sido?: string;
+  }): Promise<OilPriceAnalysis[]>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -339,6 +356,76 @@ export class PostgresStorage implements IStorage {
       db.select({ total: count() }).from(auditLogs).where(where),
     ]);
     return { data: rows as any, total: Number(total), page, pageSize, totalPages: Math.ceil(Number(total) / pageSize) };
+  }
+
+  // ── 유가 원본 데이터 ──────────────────────────────────────────────────────
+  async saveOilPriceRaw(rows: InsertOilPriceRaw[]): Promise<void> {
+    if (rows.length === 0) return;
+    const CHUNK = 500;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      await db
+        .insert(oilPriceRaw)
+        .values(chunk)
+        .onConflictDoUpdate({
+          target: [oilPriceRaw.stationId, oilPriceRaw.date],
+          set: {
+            stationName: sql`EXCLUDED.station_name`,
+            address: sql`EXCLUDED.address`,
+            region: sql`EXCLUDED.region`,
+            sido: sql`EXCLUDED.sido`,
+            brand: sql`EXCLUDED.brand`,
+            isSelf: sql`EXCLUDED.is_self`,
+            premiumGasoline: sql`EXCLUDED.premium_gasoline`,
+            gasoline: sql`EXCLUDED.gasoline`,
+            diesel: sql`EXCLUDED.diesel`,
+            kerosene: sql`EXCLUDED.kerosene`,
+          },
+        });
+    }
+  }
+
+  async getOilPriceLatestDate(): Promise<string | null> {
+    const result = await db
+      .select({ date: oilPriceRaw.date })
+      .from(oilPriceRaw)
+      .orderBy(desc(oilPriceRaw.date))
+      .limit(1);
+    return result[0]?.date ?? null;
+  }
+
+  // ── 유가 분석 결과 ────────────────────────────────────────────────────────
+  async saveOilPriceAnalysis(results: InsertOilPriceAnalysis[]): Promise<void> {
+    if (results.length === 0) return;
+    const dates = [...new Set(results.map((r) => r.analysisDate))];
+    for (const date of dates) {
+      await db.delete(oilPriceAnalysis).where(eq(oilPriceAnalysis.analysisDate, date));
+    }
+    const CHUNK = 500;
+    for (let i = 0; i < results.length; i += CHUNK) {
+      await db.insert(oilPriceAnalysis).values(results.slice(i, i + CHUNK));
+    }
+  }
+
+  async getOilPriceAnalysis(params: {
+    analysisDate?: string;
+    analysisType?: string;
+    subType?: string;
+    fuelType?: string;
+    sido?: string;
+  }): Promise<OilPriceAnalysis[]> {
+    const conditions = [];
+    if (params.analysisDate) conditions.push(eq(oilPriceAnalysis.analysisDate, params.analysisDate));
+    if (params.analysisType) conditions.push(eq(oilPriceAnalysis.analysisType, params.analysisType));
+    if (params.subType) conditions.push(eq(oilPriceAnalysis.subType, params.subType));
+    if (params.fuelType) conditions.push(eq(oilPriceAnalysis.fuelType, params.fuelType));
+    if (params.sido) conditions.push(eq(oilPriceAnalysis.sido, params.sido));
+
+    return db
+      .select()
+      .from(oilPriceAnalysis)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(oilPriceAnalysis.rank));
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────

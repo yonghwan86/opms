@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, boolean, timestamp, integer, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, timestamp, integer, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -103,3 +103,51 @@ export const auditLogs = pgTable("audit_logs", {
 });
 
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ─── 유가 원본 데이터 (Oil Price Raw) ─────────────────────────────────────────
+export const oilPriceRaw = pgTable("oil_price_raw", {
+  id: serial("id").primaryKey(),
+  stationId: varchar("station_id", { length: 20 }).notNull(),
+  stationName: text("station_name").notNull(),
+  address: text("address"),
+  region: text("region").notNull(),
+  sido: text("sido").notNull(),
+  date: varchar("date", { length: 8 }).notNull(),
+  brand: text("brand"),
+  isSelf: boolean("is_self").notNull().default(false),
+  premiumGasoline: integer("premium_gasoline"),
+  gasoline: integer("gasoline"),
+  diesel: integer("diesel"),
+  kerosene: integer("kerosene"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  stationDateIdx: uniqueIndex("oil_price_raw_station_date_idx").on(table.stationId, table.date),
+}));
+
+export const insertOilPriceRawSchema = createInsertSchema(oilPriceRaw).omit({ id: true, createdAt: true });
+export type InsertOilPriceRaw = z.infer<typeof insertOilPriceRawSchema>;
+export type OilPriceRaw = typeof oilPriceRaw.$inferSelect;
+
+// ─── 유가 분석 결과 (Oil Price Analysis) ────────────────────────────────────
+// analysisType: MAX_MIN (최고/최저가), CHANGE (전일대비), DIFF (휘발유-경유차이)
+// subType: HIGH / LOW (MAX_MIN), RISE / FALL (CHANGE), WIDE / NARROW (DIFF)
+export const oilPriceAnalysis = pgTable("oil_price_analysis", {
+  id: serial("id").primaryKey(),
+  analysisDate: varchar("analysis_date", { length: 8 }).notNull(),
+  analysisType: varchar("analysis_type", { length: 20 }).notNull(),
+  subType: varchar("sub_type", { length: 20 }).notNull(),
+  fuelType: varchar("fuel_type", { length: 20 }).notNull(),
+  rank: integer("rank").notNull(),
+  region: text("region"),
+  sido: text("sido"),
+  stationName: text("station_name"),
+  stationId: varchar("station_id", { length: 20 }),
+  price: integer("price"),
+  priceChange: integer("price_change"),
+  priceDiff: integer("price_diff"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOilPriceAnalysisSchema = createInsertSchema(oilPriceAnalysis).omit({ id: true, createdAt: true });
+export type InsertOilPriceAnalysis = z.infer<typeof insertOilPriceAnalysisSchema>;
+export type OilPriceAnalysis = typeof oilPriceAnalysis.$inferSelect;
