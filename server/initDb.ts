@@ -4,6 +4,7 @@ import { pool } from "./db";
 export async function initDb() {
   const client = await pool.connect();
   try {
+    // 기존 테이블 생성 (없을 경우)
     await client.query(`
       CREATE TABLE IF NOT EXISTS headquarters (
         id SERIAL PRIMARY KEY,
@@ -70,6 +71,16 @@ export async function initDb() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+
+    // 도/시/군/구 컬럼 추가 (기존 DB에 없을 경우만 추가)
+    await client.query(`
+      ALTER TABLE hq_team_region_permissions
+        ADD COLUMN IF NOT EXISTS do_name TEXT,
+        ADD COLUMN IF NOT EXISTS si_name TEXT,
+        ADD COLUMN IF NOT EXISTS gun_name TEXT,
+        ADD COLUMN IF NOT EXISTS gu_name TEXT;
+    `);
+
     console.log("DB 테이블 초기화 완료");
   } finally {
     client.release();

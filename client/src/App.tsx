@@ -8,8 +8,6 @@ import { Loader2 } from "lucide-react";
 
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
-import HeadquartersPage from "@/pages/headquarters";
-import TeamsPage from "@/pages/teams";
 import UsersPage from "@/pages/users";
 import UsersUploadPage from "@/pages/users-upload";
 import RegionPermissionsPage from "@/pages/region-permissions";
@@ -18,7 +16,6 @@ import AuditLogsPage from "@/pages/audit-logs";
 import MyInfoPage from "@/pages/my-info";
 import NotFound from "@/pages/not-found";
 
-// 로딩 스피너
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -27,7 +24,6 @@ function LoadingScreen() {
   );
 }
 
-// 인증 보호 라우터 컴포넌트
 function ProtectedRoute({ component: Component, masterOnly = false }: { component: React.ComponentType; masterOnly?: boolean }) {
   const { user, isLoading, isMaster } = useAuth();
   const [, navigate] = useLocation();
@@ -54,7 +50,7 @@ function ProtectedRoute({ component: Component, masterOnly = false }: { componen
   return <Component />;
 }
 
-// 홈 라우트 - 권한에 따라 다른 페이지로
+// 홈: MASTER → 대시보드, HQ_USER → 내 정보
 function HomeRoute() {
   const { user, isLoading, isMaster } = useAuth();
   const [, navigate] = useLocation();
@@ -65,7 +61,6 @@ function HomeRoute() {
     return <LoadingScreen />;
   }
   if (!isMaster) {
-    // HQ_USER는 내 정보 페이지로
     setTimeout(() => navigate("/my-info"), 0);
     return <LoadingScreen />;
   }
@@ -76,7 +71,6 @@ function Router() {
   const { user, isLoading } = useAuth();
   const [location, navigate] = useLocation();
 
-  // 로그인된 사용자가 /login에 접근하면 홈으로 리다이렉트
   if (!isLoading && user && location === "/login") {
     setTimeout(() => navigate("/"), 0);
     return null;
@@ -86,8 +80,6 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/" component={HomeRoute} />
-      <Route path="/headquarters" component={() => <ProtectedRoute component={HeadquartersPage} masterOnly />} />
-      <Route path="/teams" component={() => <ProtectedRoute component={TeamsPage} masterOnly />} />
       <Route path="/users" component={() => <ProtectedRoute component={UsersPage} masterOnly />} />
       <Route path="/users/upload" component={() => <ProtectedRoute component={UsersUploadPage} masterOnly />} />
       <Route path="/region-permissions" component={() => <ProtectedRoute component={RegionPermissionsPage} />} />

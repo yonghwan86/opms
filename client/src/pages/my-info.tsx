@@ -124,7 +124,7 @@ export default function MyInfoPage() {
         <Card className="border border-card-border">
           <div className="px-5 py-4 border-b border-card-border flex items-center gap-2">
             <MapPin className="w-4 h-4 text-muted-foreground" />
-            <h3 className="font-semibold text-sm text-foreground">접근 가능한 지역 목록</h3>
+            <h3 className="font-semibold text-sm text-foreground">본부 권한 - 접근 가능한 지역 목록</h3>
             {regionData && (
               <Badge variant="secondary" className="ml-auto text-xs">{regionData.data?.length || 0}개</Badge>
             )}
@@ -133,29 +133,33 @@ export default function MyInfoPage() {
             <TableHeader>
               <TableRow className="bg-muted/30">
                 <TableHead>지역명</TableHead>
-                <TableHead>시도 코드</TableHead>
-                <TableHead>시군 코드</TableHead>
+                <TableHead>도</TableHead>
+                <TableHead>시</TableHead>
+                <TableHead>군</TableHead>
+                <TableHead>구</TableHead>
                 <TableHead>상태</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {regionLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>{Array.from({ length: 4 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                  <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                 ))
               ) : !regionData?.data?.length ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     <MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />
                     접근 가능한 지역이 없습니다.
                   </TableCell>
                 </TableRow>
               ) : (
-                regionData.data.map((perm) => (
+                regionData.data.map((perm: any) => (
                   <TableRow key={perm.id} data-testid={`row-myregion-${perm.id}`}>
-                    <TableCell className="font-medium">{perm.regionName}</TableCell>
-                    <TableCell><code className="text-xs bg-muted px-2 py-0.5 rounded">{perm.sidoCode || "-"}</code></TableCell>
-                    <TableCell><code className="text-xs bg-muted px-2 py-0.5 rounded">{perm.sigunCode || "-"}</code></TableCell>
+                    <TableCell className="font-medium text-sm">{perm.regionName}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{perm.doName || "-"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{perm.siName || "-"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{perm.gunName || "-"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{perm.guName || "-"}</TableCell>
                     <TableCell><Badge variant={perm.enabled ? "default" : "secondary"}>{perm.enabled ? "활성" : "비활성"}</Badge></TableCell>
                   </TableRow>
                 ))

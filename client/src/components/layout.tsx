@@ -3,9 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
-  LayoutDashboard, Building2, Users, Shield, FileSpreadsheet,
+  LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,18 +16,17 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   masterOnly?: boolean;
+  hqUserOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
   { label: "대시보드", href: "/", icon: LayoutDashboard, masterOnly: true },
-  { label: "본부 관리", href: "/headquarters", icon: Building2, masterOnly: true },
-  { label: "팀 관리", href: "/teams", icon: Users, masterOnly: true },
   { label: "사용자 관리", href: "/users", icon: User2, masterOnly: true },
   { label: "엑셀 업로드", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
-  { label: "지역 권한", href: "/region-permissions", icon: MapPin },
+  { label: "본부 권한", href: "/region-permissions", icon: MapPin },
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
-  { label: "내 정보", href: "/my-info", icon: Shield, masterOnly: false },
+  { label: "내 정보", href: "/my-info", icon: Shield, hqUserOnly: true },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -40,7 +38,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const visibleNav = navItems.filter(item => {
     if (item.masterOnly && !isMaster) return false;
-    if (item.href === "/my-info" && isMaster) return false;
+    if (item.hqUserOnly && isMaster) return false;
     return true;
   });
 
@@ -56,12 +54,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
+      {/* 사이드바 */}
       <aside className={cn(
         "flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex-shrink-0",
         sidebarOpen ? "w-64" : "w-16"
       )}>
-        {/* Header */}
+        {/* 헤더 */}
         <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
           {sidebarOpen ? (
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -89,7 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
 
-        {/* User info */}
+        {/* 사용자 정보 */}
         {sidebarOpen && user && (
           <div className="px-3 py-3 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
@@ -106,7 +104,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Navigation */}
+        {/* 네비게이션 */}
         <nav className="flex-1 overflow-y-auto py-2 px-2">
           {visibleNav.map((item) => {
             const Icon = item.icon;
@@ -125,7 +123,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   data-testid={`nav-${item.href.replace(/\//g, "-")}`}
                   title={!sidebarOpen ? item.label : undefined}
                 >
-                  <Icon className={cn("flex-shrink-0", isActive ? "w-4 h-4" : "w-4 h-4")} />
+                  <Icon className="w-4 h-4 flex-shrink-0" />
                   {sidebarOpen && <span className="text-sm truncate">{item.label}</span>}
                   {sidebarOpen && isActive && <ChevronRight className="w-3 h-3 ml-auto text-sidebar-primary" />}
                 </div>
@@ -134,7 +132,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Logout */}
+        {/* 로그아웃 */}
         <div className="p-2 border-t border-sidebar-border">
           <Button
             variant="ghost"
@@ -148,7 +146,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main content */}
+      {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>

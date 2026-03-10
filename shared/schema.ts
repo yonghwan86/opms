@@ -52,14 +52,22 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// ─── 본부+팀 지역 권한 (HQ+Team Region Permissions) ──────────────────────────
+// ─── 본부 권한 (HQ+Team Region Permissions) ──────────────────────────────────
+// 본부+팀 조합에 접근 가능한 지역을 도/시/군/구 단위로 설정
 export const hqTeamRegionPermissions = pgTable("hq_team_region_permissions", {
   id: serial("id").primaryKey(),
   headquartersId: integer("headquarters_id").notNull().references(() => headquarters.id),
   teamId: integer("team_id").notNull().references(() => teams.id),
+  // 행정구역 계층 (도 → 시 → 군 → 구 순서로 상세화)
+  doName: text("do_name"),        // 도/특별시/광역시 (예: 서울특별시, 경기도)
+  siName: text("si_name"),        // 시 (예: 수원시, 성남시)
+  gunName: text("gun_name"),      // 군 (예: 가평군, 양평군)
+  guName: text("gu_name"),        // 구 (예: 강남구, 종로구)
+  // 생성된 전체 지역명 (도+시+군+구 조합 자동 생성)
+  regionName: text("region_name").notNull(),
+  // 기존 코드 필드 (호환성 유지)
   sidoCode: varchar("sido_code", { length: 20 }),
   sigunCode: varchar("sigun_code", { length: 20 }),
-  regionName: text("region_name").notNull(),
   enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

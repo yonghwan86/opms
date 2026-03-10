@@ -94,18 +94,69 @@ export async function seedDatabase() {
     },
   ]);
 
-  // 지역 권한 시드
+  // 본부 권한 시드 (도/시/군/구 구조화)
   await db.insert(hqTeamRegionPermissions).values([
-    { headquartersId: hq1.id, teamId: team1.id, sidoCode: "11", regionName: "서울특별시", enabled: true },
-    { headquartersId: hq1.id, teamId: team1.id, sidoCode: "11", sigunCode: "11010", regionName: "서울특별시 종로구", enabled: true },
-    { headquartersId: hq1.id, teamId: team1.id, sidoCode: "11", sigunCode: "11020", regionName: "서울특별시 중구", enabled: true },
-    { headquartersId: hq1.id, teamId: team2.id, sidoCode: "11", sigunCode: "11030", regionName: "서울특별시 용산구", enabled: true },
-    { headquartersId: hq1.id, teamId: team2.id, sidoCode: "11", sigunCode: "11040", regionName: "서울특별시 성동구", enabled: true },
-    { headquartersId: hq2.id, teamId: team3.id, sidoCode: "26", regionName: "부산광역시", enabled: true },
-    { headquartersId: hq2.id, teamId: team3.id, sidoCode: "26", sigunCode: "26010", regionName: "부산광역시 중구", enabled: true },
-    { headquartersId: hq2.id, teamId: team4.id, sidoCode: "26", sigunCode: "26020", regionName: "부산광역시 서구", enabled: true },
-    { headquartersId: hq3.id, teamId: team5.id, sidoCode: "27", regionName: "대구광역시", enabled: true },
-    { headquartersId: hq3.id, teamId: team6.id, sidoCode: "27", sigunCode: "27010", regionName: "대구광역시 중구", enabled: true },
+    // 서울1팀 - 종로구, 중구
+    {
+      headquartersId: hq1.id, teamId: team1.id,
+      doName: "서울특별시", siName: null, gunName: null, guName: "종로구",
+      regionName: "서울특별시 종로구", enabled: true,
+    },
+    {
+      headquartersId: hq1.id, teamId: team1.id,
+      doName: "서울특별시", siName: null, gunName: null, guName: "중구",
+      regionName: "서울특별시 중구", enabled: true,
+    },
+    {
+      headquartersId: hq1.id, teamId: team1.id,
+      doName: "서울특별시", siName: null, gunName: null, guName: "용산구",
+      regionName: "서울특별시 용산구", enabled: true,
+    },
+    // 서울2팀 - 성동구, 광진구
+    {
+      headquartersId: hq1.id, teamId: team2.id,
+      doName: "서울특별시", siName: null, gunName: null, guName: "성동구",
+      regionName: "서울특별시 성동구", enabled: true,
+    },
+    {
+      headquartersId: hq1.id, teamId: team2.id,
+      doName: "서울특별시", siName: null, gunName: null, guName: "광진구",
+      regionName: "서울특별시 광진구", enabled: true,
+    },
+    // 부산1팀 - 중구, 서구
+    {
+      headquartersId: hq2.id, teamId: team3.id,
+      doName: "부산광역시", siName: null, gunName: null, guName: "중구",
+      regionName: "부산광역시 중구", enabled: true,
+    },
+    {
+      headquartersId: hq2.id, teamId: team3.id,
+      doName: "부산광역시", siName: null, gunName: null, guName: "서구",
+      regionName: "부산광역시 서구", enabled: true,
+    },
+    // 부산2팀 - 동구, 영도구
+    {
+      headquartersId: hq2.id, teamId: team4.id,
+      doName: "부산광역시", siName: null, gunName: null, guName: "동구",
+      regionName: "부산광역시 동구", enabled: true,
+    },
+    // 대구1팀 - 중구
+    {
+      headquartersId: hq3.id, teamId: team5.id,
+      doName: "대구광역시", siName: null, gunName: null, guName: "중구",
+      regionName: "대구광역시 중구", enabled: true,
+    },
+    // 경기도 예시 (군 포함)
+    {
+      headquartersId: hq1.id, teamId: team1.id,
+      doName: "경기도", siName: "수원시", gunName: null, guName: "영통구",
+      regionName: "경기도 수원시 영통구", enabled: true,
+    },
+    {
+      headquartersId: hq1.id, teamId: team1.id,
+      doName: "경기도", siName: null, gunName: "가평군", guName: null,
+      regionName: "경기도 가평군", enabled: true,
+    },
   ]);
 
   console.log("시드 데이터 초기화 완료!");
