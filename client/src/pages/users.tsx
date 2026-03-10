@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Pencil, User2, ChevronLeft, ChevronRight, KeyRound, Eye, AlertCircle } from "lucide-react";
+import { Plus, Search, Pencil, User2, ChevronLeft, ChevronRight, KeyRound, Eye, AlertCircle, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,6 +39,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [resetPwUserId, setResetPwUserId] = useState<number | null>(null);
   const [resetDone, setResetDone] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [form, setForm] = useState({
     displayName: "", email: "",
     positionName: "", departmentName: "", role: "HQ_USER",
@@ -106,6 +108,19 @@ export default function UsersPage() {
       qc.invalidateQueries({ queryKey: ["/api/users"] });
     },
     onError: () => toast({ title: "비밀번호 초기화 실패", variant: "destructive" }),
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}`, undefined);
+      return res.json();
+    },
+    onSuccess: () => {
+      setDeleteUserId(null);
+      qc.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "사용자가 삭제되었습니다." });
+    },
+    onError: (err: any) => toast({ title: "삭제 실패", description: err?.message, variant: "destructive" }),
   });
 
   const openCreate = () => {
@@ -216,6 +231,9 @@ export default function UsersPage() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(user)} data-testid={`button-edit-user-${user.id}`}><Pencil className="w-3.5 h-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-500 hover:text-orange-600" onClick={() => { setResetPwUserId(user.id); setResetDone(false); }} title="비밀번호 초기화" data-testid={`button-reset-pw-${user.id}`}>
                           <KeyRound className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteUserId(user.id)} title="사용자 삭제" data-testid={`button-delete-user-${user.id}`}>
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -388,6 +406,27 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 사용자 삭제 확인 */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={(o) => { if (!o) setDeleteUserId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>사용자 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 사용자를 삭제하면 복구할 수 없습니다. 정말 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteUserId && deleteUserMutation.mutate(deleteUserId)}
+              data-testid="button-confirm-delete-user"
+            >
+              {deleteUserMutation.isPending ? "삭제 중..." : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

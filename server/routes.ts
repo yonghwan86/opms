@@ -406,6 +406,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // DELETE /api/users/:id (사용자 삭제, MASTER only)
+  app.delete("/api/users/:id", requireMaster, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (id === req.session.userId) {
+        return res.status(400).json({ message: "자기 자신은 삭제할 수 없습니다." });
+      }
+      await storage.deleteUser(id);
+      await storage.createAuditLog(req.session.userId!, "DELETE", "user", id, {});
+      res.json({ message: "사용자가 삭제되었습니다." });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // GET /api/users/upload-template (샘플 엑셀 템플릿 다운로드)
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {

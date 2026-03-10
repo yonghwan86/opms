@@ -48,6 +48,7 @@ export interface IStorage {
   updateUser(id: number, data: Partial<InsertUser>): Promise<User>;
   updateUserPassword(id: number, passwordHash: string): Promise<void>;
   resetUserPassword(id: number): Promise<void>;
+  deleteUser(id: number): Promise<void>;
 
   // 지역 권한
   getRegionPermissions(params?: { headquartersId?: number; teamId?: number; search?: string; page?: number; pageSize?: number }): Promise<PaginatedResult<HqTeamRegionPermission>>;
@@ -220,6 +221,10 @@ export class PostgresStorage implements IStorage {
 
   async resetUserPassword(id: number): Promise<void> {
     await db.update(users).set({ passwordHash: null, mustChangePassword: true, updatedAt: new Date() }).where(eq(users.id, id));
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   // ── 지역 권한 ──────────────────────────────────────────────────────────────
