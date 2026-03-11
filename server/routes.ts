@@ -888,5 +888,68 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 대시보드 유가 분석 API ─────────────────────────────────────────────────
+
+  // GET /api/dashboard/wti — WTI 국제 유가 (Yahoo Finance)
+  app.get("/api/dashboard/wti", requireMaster, async (_req, res) => {
+    try {
+      const { getWtiData, getWtiHistory } = await import("./services/externalData");
+      const [current, history] = await Promise.all([getWtiData(), getWtiHistory()]);
+      res.json({ current, history });
+    } catch (e) {
+      res.status(500).json({ message: "WTI 조회 실패" });
+    }
+  });
+
+  // GET /api/dashboard/exchange-rate — KRW/USD 환율
+  app.get("/api/dashboard/exchange-rate", requireMaster, async (_req, res) => {
+    try {
+      const { getExchangeRate } = await import("./services/externalData");
+      const data = await getExchangeRate();
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "환율 조회 실패" });
+    }
+  });
+
+  // GET /api/dashboard/fuel-stats — 국내 유류 평균 + 전국 편차
+  app.get("/api/dashboard/fuel-stats", requireMaster, async (_req, res) => {
+    try {
+      const dates = await storage.getOilAvailableDates();
+      if (dates.length === 0) return res.json({ averages: null, spread: null });
+      const date = dates[0];
+      const prevDate = dates[1] ?? dates[0];
+      const [averages, spread] = await Promise.all([
+        storage.getOilNationalAverages(date, prevDate),
+        storage.getOilPriceSpread(date),
+      ]);
+      res.json({ date, averages, spread });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/dashboard/regional-averages — 시/도별 평균 유가
+  app.get("/api/dashboard/regional-averages", requireMaster, async (_req, res) => {
+    try {
+      const dates = await storage.getOilAvailableDates();
+      if (dates.length === 0) return res.json([]);
+      const data = await storage.getOilRegionalAverages(dates[0]);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/dashboard/domestic-history — 국내 유가 시계열
+  app.get("/api/dashboard/domestic-history", requireMaster, async (_req, res) => {
+    try {
+      const data = await storage.getOilDomesticHistory();
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   return httpServer;
 }

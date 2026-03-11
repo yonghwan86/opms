@@ -58,7 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* 사이드바 */}
       <aside className={cn(
         "flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex-shrink-0",
-        sidebarOpen ? "w-64" : "w-16"
+        sidebarOpen ? "w-52" : "w-14"
       )}>
         {/* 헤더 */}
         <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
@@ -68,8 +68,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-sidebar-foreground truncate">유가모니터링 시스템</p>
-                <p className="text-xs text-muted-foreground">유가 분석 플랫폼</p>
+                <p className="text-xs font-semibold text-sidebar-foreground truncate">유가모니터링 시스템</p>
               </div>
             </div>
           ) : (

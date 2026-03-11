@@ -134,6 +134,18 @@ export interface IStorage {
   }): Promise<OilTopStation[]>;
   getOilAvailableDates(): Promise<string[]>;
   getUserPermittedRegions(userId: number): Promise<string[]>;
+
+  // 대시보드 유가 분석
+  getOilNationalAverages(date: string, prevDate: string): Promise<{
+    gasoline: number; diesel: number; kerosene: number;
+    gasolineChange: number; dieselChange: number; keroseneChange: number;
+  }>;
+  getOilPriceSpread(date: string): Promise<{
+    spread: number; maxPrice: number; maxStation: string; maxRegion: string;
+    minPrice: number; minStation: string; minRegion: string;
+  }>;
+  getOilRegionalAverages(date: string): Promise<{ sido: string; avgPrice: number }[]>;
+  getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -571,6 +583,87 @@ export class PostgresStorage implements IStorage {
     return perms
       .map(p => toOilRegionName(p.doName, p.siName, p.gunName, p.guName))
       .filter(Boolean);
+  }
+
+  // ── 대시보드 유가 분석 ────────────────────────────────────────────────────
+  async getOilNationalAverages(date: string, prevDate: string) {
+    const avgSql = (d: string) => sql`
+      SELECT
+        ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS gasoline,
+        ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS diesel,
+        ROUND(AVG(CASE WHEN kerosene > 0 THEN kerosene END)) AS kerosene
+      FROM oil_price_raw WHERE date = ${d}`;
+    const [curr, prev] = await Promise.all([
+      db.execute(avgSql(date)),
+      db.execute(avgSql(prevDate)),
+    ]);
+    const c = curr.rows[0] as any;
+    const p = prev.rows[0] as any;
+    const gasoline = Number(c?.gasoline) || 0;
+    const diesel = Number(c?.diesel) || 0;
+    const kerosene = Number(c?.kerosene) || 0;
+    const prevGasoline = Number(p?.gasoline) || 0;
+    const prevDiesel = Number(p?.diesel) || 0;
+    const prevKerosene = Number(p?.kerosene) || 0;
+    return {
+      gasoline, diesel, kerosene,
+      gasolineChange: gasoline - prevGasoline,
+      dieselChange: diesel - prevDiesel,
+      keroseneChange: kerosene - prevKerosene,
+    };
+  }
+
+  async getOilPriceSpread(date: string) {
+    const spreadRes = await db.execute(sql`
+      SELECT
+        MAX(gasoline) AS max_price,
+        MIN(CASE WHEN gasoline > 0 THEN gasoline END) AS min_price,
+        MAX(gasoline) - MIN(CASE WHEN gasoline > 0 THEN gasoline END) AS spread
+      FROM oil_price_raw WHERE date = ${date} AND gasoline > 0`);
+    const s = spreadRes.rows[0] as any;
+    const maxPrice = Number(s?.max_price) || 0;
+    const minPrice = Number(s?.min_price) || 0;
+    const [maxRow, minRow] = await Promise.all([
+      db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND gasoline = ${maxPrice} LIMIT 1`),
+      db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND gasoline = ${minPrice} LIMIT 1`),
+    ]);
+    return {
+      spread: Number(s?.spread) || 0,
+      maxPrice,
+      maxStation: (maxRow.rows[0] as any)?.station_name as string || '',
+      maxRegion: (maxRow.rows[0] as any)?.region as string || '',
+      minPrice,
+      minStation: (minRow.rows[0] as any)?.station_name as string || '',
+      minRegion: (minRow.rows[0] as any)?.region as string || '',
+    };
+  }
+
+  async getOilRegionalAverages(date: string) {
+    const result = await db.execute(sql`
+      SELECT sido, ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price
+      FROM oil_price_raw
+      WHERE date = ${date}
+      GROUP BY sido
+      HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
+      ORDER BY avg_price DESC
+      LIMIT 10`);
+    return result.rows.map((r: any) => ({ sido: r.sido as string, avgPrice: Number(r.avg_price) }));
+  }
+
+  async getOilDomesticHistory() {
+    const result = await db.execute(sql`
+      SELECT
+        date,
+        ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS gasoline,
+        ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS diesel
+      FROM oil_price_raw
+      GROUP BY date
+      ORDER BY date ASC`);
+    return result.rows.map((r: any) => ({
+      date: r.date as string,
+      gasoline: Number(r.gasoline),
+      diesel: Number(r.diesel),
+    }));
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────
