@@ -27,7 +27,7 @@ function CircleGauge({ value, label, color, percent }: { value: string; label: s
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center rotate-0">
           <p className="text-[10px] text-white/60 leading-none mb-0.5">{label}</p>
-          <p className="text-sm font-bold text-white leading-none">{value}</p>
+          <p className="text-[11px] font-bold text-white leading-none">{value}</p>
         </div>
       </div>
     </div>
@@ -121,7 +121,7 @@ function BrandPanel() {
           style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] text-white/50">휘발유 가격 추이</p>
-            <span className="text-[10px] text-cyan-400 font-medium">▲ 1,730원</span>
+            <span className="text-[10px] text-cyan-400 font-medium">▲ 32원</span>
           </div>
           <div className="h-14">
             <MiniLineChart />
@@ -132,11 +132,11 @@ function BrandPanel() {
         <div className="flex gap-3 mb-4">
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
-            <CircleGauge value="13,200" label="휘발유" color="#00d4ff" percent={0.72} />
+            <CircleGauge value="1,640원/L" label="휘발유" color="#00d4ff" percent={0.72} />
           </div>
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
-            <CircleGauge value="12,500" label="경유" color="#4ade80" percent={0.58} />
+            <CircleGauge value="1,490원/L" label="경유" color="#4ade80" percent={0.58} />
           </div>
         </div>
 
