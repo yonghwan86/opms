@@ -813,5 +813,80 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/oil-prices/available-dates — 데이터 있는 날짜 목록
+  app.get("/api/oil-prices/available-dates", requireAuth, async (req, res) => {
+    try {
+      const dates = await storage.getOilAvailableDates();
+      res.json(dates);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/users/my-permitted-regions — 내 관할 지역 목록
+  app.get("/api/users/my-permitted-regions", requireAuth, async (req, res) => {
+    try {
+      if (req.session.role === "MASTER") {
+        res.json(null); // null = 전국 전체
+      } else {
+        const regions = await storage.getUserPermittedRegions(req.session.userId!);
+        res.json(regions);
+      }
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/oil-prices/top-stations — 실시간 유가 분석
+  app.get("/api/oil-prices/top-stations", requireAuth, async (req, res) => {
+    try {
+      const { type, fuel, date, region, sido } = req.query as Record<string, string>;
+      if (!type || !fuel || !date) {
+        return res.status(400).json({ message: "type, fuel, date 파라미터가 필요합니다." });
+      }
+      const validTypes = ['HIGH', 'LOW', 'RISE', 'FALL', 'WIDE'];
+      const validFuels = ['gasoline', 'diesel', 'kerosene'];
+      if (!validTypes.includes(type) || !validFuels.includes(fuel)) {
+        return res.status(400).json({ message: "잘못된 파라미터입니다." });
+      }
+
+      // 이전 날짜 계산 (RISE/FALL용)
+      let prevDate: string | undefined;
+      if (type === 'RISE' || type === 'FALL') {
+        const dates = await storage.getOilAvailableDates();
+        const idx = dates.indexOf(date);
+        prevDate = idx >= 0 && idx + 1 < dates.length ? dates[idx + 1] : undefined;
+      }
+
+      // 지역 필터 결정
+      let regions: string[] | null;
+      if (req.session.role === "MASTER") {
+        // 마스터는 특정 지역 선택 시 해당 지역만, 없으면 전국
+        regions = region ? [region] : null;
+      } else {
+        // HQ_USER는 관할 지역 자동 주입, region이 있으면 그 중에서 필터
+        const permittedRegions = await storage.getUserPermittedRegions(req.session.userId!);
+        if (region) {
+          regions = permittedRegions.includes(region) ? [region] : permittedRegions;
+        } else {
+          regions = permittedRegions.length > 0 ? permittedRegions : [];
+        }
+      }
+
+      const stations = await storage.getOilTopStations({
+        type: type as any,
+        fuelType: fuel as any,
+        date,
+        prevDate,
+        regions,
+        sido: sido || undefined,
+      });
+      res.json(stations);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   return httpServer;
 }

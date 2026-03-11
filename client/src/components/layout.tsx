@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
-  MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight
+  MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { label: "사용자 관리", href: "/users", icon: User2, masterOnly: true },
   { label: "엑셀 업로드", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
   { label: "본부 권한", href: "/region-permissions", icon: MapPin },
+  { label: "유가 분석", href: "/oil-prices", icon: Fuel },
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "내 정보", href: "/my-info", icon: Shield, hqUserOnly: true },

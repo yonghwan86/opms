@@ -14,6 +14,7 @@ import RegionPermissionsPage from "@/pages/region-permissions";
 import LoginLogsPage from "@/pages/login-logs";
 import AuditLogsPage from "@/pages/audit-logs";
 import MyInfoPage from "@/pages/my-info";
+import OilPricesPage from "@/pages/oil-prices";
 import NotFound from "@/pages/not-found";
 
 function LoadingScreen() {
@@ -86,6 +87,7 @@ function Router() {
       <Route path="/logs/login" component={() => <ProtectedRoute component={LoginLogsPage} masterOnly />} />
       <Route path="/logs/audit" component={() => <ProtectedRoute component={AuditLogsPage} masterOnly />} />
       <Route path="/my-info" component={() => <ProtectedRoute component={MyInfoPage} />} />
+      <Route path="/oil-prices" component={() => <ProtectedRoute component={OilPricesPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

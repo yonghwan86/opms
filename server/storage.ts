@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, ilike, or, desc, asc, count, sql } from "drizzle-orm";
+import { eq, and, ilike, or, desc, asc, count, sql, inArray } from "drizzle-orm";
 import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs,
@@ -12,6 +12,38 @@ import {
   type InsertOilPriceRaw, type OilPriceRaw,
   type InsertOilPriceAnalysis, type OilPriceAnalysis,
 } from "@shared/schema";
+
+// ─── 시/도 전체명 → 오피넷 축약명 매핑 ────────────────────────────────────────
+const SIDO_ABBREV: Record<string, string> = {
+  '서울특별시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천',
+  '광주광역시': '광주', '대전광역시': '대전', '울산광역시': '울산', '세종특별자치시': '세종시',
+  '경기도': '경기', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남',
+  '전라북도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남',
+  '제주특별자치도': '제주',
+};
+
+function toOilRegionName(doName: string | null, siName: string | null, gunName: string | null, guName: string | null): string {
+  const sido = doName ? (SIDO_ABBREV[doName] || doName) : '';
+  const sigungu = guName || siName || gunName || '';
+  return `${sido} ${sigungu}`.trim();
+}
+
+// ─── 유가 분석 결과 타입 ──────────────────────────────────────────────────────
+export interface OilTopStation {
+  rank: number;
+  stationId: string;
+  stationName: string;
+  region: string;
+  sido: string;
+  brand: string | null;
+  isSelf: boolean;
+  price?: number;
+  prevPrice?: number;
+  changeAmount?: number;
+  gasoline?: number;
+  diesel?: number;
+  diff?: number;
+}
 
 // ─── 페이징 공통 타입 ─────────────────────────────────────────────────────────
 export interface PaginatedResult<T> {
@@ -90,6 +122,18 @@ export interface IStorage {
     fuelType?: string;
     sido?: string;
   }): Promise<OilPriceAnalysis[]>;
+
+  // 유가 실시간 분석 (top-stations)
+  getOilTopStations(params: {
+    type: 'HIGH' | 'LOW' | 'RISE' | 'FALL' | 'WIDE';
+    fuelType: 'gasoline' | 'diesel' | 'kerosene';
+    date: string;
+    prevDate?: string;
+    regions: string[] | null;
+    sido?: string;
+  }): Promise<OilTopStation[]>;
+  getOilAvailableDates(): Promise<string[]>;
+  getUserPermittedRegions(userId: number): Promise<string[]>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -426,6 +470,107 @@ export class PostgresStorage implements IStorage {
       .from(oilPriceAnalysis)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(oilPriceAnalysis.rank));
+  }
+
+  // ── 유가 실시간 분석 ──────────────────────────────────────────────────────
+  async getOilTopStations(params: {
+    type: 'HIGH' | 'LOW' | 'RISE' | 'FALL' | 'WIDE';
+    fuelType: 'gasoline' | 'diesel' | 'kerosene';
+    date: string;
+    prevDate?: string;
+    regions: string[] | null;
+    sido?: string;
+  }): Promise<OilTopStation[]> {
+    const { type, fuelType, date, prevDate, regions, sido } = params;
+    const fc = fuelType === 'gasoline' ? 'gasoline' : fuelType === 'diesel' ? 'diesel' : 'kerosene';
+    const hasRegions = regions && regions.length > 0;
+    const fuelCol = sql.raw(fc);
+
+    const sidoCond = sido ? sql` AND sido = ${sido}` : sql``;
+    const regionCond = hasRegions ? sql` AND region = ANY(${regions})` : sql``;
+    const r1SidoCond = sido ? sql` AND r1.sido = ${sido}` : sql``;
+    const r1RegionCond = hasRegions ? sql` AND r1.region = ANY(${regions})` : sql``;
+
+    let rawRows: any[];
+
+    if (type === 'HIGH' || type === 'LOW') {
+      const orderDir = sql.raw(type === 'HIGH' ? 'DESC' : 'ASC');
+      const result = await db.execute(
+        sql`SELECT station_id, station_name, region, sido, brand, is_self, ${fuelCol} AS price
+            FROM oil_price_raw
+            WHERE date = ${date} AND ${fuelCol} > 0${sidoCond}${regionCond}
+            ORDER BY ${fuelCol} ${orderDir} LIMIT 10`
+      );
+      rawRows = result.rows as any[];
+
+    } else if (type === 'RISE' || type === 'FALL') {
+      if (!prevDate) return [];
+      const compareOp = sql.raw(type === 'RISE' ? '>' : '<');
+      const orderDir = sql.raw(type === 'RISE' ? 'DESC' : 'ASC');
+      const result = await db.execute(
+        sql`SELECT r1.station_id, r1.station_name, r1.region, r1.sido, r1.brand, r1.is_self,
+                   r1.${fuelCol} AS price, r2.${fuelCol} AS prev_price,
+                   (r1.${fuelCol} - r2.${fuelCol}) AS change_amount
+            FROM oil_price_raw r1
+            JOIN oil_price_raw r2 ON r1.station_id = r2.station_id AND r2.date = ${prevDate}
+            WHERE r1.date = ${date}
+              AND r1.${fuelCol} > 0 AND r2.${fuelCol} > 0
+              AND r1.${fuelCol} ${compareOp} r2.${fuelCol}${r1SidoCond}${r1RegionCond}
+            ORDER BY (r1.${fuelCol} - r2.${fuelCol}) ${orderDir} LIMIT 10`
+      );
+      rawRows = result.rows as any[];
+
+    } else {
+      // WIDE: 휘발유-경유 가격차 (fuelType 무관)
+      const result = await db.execute(
+        sql`SELECT station_id, station_name, region, sido, brand, is_self,
+                   gasoline, diesel, (gasoline - diesel) AS diff
+            FROM oil_price_raw
+            WHERE date = ${date} AND gasoline > 0 AND diesel > 0${sidoCond}${regionCond}
+            ORDER BY (gasoline - diesel) DESC LIMIT 10`
+      );
+      rawRows = result.rows as any[];
+    }
+
+    return rawRows.map((row, idx) => ({
+      rank: idx + 1,
+      stationId: String(row.station_id),
+      stationName: String(row.station_name),
+      region: String(row.region),
+      sido: String(row.sido),
+      brand: row.brand ? String(row.brand) : null,
+      isSelf: Boolean(row.is_self),
+      price: row.price != null ? Number(row.price) : undefined,
+      prevPrice: row.prev_price != null ? Number(row.prev_price) : undefined,
+      changeAmount: row.change_amount != null ? Number(row.change_amount) : undefined,
+      gasoline: row.gasoline != null ? Number(row.gasoline) : undefined,
+      diesel: row.diesel != null ? Number(row.diesel) : undefined,
+      diff: row.diff != null ? Number(row.diff) : undefined,
+    }));
+  }
+
+  async getOilAvailableDates(): Promise<string[]> {
+    const result = await db
+      .selectDistinct({ date: oilPriceRaw.date })
+      .from(oilPriceRaw)
+      .orderBy(desc(oilPriceRaw.date))
+      .limit(60);
+    return result.map(r => r.date);
+  }
+
+  async getUserPermittedRegions(userId: number): Promise<string[]> {
+    const user = await this.getUserById(userId);
+    if (!user || !user.teamId) return [];
+    const perms = await db
+      .select()
+      .from(hqTeamRegionPermissions)
+      .where(and(
+        eq(hqTeamRegionPermissions.teamId, user.teamId),
+        eq(hqTeamRegionPermissions.enabled, true),
+      ));
+    return perms
+      .map(p => toOilRegionName(p.doName, p.siName, p.gunName, p.guName))
+      .filter(Boolean);
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────
