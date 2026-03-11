@@ -82,14 +82,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const isMobileOpen = sidebarOpen;
-
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      {/* 모바일 전용 상단 바 */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-14 z-50 flex items-center px-3 bg-sidebar border-b border-sidebar-border">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-sidebar-foreground"
+          onClick={() => setSidebarOpen(true)}
+          data-testid="button-mobile-menu"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 flex items-center justify-center gap-2">
+          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center flex-shrink-0">
+            <Shield className="w-3.5 h-3.5 text-primary-foreground" />
+          </div>
+          <span className="text-sm font-semibold text-sidebar-foreground">유가모니터링 시스템</span>
+        </div>
+        <div className="w-9" />
+      </header>
+
       {/* 모바일 오버레이 배경 */}
-      {isMobileOpen && (
+      {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/30 z-30 md:hidden"
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -98,7 +116,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className={cn(
         "flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex-shrink-0",
         "max-md:fixed max-md:top-0 max-md:left-0 max-md:h-full max-md:z-40",
-        sidebarOpen ? "w-52" : "w-14 max-md:w-14"
+        sidebarOpen
+          ? "w-52 max-md:translate-x-0"
+          : "w-14 max-md:-translate-x-full"
       )}>
         {/* 헤더 */}
         <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
@@ -162,6 +182,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   )}
                   data-testid={`nav-${item.href.replace(/\//g, "-")}`}
                   title={!sidebarOpen ? item.label : undefined}
+                  onClick={() => {
+                    if (window.innerWidth < 768) setSidebarOpen(false);
+                  }}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   {sidebarOpen && <span className="text-sm truncate">{item.label}</span>}
@@ -240,23 +263,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 - 모바일에선 사이드바가 fixed라 밀리지 않음 */}
-      <main className="flex-1 overflow-y-auto min-w-0">
+      {/* 메인 콘텐츠 */}
+      <main className="flex-1 overflow-y-auto min-w-0 pt-14 md:pt-0">
         {children}
       </main>
     </div>
   );
 }
 
-// 페이지 헤더 공통 컴포넌트
 export function PageHeader({ title, description, children }: { title: string; description?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-background">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
+    <div className={cn(
+      "flex items-start justify-between gap-3 px-4 py-3 md:px-6 md:py-5 border-b border-border bg-background",
+      children ? "flex-wrap" : ""
+    )}>
+      <div className="min-w-0">
+        <h1 className="text-lg md:text-xl font-semibold text-foreground leading-tight">{title}</h1>
+        {description && <p className="text-xs md:text-sm text-muted-foreground mt-0.5 leading-snug">{description}</p>}
       </div>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+      {children && <div className="flex items-center gap-2 flex-shrink-0">{children}</div>}
     </div>
   );
 }

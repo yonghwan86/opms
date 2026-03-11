@@ -263,9 +263,9 @@ export default function OilPricesPage() {
     <Layout>
       <PageHeader title="유가 분석" description="오피넷 기준 주유소별 가격 분석 TOP 10" />
 
-      <div className="p-6 space-y-5">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-5">
         {/* 컨트롤바 */}
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-wrap gap-2 md:gap-3 items-center">
           <DateNavigator
             availableDates={availableDates}
             value={resolvedDate}
@@ -292,15 +292,17 @@ export default function OilPricesPage() {
 
         {/* 탭 */}
         <Tabs value={activeTab} onValueChange={v => handleTabChange(v as AnalysisType)}>
-          <TabsList className="flex gap-1 h-auto p-1 bg-muted">
+          <TabsList className="flex gap-0.5 md:gap-1 h-auto p-1 bg-muted">
             {TABS.map(tab => (
               <TabsTrigger
                 key={tab.type}
                 value={tab.type}
-                className="flex-1 text-sm"
+                className="flex-1 text-xs md:text-sm px-1.5 md:px-3 py-1.5"
                 data-testid={`tab-${tab.type.toLowerCase()}`}
               >
-                {tab.emoji} {tab.label}
+                <span className="md:hidden">{tab.emoji}</span>
+                <span className="hidden md:inline">{tab.emoji} </span>
+                <span>{tab.label}</span>
               </TabsTrigger>
             ))}
           </TabsList>

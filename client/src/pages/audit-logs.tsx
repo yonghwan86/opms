@@ -59,7 +59,7 @@ export default function AuditLogsPage() {
     <Layout>
       <PageHeader title="감사 로그" description="시스템 변경 이력 및 감사 로그를 조회합니다." />
 
-      <div className="p-6 space-y-4">
+      <div className="p-3 md:p-6 space-y-4">
         <div className="flex gap-2">
           <Select value={filterAction} onValueChange={v => { setFilterAction(v); setPage(1); }}>
             <SelectTrigger className="w-44" data-testid="select-filter-action">
@@ -81,7 +81,7 @@ export default function AuditLogsPage() {
           </Select>
         </div>
 
-        <Card className="border border-card-border overflow-hidden">
+        <Card className="border border-card-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">

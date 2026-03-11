@@ -44,7 +44,7 @@ export default function LoginLogsPage() {
     <Layout>
       <PageHeader title="로그인 로그" description="시스템 로그인 이력을 조회합니다." />
 
-      <div className="p-6 space-y-4">
+      <div className="p-3 md:p-6 space-y-4">
         <div className="flex gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -52,7 +52,7 @@ export default function LoginLogsPage() {
           </div>
         </div>
 
-        <Card className="border border-card-border overflow-hidden">
+        <Card className="border border-card-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">

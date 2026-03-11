@@ -148,7 +148,7 @@ export default function UsersPage() {
         </Button>
       </PageHeader>
 
-      <div className="p-6 space-y-4">
+      <div className="p-3 md:p-6 space-y-4">
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -178,7 +178,7 @@ export default function UsersPage() {
           </Select>
         </div>
 
-        <Card className="border border-card-border overflow-hidden">
+        <Card className="border border-card-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">

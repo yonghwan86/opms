@@ -278,9 +278,9 @@ export default function DashboardPage() {
         <DateWeatherWidget isMaster={isMaster} headquartersCode={user?.headquartersCode} />
       </PageHeader>
 
-      <div className="p-5 space-y-5">
+      <div className="p-3 md:p-5 space-y-4 md:space-y-5">
         {/* ── 상단 4 카드 ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
 
           {/* WTI 국제 유가 */}
           <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading}>
@@ -428,7 +428,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* ── 하단 3섹션 ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
 
           {/* 지역별 평균 유가 순위 */}
           <Card className="border border-border bg-card">
