@@ -31,7 +31,9 @@ const navItems: NavItem[] = [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true
+  );
   const [location] = useLocation();
   const { user, logout, isMaster } = useAuth();
   const { toast } = useToast();
@@ -53,12 +55,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isMobileOpen = sidebarOpen;
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      {/* 모바일 오버레이 배경 */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* 사이드바 */}
       <aside className={cn(
         "flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex-shrink-0",
-        sidebarOpen ? "w-52" : "w-14"
+        "max-md:fixed max-md:top-0 max-md:left-0 max-md:h-full max-md:z-40",
+        sidebarOpen ? "w-52" : "w-14 max-md:w-14"
       )}>
         {/* 헤더 */}
         <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
@@ -146,8 +159,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-y-auto">
+      {/* 메인 콘텐츠 - 모바일에선 사이드바가 fixed라 밀리지 않음 */}
+      <main className="flex-1 overflow-y-auto min-w-0">
         {children}
       </main>
     </div>
