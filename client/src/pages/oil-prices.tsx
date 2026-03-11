@@ -392,80 +392,28 @@ export default function OilPricesPage() {
 }
 
 // ─── 브랜드 아이콘 ───────────────────────────────────────────────────────────
+const BRAND_LOGO: Record<string, string> = {
+  'SK에너지':       '/brand-logos/ico_logo_sk.gif',
+  'GS칼텍스':       '/brand-logos/ico_logo_gs.gif',
+  'HD현대오일뱅크': '/brand-logos/ico_logo_hy.gif',
+  'S-OIL':          '/brand-logos/ico_logo_soil.gif',
+  'NH-OIL':         '/brand-logos/ico_nho_new.gif',
+  '알뜰(ex)':       '/brand-logos/icon_rtx_new2.gif',
+  '알뜰주유소':     '/brand-logos/icon_rto_new2.gif',
+  '자가상표':       '/brand-logos/icon_pb2.gif',
+};
+
 function BrandIcon({ brand }: { brand: string | null }) {
   if (!brand) return <span className="text-muted-foreground text-xs">—</span>;
-
-  const icons: Record<string, React.ReactNode> = {
-    'SK에너지': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="SK에너지">
-        <circle cx="11" cy="11" r="11" fill="#E31837"/>
-        <circle cx="11" cy="6.5" r="3.2" fill="white" opacity="0.88"/>
-        <circle cx="11" cy="15.5" r="3.2" fill="white" opacity="0.88"/>
-        <circle cx="6.5" cy="11" r="3.2" fill="white" opacity="0.88"/>
-        <circle cx="15.5" cy="11" r="3.2" fill="white" opacity="0.88"/>
-        <circle cx="11" cy="11" r="2.2" fill="#E31837"/>
-      </svg>
-    ),
-    'GS칼텍스': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="GS칼텍스">
-        <circle cx="11" cy="11" r="11" fill="#00733E"/>
-        <path d="M15.5 8.5 A6 6 0 1 0 15.5 13.5" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <line x1="12" y1="11" x2="15.5" y2="11" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-      </svg>
-    ),
-    'HD현대오일뱅크': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="HD현대오일뱅크">
-        <circle cx="11" cy="11" r="11" fill="#003087"/>
-        <rect x="5.5" y="6.5" width="3" height="9" rx="1" fill="white"/>
-        <rect x="13.5" y="6.5" width="3" height="9" rx="1" fill="white"/>
-        <rect x="6.5" y="10" width="9" height="2" rx="1" fill="white"/>
-      </svg>
-    ),
-    'S-OIL': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="S-OIL">
-        <circle cx="11" cy="11" r="11" fill="#FF5F00"/>
-        <path d="M11 4.5 C11 4.5 16.5 9.5 16.5 13 C16.5 16 14 18.5 11 18.5 C8 18.5 5.5 16 5.5 13 C5.5 9.5 11 4.5 11 4.5Z" fill="white" opacity="0.9"/>
-        <path d="M11 10 C11 10 13.5 12.5 13.5 14 C13.5 15.4 12.4 16.5 11 16.5 C9.6 16.5 8.5 15.4 8.5 14 C8.5 12.5 11 10 11 10Z" fill="#FF5F00"/>
-      </svg>
-    ),
-    'NH-OIL': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="NH-OIL">
-        <circle cx="11" cy="11" r="11" fill="#00843D"/>
-        <path d="M11 17 C11 17 5 13 5 8.5 C5 6 7.5 4 10 5 C10.6 5.2 11 5.5 11 5.5 C11 5.5 11.4 5.2 12 5 C14.5 4 17 6 17 8.5 C17 13 11 17 11 17Z" fill="white" opacity="0.9"/>
-        <line x1="11" y1="17" x2="11" y2="8" stroke="#00843D" strokeWidth="1.5"/>
-      </svg>
-    ),
-    '알뜰(ex)': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="알뜰(ex)">
-        <circle cx="11" cy="11" r="11" fill="#4B7BE5"/>
-        <polygon points="11,3.5 18,7.5 18,14.5 11,18.5 4,14.5 4,7.5" fill="none" stroke="white" strokeWidth="1.8"/>
-        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.9"/>
-      </svg>
-    ),
-    '알뜰주유소': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="알뜰주유소">
-        <circle cx="11" cy="11" r="11" fill="#4B7BE5"/>
-        <polygon points="11,3.5 18,7.5 18,14.5 11,18.5 4,14.5 4,7.5" fill="none" stroke="white" strokeWidth="1.8"/>
-        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.9"/>
-      </svg>
-    ),
-    '자가상표': (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="자가상표">
-        <circle cx="11" cy="11" r="11" fill="#94A3B8"/>
-        <path d="M11 4.5 L18 10.5 L18 18.5 L14 18.5 L14 14 L8 14 L8 18.5 L4 18.5 L4 10.5 Z" fill="white" opacity="0.9"/>
-      </svg>
-    ),
-  };
-
+  const src = BRAND_LOGO[brand];
+  if (!src) return <span className="text-muted-foreground text-xs">{brand.slice(0, 2)}</span>;
   return (
-    <span className="inline-flex items-center justify-center" title={brand}>
-      {icons[brand] ?? (
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="11" cy="11" r="11" fill="#CBD5E1"/>
-          <circle cx="11" cy="11" r="4" fill="white" opacity="0.8"/>
-        </svg>
-      )}
-    </span>
+    <img
+      src={src}
+      alt={brand}
+      title={brand}
+      className="h-5 w-auto max-w-[52px] object-contain inline-block"
+    />
   );
 }
 
