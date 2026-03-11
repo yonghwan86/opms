@@ -73,6 +73,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
   }));
@@ -190,11 +191,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // POST /api/auth/logout
-  app.post("/api/auth/logout", requireAuth, async (req, res) => {
-    const userId = req.session.userId!;
-    await storage.createAuditLog(userId, "LOGOUT", "user", userId, {});
+  app.post("/api/auth/logout", async (req, res) => {
+    const userId = req.session.userId;
+    if (userId) {
+      await storage.createAuditLog(userId, "LOGOUT", "user", userId, {});
+    }
     req.session.destroy(() => {
-      res.clearCookie("connect.sid");
+      res.clearCookie("connect.sid", { path: "/" });
       res.json({ message: "로그아웃 되었습니다." });
     });
   });
