@@ -245,7 +245,7 @@ export default function OilPricesPage() {
     } else {
       return [
         { value: "ALL", label: "전체 (내 관할)" },
-        ...subregions.map(r => ({ value: r, label: regionShort(r) })),
+        ...subregions.map(r => ({ value: r, label: r })),
       ];
     }
   }, [isMaster, subregions]);
@@ -417,7 +417,10 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                   {s.isSelf ? "✓" : "—"}
                 </span>
               </td>
-              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">{regionShort(s.region)}</td>
+              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">
+                <span className="md:hidden">{regionShort(s.region)}</span>
+                <span className="hidden md:inline">{s.region}</span>
+              </td>
               <td className="py-3 px-1.5 md:px-3 text-right font-semibold text-foreground whitespace-nowrap">
                 {s.price != null ? formatPrice(s.price) : "—"}
               </td>
@@ -456,7 +459,10 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                   {s.isSelf ? "✓" : "—"}
                 </span>
               </td>
-              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">{regionShort(s.region)}</td>
+              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">
+                <span className="md:hidden">{regionShort(s.region)}</span>
+                <span className="hidden md:inline">{s.region}</span>
+              </td>
               <td className="py-3 px-1.5 md:px-3 text-right font-semibold whitespace-nowrap">{s.price != null ? formatPrice(s.price) : "—"}</td>
               <td className="hidden md:table-cell py-3 px-3 text-right text-muted-foreground whitespace-nowrap">{s.prevPrice != null ? formatPrice(s.prevPrice) : "—"}</td>
               <td className="py-3 px-1.5 md:px-3 text-right font-semibold whitespace-nowrap">
@@ -504,7 +510,10 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                 {s.isSelf ? "✓" : "—"}
               </span>
             </td>
-            <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">{regionShort(s.region)}</td>
+            <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">
+              <span className="md:hidden">{regionShort(s.region)}</span>
+              <span className="hidden md:inline">{s.region}</span>
+            </td>
             <td className="py-3 px-1.5 md:px-3 text-right whitespace-nowrap">
               {isDieselKerosene
                 ? (s.diesel != null ? formatPrice(s.diesel) : "—")
