@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── 타입 ────────────────────────────────────────────────────────────────────
@@ -60,8 +63,105 @@ function formatDate(dateStr: string): string {
   return `${year}년 ${month}월 ${day}일(${days[d.getDay()]})`;
 }
 
+function parseToDate(dateStr: string): Date {
+  return new Date(
+    Number(dateStr.slice(0, 4)),
+    Number(dateStr.slice(4, 6)) - 1,
+    Number(dateStr.slice(6, 8)),
+  );
+}
+
+function toDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
 function formatPrice(price: number): string {
   return price.toLocaleString("ko-KR") + "원";
+}
+
+// ─── 날짜 내비게이터 ──────────────────────────────────────────────────────────
+function DateNavigator({
+  availableDates,
+  value,
+  onChange,
+}: {
+  availableDates: string[];
+  value: string;
+  onChange: (date: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const dateSet = useMemo(() => new Set(availableDates), [availableDates]);
+  const currentIndex = availableDates.indexOf(value);
+
+  // availableDates는 내림차순(최신→과거)이므로: 과거=index 증가, 최신=index 감소
+  const canPrev = currentIndex < availableDates.length - 1;
+  const canNext = currentIndex > 0;
+
+  const selectedDate = value ? parseToDate(value) : undefined;
+
+  return (
+    <div className="flex items-center gap-1" data-testid="date-navigator">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => canPrev && onChange(availableDates[currentIndex + 1])}
+        disabled={!canPrev}
+        className="h-9 w-9 flex-shrink-0"
+        data-testid="btn-date-prev"
+        title="이전 날짜"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </Button>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-52 justify-start gap-2 font-normal text-left"
+            data-testid="trigger-date"
+          >
+            <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <span className="truncate">
+              {value ? formatDate(value) : "날짜 선택"}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            defaultMonth={selectedDate}
+            onSelect={(date) => {
+              if (!date) return;
+              const str = toDateString(date);
+              if (dateSet.has(str)) {
+                onChange(str);
+                setOpen(false);
+              }
+            }}
+            disabled={(date) => !dateSet.has(toDateString(date))}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => canNext && onChange(availableDates[currentIndex - 1])}
+        disabled={!canNext}
+        className="h-9 w-9 flex-shrink-0"
+        data-testid="btn-date-next"
+        title="다음 날짜"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </div>
+  );
 }
 
 // ─── 스켈레톤 ────────────────────────────────────────────────────────────────
@@ -102,9 +202,6 @@ export default function OilPricesPage() {
 
   // 날짜 기본값 설정 (최신 날짜)
   const resolvedDate = selectedDate || availableDates[0] || "";
-
-  // 날짜 표시명
-  const dateLabel = resolvedDate ? formatDate(resolvedDate) : "날짜 선택";
 
   // 지역 파라미터 조합
   const regionParam = useMemo(() => {
@@ -161,26 +258,11 @@ export default function OilPricesPage() {
       <div className="p-6 space-y-5">
         {/* 컨트롤바 */}
         <div className="flex flex-wrap gap-3 items-center">
-          <Select
+          <DateNavigator
+            availableDates={availableDates}
             value={resolvedDate}
-            onValueChange={setSelectedDate}
-            data-testid="select-date"
-          >
-            <SelectTrigger className="w-52" data-testid="trigger-date">
-              <SelectValue placeholder="날짜 선택">{dateLabel}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {availableDates.length === 0 ? (
-                <SelectItem value="__none__" disabled>수집된 데이터 없음</SelectItem>
-              ) : (
-                availableDates.map(d => (
-                  <SelectItem key={d} value={d} data-testid={`option-date-${d}`}>
-                    {formatDate(d)}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+            onChange={setSelectedDate}
+          />
 
           <Select
             value={selectedRegion}
