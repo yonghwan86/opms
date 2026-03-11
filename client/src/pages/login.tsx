@@ -88,28 +88,16 @@ export default function LoginPage() {
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
             <Shield className="w-5 h-5" />
           </div>
-          <span className="text-xl font-bold">유가관리 시스템</span>
+          <span className="text-xl font-bold">유가모니터링 시스템</span>
         </div>
         <div className="mb-auto">
           <h1 className="text-4xl font-bold mb-4 leading-tight">
-            안전하고 효율적인<br />권한 관리 플랫폼
+            실시간 유가 정보<br />모니터링 플랫폼
           </h1>
           <p className="text-primary-foreground/70 text-lg leading-relaxed">
-            본부 · 팀 · 사용자 조직 구조와<br />
-            지역 접근 권한을 통합 관리합니다.
+            오피넷 기반 전국 주유소 가격 정보를<br />
+            지역별 · 유종별로 실시간 분석합니다.
           </p>
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: "본부 관리", icon: "🏢" },
-            { label: "팀 관리", icon: "👥" },
-            { label: "본부 권한", icon: "📍" },
-          ].map(item => (
-            <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
-              <div className="text-2xl mb-2">{item.icon}</div>
-              <p className="text-sm font-medium">{item.label}</p>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -120,7 +108,7 @@ export default function LoginPage() {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Shield className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold">유가관리 시스템</span>
+            <span className="text-lg font-bold">유가모니터링 시스템</span>
           </div>
 
           {/* Step 1: 이메일 입력 */}
@@ -137,7 +125,7 @@ export default function LoginPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="user@example.com"
+                    placeholder="user@kpetro.or.kr"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -159,17 +147,6 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-8 p-4 bg-muted/50 rounded-lg border border-border">
-                <p className="text-xs text-muted-foreground font-medium mb-2">테스트 계정</p>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">마스터:</span> master@example.com
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">일반 사용자:</span> kim.seoul@example.com
-                  </p>
-                </div>
-              </div>
             </>
           )}
 

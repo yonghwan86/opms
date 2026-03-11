@@ -68,8 +68,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Shield className="w-4 h-4 text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-sidebar-foreground truncate">유가관리 시스템</p>
-                <p className="text-xs text-muted-foreground">권한 관리 플랫폼</p>
+                <p className="text-sm font-semibold text-sidebar-foreground truncate">유가모니터링 시스템</p>
+                <p className="text-xs text-muted-foreground">유가 분석 플랫폼</p>
               </div>
             </div>
           ) : (
