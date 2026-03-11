@@ -241,14 +241,18 @@ export default function DashboardPage() {
 
         {/* ── 국제-국내 유가 연동 분석 차트 ── */}
         <Card className="border border-border bg-card">
-          <div className="px-5 pt-4 pb-2 flex items-center justify-between flex-wrap gap-2">
+          <div className="px-5 pt-4 pb-2 flex items-start justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
               <p className="text-sm text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle" />
+                국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+              </p>
             </div>
             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">최근 3개월</span>
           </div>
-          <div className="px-2 pb-2">
+          <div className="px-2 pb-4">
             <ResponsiveContainer width="100%" height={380}>
               <ComposedChart data={chartData} margin={{ top: 14, right: 80, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
@@ -298,12 +302,6 @@ export default function DashboardPage() {
                 <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
-          </div>
-          <div className="px-5 pb-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle" />
-              국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-            </p>
           </div>
         </Card>
 
