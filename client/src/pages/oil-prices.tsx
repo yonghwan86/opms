@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -186,6 +187,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 // ─── 메인 페이지 ─────────────────────────────────────────────────────────────
 export default function OilPricesPage() {
   const { isMaster } = useAuth();
+  const isMobile = useIsMobile();
 
   const [activeTab, setActiveTab] = useState<AnalysisType>("HIGH");
   const [selectedFuel, setSelectedFuel] = useState<FuelType>("gasoline");
@@ -245,10 +247,10 @@ export default function OilPricesPage() {
     } else {
       return [
         { value: "ALL", label: "전체 (내 관할)" },
-        ...subregions.map(r => ({ value: r, label: r })),
+        ...subregions.map(r => ({ value: r, label: isMobile ? regionShort(r) : r })),
       ];
     }
-  }, [isMaster, subregions]);
+  }, [isMaster, subregions, isMobile]);
 
   // 현재 탭 정보
   const currentTab = TABS.find(t => t.type === activeTab)!;
