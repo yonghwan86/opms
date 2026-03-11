@@ -58,24 +58,27 @@ function ChangeChip({ val, unit = "원", percent }: { val: number; unit?: string
 
 // ─── 메트릭 카드 ─────────────────────────────────────────────────────────────
 function MetricCard({
-  title, icon: Icon, iconBg, loading, children,
+  title, subtitle, icon: Icon, iconBg, loading, children,
 }: {
-  title: string; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
+  title: string; subtitle?: string; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
 }) {
   return (
-    <Card className="p-5 border border-border bg-card">
-      <div className="flex items-center gap-3 mb-4">
+    <Card className="px-4 pt-4 pb-3 border border-border bg-card">
+      <div className="flex items-center gap-3 mb-1">
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
           <Icon className="w-5 h-5 text-white" />
         </div>
-        <span className="text-sm font-semibold text-muted-foreground">{title}</span>
+        <div className="min-w-0">
+          <p className="text-base font-semibold text-muted-foreground leading-tight">{title}</p>
+          {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
+        </div>
       </div>
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-2 mt-3">
           <Skeleton className="h-9 w-36" />
           <Skeleton className="h-5 w-28" />
         </div>
-      ) : children}
+      ) : <div className="mt-3">{children}</div>}
     </Card>
   );
 }
@@ -226,21 +229,20 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 전국 편차 */}
-          <MetricCard title="전국 휘발유 가격 편차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading}>
+          <MetricCard title="전국 휘발유 가격 편차" subtitle="최고가 − 최저가 격차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading}>
             {spread ? (
               <>
                 <p className="text-3xl font-bold text-foreground tracking-tight">{fmt(spread.spread)}원</p>
-                <p className="text-xs text-muted-foreground mb-2">최고가 − 최저가 격차</p>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-1 mt-2">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-red-500 font-semibold text-xs">최고</span>
+                    <span className="text-red-500 font-semibold text-xs flex-shrink-0">최고</span>
                     <span className="text-foreground truncate flex-1 mx-1 text-xs">
                       {spread.maxStation.length > 9 ? spread.maxStation.slice(0, 9) + "…" : spread.maxStation}
                     </span>
                     <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(spread.maxPrice)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-blue-500 font-semibold text-xs">최저</span>
+                    <span className="text-blue-500 font-semibold text-xs flex-shrink-0">최저</span>
                     <span className="text-foreground truncate flex-1 mx-1 text-xs">
                       {spread.minStation.length > 9 ? spread.minStation.slice(0, 9) + "…" : spread.minStation}
                     </span>
@@ -338,12 +340,12 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
               ) : (
                 <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={regional} layout="vertical" margin={{ top: 8, right: 64, left: 4, bottom: 4 }}>
+                  <BarChart data={regional} layout="vertical" margin={{ top: 8, right: 52, left: 4, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                     <XAxis
                       type="number"
                       domain={[Math.min(...regional.map(r => r.avgPrice)) - 30, Math.max(...regional.map(r => r.avgPrice)) + 30]}
-                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      tick={{ fontSize: 12, fill: "#6b7280", fontWeight: 500 }}
                       tickFormatter={v => fmt(v)}
                       tickLine={false}
                       axisLine={false}
@@ -351,7 +353,7 @@ export default function DashboardPage() {
                     <YAxis
                       type="category"
                       dataKey="sido"
-                      tick={{ fontSize: 13, fill: "#374151", fontWeight: 500 }}
+                      tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
                       width={40}
                       tickLine={false}
                       axisLine={false}
@@ -365,7 +367,7 @@ export default function DashboardPage() {
                       fill="#3b82f6"
                       radius={[0, 4, 4, 0]}
                       barSize={20}
-                      label={{ position: "right", fontSize: 12, fill: "#374151", fontWeight: 600, formatter: (v: number) => `${fmt(v)}` }}
+                      label={{ position: "right", fontSize: 13, fill: "#111827", fontWeight: 700, formatter: (v: number) => `${fmt(v)}` }}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -407,13 +409,13 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          {/* 최근 분석 리포트 */}
-          <Card className="border border-border bg-card">
-            <div className="px-5 py-4 border-b border-border">
-              <h2 className="text-base font-semibold text-foreground">최근 분석 리포트</h2>
+          {/* 최근 AI 분석 리포트 */}
+          <Card className="border border-border bg-card flex flex-col">
+            <div className="px-5 py-4 border-b border-border flex-shrink-0">
+              <h2 className="text-base font-semibold text-foreground">최근 AI 분석 리포트</h2>
               <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트</p>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: "320px" }}>
               {reportItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <AlertCircle className="w-8 h-8 text-muted-foreground/30 mb-3" />
@@ -421,7 +423,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 주유소 없음</p>
                 </div>
               ) : (
-                reportItems.slice(0, 6).map((s) => (
+                reportItems.slice(0, 3).map((s) => (
                   <div key={s.stationId} className="flex gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
                     <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
                     <div className="min-w-0">
