@@ -361,29 +361,31 @@ export default function DashboardPage() {
 
         {/* ── 국제-국내 유가 연동 분석 차트 ── */}
         <Card className="border border-border bg-card">
-          <div className="px-5 pt-4 pb-2 flex items-start justify-between flex-wrap gap-2">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
+          <div className="px-5 pt-4 pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
+              </div>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">최근 3개월</span>
             </div>
-            <div className="flex flex-col items-start gap-1.5">
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">최근 3개월</span>
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle" />
-                국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-2">
+              <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle shrink-0" />
+              국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+            </p>
           </div>
           <div className="px-2 pb-4">
             <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={chartData} margin={{ top: 14, right: 8, left: 10, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 14, right: 8, left: 10, bottom: 28 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "end" }}
                   tickLine={false}
                   axisLine={{ stroke: "#e5e7eb" }}
-                  interval={Math.max(1, Math.floor(chartData.length / 8))}
+                  interval={Math.max(1, Math.floor(chartData.length / 6))}
+                  angle={-35}
+                  height={45}
                 />
                 <YAxis
                   yAxisId="wti"
