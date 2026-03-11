@@ -5,12 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 
-interface UploadResult {
+interface FileUploadResult {
   success: boolean;
-  files: number;
+  fileName: string;
   totalRows: number;
   analysisCount: number;
   dates: string[];
@@ -27,11 +26,72 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const CHUNK_SIZE = 200 * 1024; // 200KB 바이너리 → base64 약 267KB
+
+function splitIntoChunks(ab: ArrayBuffer): string[] {
+  const bytes = new Uint8Array(ab);
+  const chunks: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+    const slice = bytes.slice(offset, offset + CHUNK_SIZE);
+    let binaryStr = "";
+    for (let i = 0; i < slice.length; i++) binaryStr += String.fromCharCode(slice[i]);
+    chunks.push(btoa(binaryStr));
+  }
+  if (chunks.length === 0) chunks.push("");
+  return chunks;
+}
+
+async function uploadFileChuked(
+  file: File,
+  onProgress: (pct: number) => void
+): Promise<FileUploadResult> {
+  const ab = await file.arrayBuffer();
+  const chunks = splitIntoChunks(ab);
+
+  // 1. Init
+  const initRes = await fetch("/api/oil-prices/upload-csv/init", {
+    method: "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileName: file.name, totalChunks: chunks.length }),
+  });
+  if (!initRes.ok) {
+    const err = await initRes.json().catch(() => ({ message: "세션 생성 실패" }));
+    throw new Error(err.message);
+  }
+  const { sessionId } = await initRes.json();
+
+  // 2. 청크 전송
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkRes = await fetch("/api/oil-prices/upload-csv/chunk", {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, chunkIndex: i, data: chunks[i] }),
+    });
+    if (!chunkRes.ok) {
+      const err = await chunkRes.json().catch(() => ({ message: "청크 전송 실패" }));
+      throw new Error(err.message);
+    }
+    onProgress(Math.round(((i + 1) / chunks.length) * 90));
+  }
+
+  // 3. Finalize
+  const finalRes = await fetch("/api/oil-prices/upload-csv/finalize", {
+    method: "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  });
+  const data = await finalRes.json();
+  if (!finalRes.ok) throw new Error(data.message || "처리 실패");
+  onProgress(100);
+  return data as FileUploadResult;
+}
+
 export default function OilUploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [result, setResult] = useState<UploadResult | null>(null);
+  const [progress, setProgress] = useState<{ fileIndex: number; pct: number } | null>(null);
+  const [results, setResults] = useState<FileUploadResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -50,13 +110,13 @@ export default function OilUploadPage() {
       const filtered = csvFiles.filter((f) => !existingNames.has(f.name));
       return [...prev, ...filtered];
     });
-    setResult(null);
+    setResults([]);
     setError(null);
   }, [toast]);
 
   const removeFile = (idx: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
-    setResult(null);
+    setResults([]);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -65,42 +125,30 @@ export default function OilUploadPage() {
     addFiles(e.dataTransfer.files);
   }, [addFiles]);
 
-  const readFileAsBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        // data:...;base64,XXXX → XXXX 부분만 추출
-        resolve(result.split(",")[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const handleUpload = async () => {
     if (files.length === 0) return;
     setIsPending(true);
-    setResult(null);
+    setResults([]);
     setError(null);
+    setProgress({ fileIndex: 0, pct: 0 });
 
     try {
-      const filePayloads = await Promise.all(
-        files.map(async (f) => ({ name: f.name, content: await readFileAsBase64(f) }))
-      );
-
-      const res = await fetch("/api/oil-prices/upload-csv", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: filePayloads }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "업로드 실패");
-      setResult(data);
+      const allResults: FileUploadResult[] = [];
+      for (let i = 0; i < files.length; i++) {
+        setProgress({ fileIndex: i, pct: 0 });
+        const result = await uploadFileChuked(files[i], (pct) => {
+          setProgress({ fileIndex: i, pct });
+        });
+        allResults.push(result);
+      }
+      setResults(allResults);
       setFiles([]);
+      setProgress(null);
       queryClient.invalidateQueries({ queryKey: ["/api/oil-prices/latest-date"] });
-      toast({ title: "업로드 완료", description: `${data.totalRows.toLocaleString()}건 저장되었습니다.` });
+      const totalRows = allResults.reduce((s, r) => s + r.totalRows, 0);
+      toast({ title: "업로드 완료", description: `총 ${totalRows.toLocaleString()}건 저장되었습니다.` });
     } catch (e: any) {
+      setProgress(null);
       setError(e.message || "업로드 중 오류가 발생했습니다.");
       toast({ title: "업로드 실패", description: e.message, variant: "destructive" });
     } finally {
@@ -178,6 +226,21 @@ export default function OilUploadPage() {
                 </div>
               ))}
 
+              {/* 업로드 진행률 */}
+              {progress && (
+                <div className="pt-1 space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    파일 {progress.fileIndex + 1}/{files.length + results.length} 업로드 중… {progress.pct}%
+                  </p>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-200 rounded-full"
+                      style={{ width: `${progress.pct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="pt-2">
                 <Button
                   className="w-full"
@@ -203,23 +266,22 @@ export default function OilUploadPage() {
         )}
 
         {/* 결과 */}
-        {result && (
+        {results.length > 0 && (
           <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
-            <CardContent className="p-5">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                <div className="space-y-2">
-                  <p className="font-medium text-emerald-700 dark:text-emerald-400">업로드 완료</p>
-                  <div className="text-sm text-emerald-700 dark:text-emerald-400 space-y-1">
-                    <p>파일 수: <span className="font-semibold">{result.files}개</span></p>
-                    <p>저장된 원본 데이터: <span className="font-semibold">{result.totalRows.toLocaleString()}건</span></p>
-                    <p>생성된 분석 결과: <span className="font-semibold">{result.analysisCount.toLocaleString()}건</span></p>
-                    {result.dates.length > 0 && (
-                      <p>처리된 날짜: <span className="font-semibold">{result.dates.map(formatDate).join(", ")}</span></p>
-                    )}
-                  </div>
-                </div>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                <p className="font-medium text-emerald-700 dark:text-emerald-400">업로드 완료 ({results.length}개 파일)</p>
               </div>
+              {results.map((r, i) => (
+                <div key={i} className="text-sm text-emerald-700 dark:text-emerald-400 space-y-0.5 pl-7">
+                  <p className="font-semibold truncate">{r.fileName}</p>
+                  <p>저장: <span className="font-semibold">{r.totalRows.toLocaleString()}건</span> / 분석: <span className="font-semibold">{r.analysisCount.toLocaleString()}건</span></p>
+                  {r.dates.length > 0 && (
+                    <p className="text-xs">날짜: {r.dates.map(formatDate).join(", ")}</p>
+                  )}
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}

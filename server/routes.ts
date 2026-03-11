@@ -1021,50 +1021,80 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── 유가 CSV 업로드 API ─────────────────────────────────────────────────────
 
-  // POST /api/oil-prices/upload-csv — MASTER 전용 과거 CSV 직접 업로드 (JSON 방식)
-  app.post("/api/oil-prices/upload-csv", requireMaster, async (req, res) => {
+  // ─── CSV 청크 업로드 (프록시 크기 제한 우회) ────────────────────────────────
+  // 업로드 세션을 메모리에 임시 보관 (sessionId → { fileName, chunks[], totalChunks })
+  const csvUploadSessions = new Map<string, {
+    fileName: string;
+    chunks: Map<number, string>; // chunkIndex → base64
+    totalChunks: number;
+    createdAt: number;
+  }>();
+
+  // 30분 이상 된 세션 자동 정리
+  setInterval(() => {
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    for (const [id, s] of csvUploadSessions) {
+      if (s.createdAt < cutoff) csvUploadSessions.delete(id);
+    }
+  }, 5 * 60 * 1000);
+
+  // POST /api/oil-prices/upload-csv/init — 세션 시작
+  app.post("/api/oil-prices/upload-csv/init", requireMaster, async (req, res) => {
+    const { fileName, totalChunks } = req.body as { fileName: string; totalChunks: number };
+    if (!fileName || !totalChunks || totalChunks < 1) {
+      return res.status(400).json({ message: "fileName과 totalChunks가 필요합니다." });
+    }
+    const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    csvUploadSessions.set(sessionId, { fileName, chunks: new Map(), totalChunks, createdAt: Date.now() });
+    res.json({ sessionId });
+  });
+
+  // POST /api/oil-prices/upload-csv/chunk — 청크 전송
+  app.post("/api/oil-prices/upload-csv/chunk", requireMaster, async (req, res) => {
+    const { sessionId, chunkIndex, data } = req.body as { sessionId: string; chunkIndex: number; data: string };
+    const session = csvUploadSessions.get(sessionId);
+    if (!session) return res.status(404).json({ message: "업로드 세션이 존재하지 않습니다." });
+    session.chunks.set(chunkIndex, data);
+    res.json({ ok: true, received: session.chunks.size, total: session.totalChunks });
+  });
+
+  // POST /api/oil-prices/upload-csv/finalize — 청크 합산 후 처리
+  app.post("/api/oil-prices/upload-csv/finalize", requireMaster, async (req, res) => {
     try {
       const { parseOilPriceCSV, toInsertOilPriceRaw } = await import("./services/oilParser");
       const { runAnalysis } = await import("./services/oilAnalyzer");
 
-      // JSON body: { files: [{ name: string, content: string }] }
-      const body = req.body as { files?: Array<{ name: string; content: string }> };
-      if (!body.files || body.files.length === 0) {
-        return res.status(400).json({ message: "업로드할 CSV 파일을 선택해주세요." });
-      }
-      const files = body.files;
+      const { sessionId } = req.body as { sessionId: string };
+      const session = csvUploadSessions.get(sessionId);
+      if (!session) return res.status(404).json({ message: "업로드 세션이 존재하지 않습니다." });
 
-      let totalRaw = 0;
-      let totalAnalysis = 0;
-      const processedDates = new Set<string>();
-
-      // 모든 파일의 rows를 합산 (content는 base64 인코딩된 원본 바이너리)
-      const allRows: Awaited<ReturnType<typeof parseOilPriceCSV>> = [];
-      for (const file of files) {
-        const buf = Buffer.from(file.content, "base64");
-        const rows = parseOilPriceCSV(buf);
-        allRows.push(...rows);
+      if (session.chunks.size !== session.totalChunks) {
+        return res.status(400).json({ message: `청크 누락: ${session.chunks.size}/${session.totalChunks}` });
       }
 
-      if (allRows.length === 0) {
+      // 청크를 순서대로 합산해서 Buffer 생성
+      const parts: Buffer[] = [];
+      for (let i = 0; i < session.totalChunks; i++) {
+        parts.push(Buffer.from(session.chunks.get(i)!, "base64"));
+      }
+      const buf = Buffer.concat(parts);
+      csvUploadSessions.delete(sessionId);
+
+      const rows = parseOilPriceCSV(buf);
+      if (rows.length === 0) {
         return res.status(400).json({ message: "파싱된 데이터가 없습니다. CSV 파일 형식을 확인해주세요." });
       }
 
-      // 원본 저장 (upsert)
-      const insertRows = toInsertOilPriceRaw(allRows);
+      const insertRows = toInsertOilPriceRaw(rows);
       await storage.saveOilPriceRaw(insertRows);
-      totalRaw = insertRows.length;
 
-      // 날짜별 분석 실행
-      const uniqueDates = [...new Set(allRows.map((r) => r.date))].sort();
+      const processedDates = new Set<string>();
+      let totalAnalysis = 0;
+      const uniqueDates = [...new Set(rows.map((r) => r.date))].sort();
       for (let i = 0; i < uniqueDates.length; i++) {
         const today = uniqueDates[i];
-        // 전일 데이터: 같은 파일셋에 있으면 활용, 없으면 DB에서 가져온 날짜 기준으로 하루 전 날짜 문자열 사용
-        const yesterday = i > 0
-          ? uniqueDates[i - 1]
-          : String(Number(today) - 1).padStart(8, "0"); // 대략적 전일
-
-        const analysisResults = runAnalysis(allRows, today, yesterday);
+        const yesterday = i > 0 ? uniqueDates[i - 1] : String(Number(today) - 1).padStart(8, "0");
+        const analysisResults = runAnalysis(rows, today, yesterday);
         if (analysisResults.length > 0) {
           await storage.saveOilPriceAnalysis(analysisResults);
           totalAnalysis += analysisResults.length;
@@ -1074,11 +1104,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       res.json({
         success: true,
-        files: files.length,
-        totalRows: totalRaw,
+        fileName: session.fileName,
+        totalRows: insertRows.length,
         analysisCount: totalAnalysis,
         dates: [...processedDates].sort(),
       });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "서버 오류";
+      console.error("CSV finalize 오류:", e);
+      res.status(500).json({ message: msg });
+    }
+  });
+
+  // POST /api/oil-prices/upload-csv — (레거시, 사용 안 함, 호환성 유지)
+  app.post("/api/oil-prices/upload-csv", requireMaster, async (req, res) => {
+    try {
+      const msg = "이 엔드포인트는 더 이상 사용되지 않습니다. 청크 업로드를 사용하세요.";
+      res.status(400).json({ message: msg });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "서버 오류";
       console.error("CSV 업로드 오류:", e);
