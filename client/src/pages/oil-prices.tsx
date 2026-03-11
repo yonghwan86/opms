@@ -425,7 +425,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
     return (
       <table className="w-full md:w-auto text-sm">
         <thead>
-          <tr className="bg-muted/50 text-muted-foreground text-xs">
+          <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
@@ -450,9 +450,9 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                   {s.isSelf ? "✓" : "—"}
                 </span>
               </td>
-              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">
-                <span className="md:hidden">{regionShort(s.region)}</span>
-                <span className="hidden md:inline">{s.region}</span>
+              <td className="py-3 px-1.5 md:px-3 whitespace-nowrap">
+                <span className="md:hidden text-xs text-foreground">{regionShort(s.region)}</span>
+                <span className="hidden md:inline text-sm text-foreground/65 font-medium tracking-tight">{s.region}</span>
               </td>
               <td className="py-3 px-1.5 md:px-3 text-right font-semibold text-foreground whitespace-nowrap">
                 {s.price != null ? formatPrice(s.price) : "—"}
@@ -468,7 +468,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
     return (
       <table className="w-full md:w-auto text-sm">
         <thead>
-          <tr className="bg-muted/50 text-muted-foreground text-xs">
+          <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
@@ -495,9 +495,9 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                   {s.isSelf ? "✓" : "—"}
                 </span>
               </td>
-              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">
-                <span className="md:hidden">{regionShort(s.region)}</span>
-                <span className="hidden md:inline">{s.region}</span>
+              <td className="py-3 px-1.5 md:px-3 whitespace-nowrap">
+                <span className="md:hidden text-xs text-foreground">{regionShort(s.region)}</span>
+                <span className="hidden md:inline text-sm text-foreground/65 font-medium tracking-tight">{s.region}</span>
               </td>
               <td className="py-3 px-1.5 md:px-3 text-right font-semibold whitespace-nowrap">{s.price != null ? formatPrice(s.price) : "—"}</td>
               <td className="hidden md:table-cell py-3 px-3 text-right text-muted-foreground whitespace-nowrap">{s.prevPrice != null ? formatPrice(s.prevPrice) : "—"}</td>
@@ -522,7 +522,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
   return (
     <table className="w-full md:w-auto text-sm">
       <thead>
-        <tr className="bg-muted/50 text-muted-foreground text-xs">
+        <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
           <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
           <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
           <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
@@ -549,9 +549,9 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                 {s.isSelf ? "✓" : "—"}
               </span>
             </td>
-            <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">
-              <span className="md:hidden">{regionShort(s.region)}</span>
-              <span className="hidden md:inline">{s.region}</span>
+            <td className="py-3 px-1.5 md:px-3 whitespace-nowrap">
+              <span className="md:hidden text-xs text-foreground">{regionShort(s.region)}</span>
+              <span className="hidden md:inline text-sm text-foreground/65 font-medium tracking-tight">{s.region}</span>
             </td>
             <td className="py-3 px-1.5 md:px-3 text-right whitespace-nowrap">
               {isDieselKerosene
