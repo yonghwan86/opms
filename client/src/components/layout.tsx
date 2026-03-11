@@ -21,10 +21,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "대시보드", href: "/", icon: LayoutDashboard, masterOnly: true },
+  { label: "유가 분석", href: "/oil-prices", icon: Fuel },
+  { label: "본부 권한", href: "/region-permissions", icon: MapPin },
   { label: "사용자 관리", href: "/users", icon: User2, masterOnly: true },
   { label: "엑셀 업로드", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
-  { label: "본부 권한", href: "/region-permissions", icon: MapPin },
-  { label: "유가 분석", href: "/oil-prices", icon: Fuel },
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "내 정보", href: "/my-info", icon: Shield, hqUserOnly: true },
