@@ -129,11 +129,11 @@ export interface IStorage {
     fuelType: 'gasoline' | 'diesel' | 'kerosene';
     date: string;
     prevDate?: string;
-    regions: string[] | null;
+    regions: { sidoList: string[]; regionList: string[] } | null;
     sido?: string;
   }): Promise<OilTopStation[]>;
   getOilAvailableDates(): Promise<string[]>;
-  getUserPermittedRegions(userId: number): Promise<string[]>;
+  getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }>;
 
   // 대시보드 유가 분석
   getOilNationalAverages(date: string, prevDate: string): Promise<{
@@ -490,18 +490,38 @@ export class PostgresStorage implements IStorage {
     fuelType: 'gasoline' | 'diesel' | 'kerosene';
     date: string;
     prevDate?: string;
-    regions: string[] | null;
+    regions: { sidoList: string[]; regionList: string[] } | null;
     sido?: string;
   }): Promise<OilTopStation[]> {
     const { type, fuelType, date, prevDate, regions, sido } = params;
     const fc = fuelType === 'gasoline' ? 'gasoline' : fuelType === 'diesel' ? 'diesel' : 'kerosene';
-    const hasRegions = regions && regions.length > 0;
     const fuelCol = sql.raw(fc);
 
+    const hasSido = regions !== null && regions.sidoList.length > 0;
+    const hasRegion = regions !== null && regions.regionList.length > 0;
+
+    // null → 전국(필터 없음), 빈 객체 → 권한 없음(FALSE)
+    let regionCond: ReturnType<typeof sql>;
+    let r1RegionCond: ReturnType<typeof sql>;
+    if (regions === null) {
+      regionCond = sql``;
+      r1RegionCond = sql``;
+    } else if (!hasSido && !hasRegion) {
+      regionCond = sql` AND FALSE`;
+      r1RegionCond = sql` AND FALSE`;
+    } else if (hasSido && !hasRegion) {
+      regionCond = sql` AND sido = ANY(${regions.sidoList})`;
+      r1RegionCond = sql` AND r1.sido = ANY(${regions.sidoList})`;
+    } else if (!hasSido && hasRegion) {
+      regionCond = sql` AND region = ANY(${regions.regionList})`;
+      r1RegionCond = sql` AND r1.region = ANY(${regions.regionList})`;
+    } else {
+      regionCond = sql` AND (sido = ANY(${regions.sidoList}) OR region = ANY(${regions.regionList}))`;
+      r1RegionCond = sql` AND (r1.sido = ANY(${regions.sidoList}) OR r1.region = ANY(${regions.regionList}))`;
+    }
+
     const sidoCond = sido ? sql` AND sido = ${sido}` : sql``;
-    const regionCond = hasRegions ? sql` AND region = ANY(${regions})` : sql``;
     const r1SidoCond = sido ? sql` AND r1.sido = ${sido}` : sql``;
-    const r1RegionCond = hasRegions ? sql` AND r1.region = ANY(${regions})` : sql``;
 
     let rawRows: any[];
 
@@ -570,9 +590,9 @@ export class PostgresStorage implements IStorage {
     return result.map(r => r.date);
   }
 
-  async getUserPermittedRegions(userId: number): Promise<string[]> {
+  async getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }> {
     const user = await this.getUserById(userId);
-    if (!user || !user.teamId) return [];
+    if (!user || !user.teamId) return { sidoList: [], regionList: [] };
     const perms = await db
       .select()
       .from(hqTeamRegionPermissions)
@@ -580,9 +600,18 @@ export class PostgresStorage implements IStorage {
         eq(hqTeamRegionPermissions.teamId, user.teamId),
         eq(hqTeamRegionPermissions.enabled, true),
       ));
-    return perms
-      .map(p => toOilRegionName(p.doName, p.siName, p.gunName, p.guName))
-      .filter(Boolean);
+    const sidoList: string[] = [];
+    const regionList: string[] = [];
+    for (const p of perms) {
+      const sigungu = p.guName || p.siName || p.gunName;
+      if (sigungu) {
+        const sidoAbbrev = p.doName ? (SIDO_ABBREV[p.doName] || p.doName) : '';
+        regionList.push(`${sidoAbbrev} ${sigungu}`.trim());
+      } else if (p.doName) {
+        sidoList.push(SIDO_ABBREV[p.doName] || p.doName);
+      }
+    }
+    return { sidoList, regionList };
   }
 
   // ── 대시보드 유가 분석 ────────────────────────────────────────────────────

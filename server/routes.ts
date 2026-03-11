@@ -829,8 +829,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (req.session.role === "MASTER") {
         res.json(null); // null = 전국 전체
       } else {
-        const regions = await storage.getUserPermittedRegions(req.session.userId!);
-        res.json(regions);
+        const { sidoList, regionList } = await storage.getUserPermittedRegions(req.session.userId!);
+        // 프론트엔드 드롭다운용: sido 단위는 "서울 전체" 식으로, region 단위는 그대로 결합
+        res.json([...sidoList, ...regionList]);
       }
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
@@ -859,17 +860,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       // 지역 필터 결정
-      let regions: string[] | null;
+      let regions: { sidoList: string[]; regionList: string[] } | null;
       if (req.session.role === "MASTER") {
-        // 마스터는 특정 지역 선택 시 해당 지역만, 없으면 전국
-        regions = region ? [region] : null;
+        // 마스터: sido 파라미터 또는 region 파라미터가 있으면 해당 지역만, 없으면 전국
+        regions = null;
       } else {
-        // HQ_USER는 관할 지역 자동 주입, region이 있으면 그 중에서 필터
-        const permittedRegions = await storage.getUserPermittedRegions(req.session.userId!);
+        // HQ_USER: 관할 지역 자동 주입, region 쿼리가 있으면 그 값만
+        const permitted = await storage.getUserPermittedRegions(req.session.userId!);
         if (region) {
-          regions = permittedRegions.includes(region) ? [region] : permittedRegions;
+          if (permitted.sidoList.includes(region)) {
+            regions = { sidoList: [region], regionList: [] };
+          } else if (permitted.regionList.includes(region)) {
+            regions = { sidoList: [], regionList: [region] };
+          } else {
+            regions = permitted;
+          }
         } else {
-          regions = permittedRegions.length > 0 ? permittedRegions : [];
+          regions = permitted;
         }
       }
 
