@@ -37,6 +37,14 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// 즉시 요청 수신 로거 (응답 완료 전 기록)
+app.use((req, _res, next) => {
+  if (req.path.startsWith("/api") && req.method !== "GET") {
+    console.log(`[INCOMING] ${req.method} ${req.path} content-type=${req.headers["content-type"] ?? "none"} content-length=${req.headers["content-length"] ?? "none"}`);
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
