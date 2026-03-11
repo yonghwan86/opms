@@ -11,6 +11,7 @@ export interface AuthUser {
   role: string;
   headquartersId?: number | null;
   teamId?: number | null;
+  headquartersCode?: string | null;
   enabled: boolean;
   mustChangePassword: boolean;
 }

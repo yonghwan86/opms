@@ -186,7 +186,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const user = await storage.getUserById(req.session.userId!);
       if (!user) return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
       const { passwordHash: _, ...safeUser } = user;
-      res.json(safeUser);
+      let headquartersCode: string | null = null;
+      if (user.headquartersId) {
+        const hq = await storage.getHeadquartersById(user.headquartersId);
+        headquartersCode = hq?.code ?? null;
+      }
+      res.json({ ...safeUser, headquartersCode });
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
     }

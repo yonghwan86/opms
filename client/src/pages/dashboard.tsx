@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +12,105 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ─── 날씨 위젯 ───────────────────────────────────────────────────────────────
+const HQ_COORDS: Record<string, { lat: number; lon: number }> = {
+  HQ_SUDNAM:   { lat: 37.4563, lon: 126.7052 }, // 인천
+  HQ_SUDBUK:   { lat: 37.5665, lon: 126.9780 }, // 서울
+  HQ_DAEJEON:  { lat: 36.3504, lon: 127.3845 }, // 대전
+  HQ_CHUNGBUK: { lat: 36.6424, lon: 127.4890 }, // 청주
+  HQ_GWANGJU:  { lat: 35.1595, lon: 126.8526 }, // 광주
+  HQ_JEONBUK:  { lat: 35.8242, lon: 127.1480 }, // 전주
+  HQ_BUSAN:    { lat: 35.1796, lon: 129.0756 }, // 부산
+  HQ_DAEGU:    { lat: 35.8714, lon: 128.6014 }, // 대구
+  HQ_GANGWON:  { lat: 37.8813, lon: 127.7298 }, // 춘천
+  HQ_JEJU:     { lat: 33.4996, lon: 126.5312 }, // 제주
+};
+const SEOUL = { lat: 37.5665, lon: 126.9780 };
+
+function wmoToWeather(code: number): { icon: string; desc: string } {
+  if (code === 0) return { icon: "☀️", desc: "맑음" };
+  if (code <= 2) return { icon: "🌤", desc: "구름조금" };
+  if (code === 3) return { icon: "☁️", desc: "흐림" };
+  if (code <= 48) return { icon: "🌫", desc: "안개" };
+  if (code <= 67) return { icon: "🌧", desc: "비" };
+  if (code <= 77) return { icon: "❄️", desc: "눈" };
+  if (code <= 82) return { icon: "🌦", desc: "소나기" };
+  return { icon: "⛈", desc: "뇌우" };
+}
+
+function todayLabel(): string {
+  const d = new Date();
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
+function DateWeatherWidget({ isMaster, headquartersCode }: { isMaster: boolean; headquartersCode?: string | null }) {
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [geoReady, setGeoReady] = useState(false);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      const fallback = !isMaster && headquartersCode && HQ_COORDS[headquartersCode]
+        ? HQ_COORDS[headquartersCode]
+        : SEOUL;
+      setCoords(fallback);
+      setGeoReady(true);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setGeoReady(true);
+      },
+      () => {
+        const fallback = !isMaster && headquartersCode && HQ_COORDS[headquartersCode]
+          ? HQ_COORDS[headquartersCode]
+          : SEOUL;
+        setCoords(fallback);
+        setGeoReady(true);
+      },
+      { timeout: 5000 }
+    );
+  }, [isMaster, headquartersCode]);
+
+  const { data: weather, isLoading: wxLoading } = useQuery({
+    queryKey: ["weather", coords?.lat, coords?.lon],
+    queryFn: async () => {
+      if (!coords) return null;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code&timezone=Asia/Seoul`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const c = data.current;
+      return {
+        temp: Math.round(c.temperature_2m),
+        humidity: c.relative_humidity_2m,
+        precipProb: c.precipitation_probability,
+        weather: wmoToWeather(c.weather_code),
+      };
+    },
+    enabled: geoReady && !!coords,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  return (
+    <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap justify-end">
+      <span className="flex items-center gap-1.5 text-foreground font-medium">
+        📅 {todayLabel()}
+      </span>
+      {!geoReady || wxLoading ? (
+        <Skeleton className="h-5 w-40" />
+      ) : weather ? (
+        <span className="flex items-center gap-1.5">
+          <span className="text-base leading-none">{weather.weather.icon}</span>
+          <span className="font-semibold text-foreground">{weather.temp}°C</span>
+          <span>{weather.weather.desc}</span>
+          <span className="text-xs opacity-70">· 강수 {weather.precipProb}% 습도 {weather.humidity}%</span>
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 // ─── 타입 ────────────────────────────────────────────────────────────────────
 interface WtiResponse {
@@ -102,7 +201,7 @@ function ChartTooltip({ active, payload, label }: any) {
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isMaster } = useAuth();
 
   const { data: wtiRes, isLoading: wtiLoading } = useQuery<WtiResponse>({
     queryKey: ["/api/dashboard/wti"],
@@ -175,7 +274,9 @@ export default function DashboardPage() {
       <PageHeader
         title="대시보드"
         description={`안녕하세요, ${user?.displayName}님! 유가 가격의 현재 현황을 확인하세요.`}
-      />
+      >
+        <DateWeatherWidget isMaster={isMaster} headquartersCode={user?.headquartersCode} />
+      </PageHeader>
 
       <div className="p-5 space-y-5">
         {/* ── 상단 4 카드 ── */}
