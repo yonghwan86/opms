@@ -246,7 +246,7 @@ export default function DashboardPage() {
               <h2 className="text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
               <p className="text-sm text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
             </div>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex flex-col items-start gap-1.5">
               <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">최근 3개월</span>
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle" />
@@ -256,7 +256,7 @@ export default function DashboardPage() {
           </div>
           <div className="px-2 pb-4">
             <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={chartData} margin={{ top: 14, right: 80, left: 10, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 14, right: 8, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis
                   dataKey="label"
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                   tickFormatter={v => `${fmt(v)}원`}
                   domain={["auto", "auto"]}
                   tickCount={6}
-                  width={80}
+                  width={64}
                   axisLine={false}
                   tickLine={false}
                 />
