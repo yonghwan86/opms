@@ -165,7 +165,7 @@ function BrandPanel() {
           </p>
           {/* 크레딧 */}
           <div className="flex items-center justify-between pt-2.5 border-t border-white/10">
-            <span className="text-[11px] text-white/55 font-medium tracking-wide">K-petro AI전환팀</span>
+            <span className="text-[11px] text-white/55 font-medium tracking-wide">K Petro 한국석유관리원</span>
             <span className="text-[11px] text-white/40 tracking-wide">dev. kito86</span>
           </div>
         </div>
