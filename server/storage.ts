@@ -526,14 +526,18 @@ export class PostgresStorage implements IStorage {
       regionCond = sql` AND FALSE`;
       r1RegionCond = sql` AND FALSE`;
     } else if (hasSido && !hasRegion) {
-      regionCond = sql` AND sido = ANY(${regions.sidoList})`;
-      r1RegionCond = sql` AND r1.sido = ANY(${regions.sidoList})`;
+      const sidoIn = sql.join(regions.sidoList.map(s => sql`${s}`), sql`, `);
+      regionCond = sql` AND sido IN (${sidoIn})`;
+      r1RegionCond = sql` AND r1.sido IN (${sidoIn})`;
     } else if (!hasSido && hasRegion) {
-      regionCond = sql` AND region = ANY(${regions.regionList})`;
-      r1RegionCond = sql` AND r1.region = ANY(${regions.regionList})`;
+      const regionIn = sql.join(regions.regionList.map(s => sql`${s}`), sql`, `);
+      regionCond = sql` AND region IN (${regionIn})`;
+      r1RegionCond = sql` AND r1.region IN (${regionIn})`;
     } else {
-      regionCond = sql` AND (sido = ANY(${regions.sidoList}) OR region = ANY(${regions.regionList}))`;
-      r1RegionCond = sql` AND (r1.sido = ANY(${regions.sidoList}) OR r1.region = ANY(${regions.regionList}))`;
+      const sidoIn = sql.join(regions.sidoList.map(s => sql`${s}`), sql`, `);
+      const regionIn = sql.join(regions.regionList.map(s => sql`${s}`), sql`, `);
+      regionCond = sql` AND (sido IN (${sidoIn}) OR region IN (${regionIn}))`;
+      r1RegionCond = sql` AND (r1.sido IN (${sidoIn}) OR r1.region IN (${regionIn}))`;
     }
 
     const sidoCond = sido ? sql` AND sido = ${sido}` : sql``;
@@ -649,18 +653,20 @@ export class PostgresStorage implements IStorage {
     const results: string[] = [];
 
     if (sidoList.length > 0) {
+      const sidoIn = sql.join(sidoList.map(s => sql`${s}`), sql`, `);
       const rows = await db.execute(
         sql`SELECT DISTINCT region FROM oil_price_raw
-            WHERE date = ${date} AND sido = ANY(${sidoList})
+            WHERE date = ${date} AND sido IN (${sidoIn})
             ORDER BY region`
       );
       rows.rows.forEach((r: any) => results.push(String(r.region)));
     }
 
     if (regionList.length > 0) {
+      const regionIn = sql.join(regionList.map(s => sql`${s}`), sql`, `);
       const rows = await db.execute(
         sql`SELECT DISTINCT region FROM oil_price_raw
-            WHERE date = ${date} AND region = ANY(${regionList})
+            WHERE date = ${date} AND region IN (${regionIn})
             ORDER BY region`
       );
       rows.rows.forEach((r: any) => {
