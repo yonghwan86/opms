@@ -280,7 +280,6 @@ export default function UsersPage() {
               )}
               {[
                 ["직책", detailUser.positionName || "-"],
-                ["부서", detailUser.departmentName || "-"],
                 ["본부", getHqName(detailUser.headquartersId)],
                 ["팀", getTeamName(detailUser.teamId)],
                 ["등록일", new Date(detailUser.createdAt).toLocaleDateString("ko-KR")],
@@ -350,15 +349,9 @@ export default function UsersPage() {
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="user@example.com" data-testid="input-user-email" disabled={!!editing} />
               {!editing && <p className="text-xs text-muted-foreground">로그인 아이디로 사용됩니다.</p>}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>직책</Label>
-                <Input value={form.positionName} onChange={e => setForm(f => ({ ...f, positionName: e.target.value }))} placeholder="사원, 주임, 대리..." />
-              </div>
-              <div className="space-y-1.5">
-                <Label>부서</Label>
-                <Input value={form.departmentName} onChange={e => setForm(f => ({ ...f, departmentName: e.target.value }))} placeholder="영업부, IT운영부..." />
-              </div>
+            <div className="space-y-1.5">
+              <Label>직책</Label>
+              <Input value={form.positionName} onChange={e => setForm(f => ({ ...f, positionName: e.target.value }))} placeholder="사원, 주임, 대리..." />
             </div>
             <Separator />
             <div className="grid grid-cols-2 gap-4">

@@ -38,7 +38,6 @@ export default function MyInfoPage() {
     { label: "이름", value: user?.displayName },
     { label: "이메일", value: user?.email },
     { label: "직책", value: user?.positionName || "-" },
-    { label: "부서", value: user?.departmentName || "-" },
     { label: "권한", value: user?.role },
   ];
 
