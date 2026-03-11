@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
-  MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel
+  MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
+  Bell, BellOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePush } from "@/hooks/use-push";
+import { apiRequest } from "@/lib/queryClient";
 
 interface NavItem {
   label: string;
@@ -38,6 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isMaster } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { state: pushState, subscribe, unsubscribe } = usePush();
 
   const visibleNav = navItems.filter(item => {
     if (item.masterOnly && !isMaster) return false;
@@ -52,6 +56,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
       window.location.href = "/login";
     } catch {
       toast({ title: "로그아웃 실패", variant: "destructive" });
+    }
+  };
+
+  const handleBell = async () => {
+    if (pushState === "subscribed") {
+      const ok = await unsubscribe();
+      if (ok) toast({ title: "알림 구독 해제", description: "푸시 알림이 해제되었습니다." });
+    } else if (pushState === "default") {
+      const ok = await subscribe();
+      if (ok) toast({ title: "알림 구독 완료", description: "유가 데이터 업데이트 시 알림을 받습니다." });
+      else toast({ title: "알림 권한 거부됨", description: "브라우저 설정에서 알림을 허용해주세요.", variant: "destructive" });
+    } else if (pushState === "denied") {
+      toast({ title: "알림이 차단됨", description: "브라우저 주소창 자물쇠 아이콘에서 알림 권한을 허용해주세요.", variant: "destructive" });
+    }
+  };
+
+  const handleTestPush = async () => {
+    try {
+      await apiRequest("POST", "/api/push/send-test", {});
+      toast({ title: "테스트 푸시 발송", description: "잠시 후 알림이 도착합니다." });
+    } catch (e: any) {
+      const msg = e?.message || "오류 발생";
+      toast({ title: "테스트 실패", description: msg, variant: "destructive" });
     }
   };
 
@@ -145,8 +172,62 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* 로그아웃 */}
-        <div className="p-2 border-t border-sidebar-border">
+        {/* 알림 + 로그아웃 */}
+        <div className="p-2 border-t border-sidebar-border space-y-1">
+          {pushState !== "unsupported" && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full text-muted-foreground",
+                  pushState === "subscribed" && "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10",
+                  pushState !== "subscribed" && "hover:text-foreground hover:bg-sidebar-accent",
+                  !sidebarOpen && "justify-center px-0"
+                )}
+                onClick={handleBell}
+                disabled={pushState === "loading"}
+                data-testid="button-push-bell"
+                title={
+                  pushState === "subscribed" ? "알림 구독 중 (클릭하여 해제)" :
+                  pushState === "denied" ? "알림이 차단됨" :
+                  "알림 구독"
+                }
+              >
+                {pushState === "subscribed" ? (
+                  <Bell className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <BellOff className="w-4 h-4 flex-shrink-0" />
+                )}
+                {sidebarOpen && (
+                  <span className="ml-2 text-sm">
+                    {pushState === "subscribed" ? "알림 구독 중" :
+                     pushState === "denied" ? "알림 차단됨" :
+                     pushState === "loading" ? "처리 중..." :
+                     "알림 구독"}
+                  </span>
+                )}
+                {pushState === "subscribed" && sidebarOpen && (
+                  <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                )}
+              </Button>
+              {pushState === "subscribed" && !sidebarOpen && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500" />
+              )}
+            </div>
+          )}
+          {isMaster && pushState === "subscribed" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("w-full text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent", !sidebarOpen && "justify-center px-0")}
+              onClick={handleTestPush}
+              data-testid="button-test-push"
+              title="테스트 푸시"
+            >
+              <Bell className="w-3.5 h-3.5 flex-shrink-0" />
+              {sidebarOpen && <span className="ml-2">테스트 알림 발송</span>}
+            </Button>
+          )}
           <Button
             variant="ghost"
             className={cn("w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10", !sidebarOpen && "justify-center px-0")}

@@ -6,6 +6,7 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import { storage } from "./storage";
 import MemoryStore from "memorystore";
+import { initPush, getVapidPublicKey, sendPushToAll } from "./services/pushService";
 
 const MemStore = MemoryStore(session);
 
@@ -44,6 +45,9 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 
 // ─── 라우트 등록 ──────────────────────────────────────────────────────────────
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+
+  // 푸시 알림 초기화
+  initPush();
 
   // 세션 미들웨어 설정
   app.use(session({
@@ -780,6 +784,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!result.success) {
         return res.status(502).json({ message: result.error || "수집 실패" });
       }
+      // 수집 성공 시 구독자 전원 푸시
+      try {
+        const subs = await storage.getAllPushSubscriptions();
+        if (subs.length > 0) {
+          const payload = {
+            title: "유가 모니터링",
+            body: "오늘의 유가 데이터가 업데이트되었습니다.",
+            icon: "/icon-192.png",
+            url: "/oil-prices",
+          };
+          const { sent, failed } = await sendPushToAll(subs, payload);
+          console.log(`푸시 발송 완료: 성공 ${sent}건, 실패 ${failed}건`);
+          // 만료된 구독 정리 (410/404 응답 받은 것들은 sendPush에서 false 반환)
+        }
+      } catch (pushErr) {
+        console.error("푸시 발송 오류 (수집은 성공):", pushErr);
+      }
       res.json(result);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "서버 오류";
@@ -978,6 +999,61 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const data = await storage.getOilDomesticHistory();
       res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // ─── 푸시 알림 API ──────────────────────────────────────────────────────────
+
+  // GET /api/push/vapid-public-key — VAPID 공개키 반환
+  app.get("/api/push/vapid-public-key", requireAuth, (_req, res) => {
+    res.json({ publicKey: getVapidPublicKey() });
+  });
+
+  // POST /api/push/subscribe — 구독 저장
+  app.post("/api/push/subscribe", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { endpoint, p256dh, auth } = req.body as { endpoint: string; p256dh: string; auth: string };
+      if (!endpoint || !p256dh || !auth) {
+        return res.status(400).json({ message: "endpoint, p256dh, auth 필드가 필요합니다." });
+      }
+      await storage.savePushSubscription(userId, { endpoint, p256dh, auth });
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // DELETE /api/push/subscribe — 구독 삭제
+  app.delete("/api/push/subscribe", requireAuth, async (req, res) => {
+    try {
+      const { endpoint } = req.body as { endpoint: string };
+      if (!endpoint) return res.status(400).json({ message: "endpoint 필드가 필요합니다." });
+      await storage.deletePushSubscription(endpoint);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // POST /api/push/send-test — MASTER 전용 테스트 푸시
+  app.post("/api/push/send-test", requireMaster, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const subs = await storage.getPushSubscriptionsByUserId(userId);
+      if (subs.length === 0) {
+        return res.status(404).json({ message: "구독 정보가 없습니다. 먼저 알림을 구독해주세요." });
+      }
+      const payload = {
+        title: "유가 모니터링 테스트",
+        body: "푸시 알림이 정상적으로 동작하고 있습니다.",
+        icon: "/icon-192.png",
+        url: "/oil-prices",
+      };
+      const { sent, failed } = await sendPushToAll(subs, payload);
+      res.json({ ok: true, sent, failed });
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
     }

@@ -151,3 +151,17 @@ export const oilPriceAnalysis = pgTable("oil_price_analysis", {
 export const insertOilPriceAnalysisSchema = createInsertSchema(oilPriceAnalysis).omit({ id: true, createdAt: true });
 export type InsertOilPriceAnalysis = z.infer<typeof insertOilPriceAnalysisSchema>;
 export type OilPriceAnalysis = typeof oilPriceAnalysis.$inferSelect;
+
+// ─── 푸시 구독 (Push Subscriptions) ─────────────────────────────────────────
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

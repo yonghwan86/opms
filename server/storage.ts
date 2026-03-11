@@ -4,6 +4,7 @@ import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs,
   oilPriceRaw, oilPriceAnalysis,
+  pushSubscriptions,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -11,6 +12,7 @@ import {
   type LoginLog, type AuditLog,
   type InsertOilPriceRaw, type OilPriceRaw,
   type InsertOilPriceAnalysis, type OilPriceAnalysis,
+  type PushSubscription, type InsertPushSubscription,
 } from "@shared/schema";
 
 // ─── 시/도 전체명 → 오피넷 축약명 매핑 ────────────────────────────────────────
@@ -148,6 +150,12 @@ export interface IStorage {
   }>;
   getOilRegionalAverages(date: string): Promise<{ sido: string; avgPrice: number }[]>;
   getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
+
+  // 푸시 구독
+  savePushSubscription(userId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<void>;
+  deletePushSubscription(endpoint: string): Promise<void>;
+  getAllPushSubscriptions(): Promise<PushSubscription[]>;
+  getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -742,6 +750,24 @@ export class PostgresStorage implements IStorage {
       gasoline: Number(r.gasoline),
       diesel: Number(r.diesel),
     }));
+  }
+
+  // ── 푸시 구독 ─────────────────────────────────────────────────────────────
+  async savePushSubscription(userId: number, sub: { endpoint: string; p256dh: string; auth: string }) {
+    await db.insert(pushSubscriptions).values({ userId, ...sub })
+      .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { userId, p256dh: sub.p256dh, auth: sub.auth } });
+  }
+
+  async deletePushSubscription(endpoint: string) {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  async getAllPushSubscriptions(): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions);
+  }
+
+  async getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────
