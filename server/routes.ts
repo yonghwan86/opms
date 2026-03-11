@@ -1004,6 +1004,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 유가 CSV 업로드 API ─────────────────────────────────────────────────────
+
+  // POST /api/oil-prices/upload-csv — MASTER 전용 과거 CSV 직접 업로드
+  app.post("/api/oil-prices/upload-csv", requireMaster, upload.array("files", 50), async (req, res) => {
+    try {
+      const { parseOilPriceCSV, toInsertOilPriceRaw } = await import("./services/oilParser");
+      const { runAnalysis } = await import("./services/oilAnalyzer");
+
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "업로드할 CSV 파일을 선택해주세요." });
+      }
+
+      let totalRaw = 0;
+      let totalAnalysis = 0;
+      const processedDates = new Set<string>();
+
+      // 모든 파일의 rows를 합산
+      const allRows: Awaited<ReturnType<typeof parseOilPriceCSV>> = [];
+      for (const file of files) {
+        const rows = parseOilPriceCSV(file.buffer);
+        allRows.push(...rows);
+      }
+
+      if (allRows.length === 0) {
+        return res.status(400).json({ message: "파싱된 데이터가 없습니다. CSV 파일 형식을 확인해주세요." });
+      }
+
+      // 원본 저장 (upsert)
+      const insertRows = toInsertOilPriceRaw(allRows);
+      await storage.saveOilPriceRaw(insertRows);
+      totalRaw = insertRows.length;
+
+      // 날짜별 분석 실행
+      const uniqueDates = [...new Set(allRows.map((r) => r.date))].sort();
+      for (let i = 0; i < uniqueDates.length; i++) {
+        const today = uniqueDates[i];
+        // 전일 데이터: 같은 파일셋에 있으면 활용, 없으면 DB에서 가져온 날짜 기준으로 하루 전 날짜 문자열 사용
+        const yesterday = i > 0
+          ? uniqueDates[i - 1]
+          : String(Number(today) - 1).padStart(8, "0"); // 대략적 전일
+
+        const analysisResults = runAnalysis(allRows, today, yesterday);
+        if (analysisResults.length > 0) {
+          await storage.saveOilPriceAnalysis(analysisResults);
+          totalAnalysis += analysisResults.length;
+          processedDates.add(today);
+        }
+      }
+
+      res.json({
+        success: true,
+        files: files.length,
+        totalRows: totalRaw,
+        analysisCount: totalAnalysis,
+        dates: [...processedDates].sort(),
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "서버 오류";
+      console.error("CSV 업로드 오류:", e);
+      res.status(500).json({ message: msg });
+    }
+  });
+
   // ─── 푸시 알림 API ──────────────────────────────────────────────────────────
 
   // GET /api/push/vapid-public-key — VAPID 공개키 반환

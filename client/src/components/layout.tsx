@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
-  Bell, BellOff
+  Bell, BellOff, Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "대시보드", href: "/", icon: LayoutDashboard, masterOnly: true },
   { label: "유가 분석", href: "/oil-prices", icon: Fuel },
+  { label: "유가 CSV 업로드", href: "/oil-prices/upload", icon: Upload, masterOnly: true },
   { label: "본부 권한", href: "/region-permissions", icon: MapPin },
   { label: "사용자 관리", href: "/users", icon: User2, masterOnly: true },
   { label: "엑셀 업로드", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
