@@ -391,6 +391,84 @@ export default function OilPricesPage() {
   );
 }
 
+// ─── 브랜드 아이콘 ───────────────────────────────────────────────────────────
+function BrandIcon({ brand }: { brand: string | null }) {
+  if (!brand) return <span className="text-muted-foreground text-xs">—</span>;
+
+  const icons: Record<string, React.ReactNode> = {
+    'SK에너지': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="SK에너지">
+        <circle cx="11" cy="11" r="11" fill="#E31837"/>
+        <circle cx="11" cy="6.5" r="3.2" fill="white" opacity="0.88"/>
+        <circle cx="11" cy="15.5" r="3.2" fill="white" opacity="0.88"/>
+        <circle cx="6.5" cy="11" r="3.2" fill="white" opacity="0.88"/>
+        <circle cx="15.5" cy="11" r="3.2" fill="white" opacity="0.88"/>
+        <circle cx="11" cy="11" r="2.2" fill="#E31837"/>
+      </svg>
+    ),
+    'GS칼텍스': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="GS칼텍스">
+        <circle cx="11" cy="11" r="11" fill="#00733E"/>
+        <path d="M15.5 8.5 A6 6 0 1 0 15.5 13.5" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <line x1="12" y1="11" x2="15.5" y2="11" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    'HD현대오일뱅크': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="HD현대오일뱅크">
+        <circle cx="11" cy="11" r="11" fill="#003087"/>
+        <rect x="5.5" y="6.5" width="3" height="9" rx="1" fill="white"/>
+        <rect x="13.5" y="6.5" width="3" height="9" rx="1" fill="white"/>
+        <rect x="6.5" y="10" width="9" height="2" rx="1" fill="white"/>
+      </svg>
+    ),
+    'S-OIL': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="S-OIL">
+        <circle cx="11" cy="11" r="11" fill="#FF5F00"/>
+        <path d="M11 4.5 C11 4.5 16.5 9.5 16.5 13 C16.5 16 14 18.5 11 18.5 C8 18.5 5.5 16 5.5 13 C5.5 9.5 11 4.5 11 4.5Z" fill="white" opacity="0.9"/>
+        <path d="M11 10 C11 10 13.5 12.5 13.5 14 C13.5 15.4 12.4 16.5 11 16.5 C9.6 16.5 8.5 15.4 8.5 14 C8.5 12.5 11 10 11 10Z" fill="#FF5F00"/>
+      </svg>
+    ),
+    'NH-OIL': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="NH-OIL">
+        <circle cx="11" cy="11" r="11" fill="#00843D"/>
+        <path d="M11 17 C11 17 5 13 5 8.5 C5 6 7.5 4 10 5 C10.6 5.2 11 5.5 11 5.5 C11 5.5 11.4 5.2 12 5 C14.5 4 17 6 17 8.5 C17 13 11 17 11 17Z" fill="white" opacity="0.9"/>
+        <line x1="11" y1="17" x2="11" y2="8" stroke="#00843D" strokeWidth="1.5"/>
+      </svg>
+    ),
+    '알뜰(ex)': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="알뜰(ex)">
+        <circle cx="11" cy="11" r="11" fill="#4B7BE5"/>
+        <polygon points="11,3.5 18,7.5 18,14.5 11,18.5 4,14.5 4,7.5" fill="none" stroke="white" strokeWidth="1.8"/>
+        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.9"/>
+      </svg>
+    ),
+    '알뜰주유소': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="알뜰주유소">
+        <circle cx="11" cy="11" r="11" fill="#4B7BE5"/>
+        <polygon points="11,3.5 18,7.5 18,14.5 11,18.5 4,14.5 4,7.5" fill="none" stroke="white" strokeWidth="1.8"/>
+        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.9"/>
+      </svg>
+    ),
+    '자가상표': (
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="자가상표">
+        <circle cx="11" cy="11" r="11" fill="#94A3B8"/>
+        <path d="M11 4.5 L18 10.5 L18 18.5 L14 18.5 L14 14 L8 14 L8 18.5 L4 18.5 L4 10.5 Z" fill="white" opacity="0.9"/>
+      </svg>
+    ),
+  };
+
+  return (
+    <span className="inline-flex items-center justify-center" title={brand}>
+      {icons[brand] ?? (
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="11" fill="#CBD5E1"/>
+          <circle cx="11" cy="11" r="4" fill="white" opacity="0.8"/>
+        </svg>
+      )}
+    </span>
+  );
+}
+
 // ─── 테이블 컴포넌트 ─────────────────────────────────────────────────────────
 function StationTable({ type, stations, fuelType }: { type: AnalysisType; stations: OilTopStation[]; fuelType?: FuelType }) {
   if (type === "HIGH" || type === "LOW") {
@@ -400,7 +478,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
           <tr className="bg-muted/50 text-muted-foreground text-xs">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
-            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-24">상표</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
             <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
             <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">가격</th>
@@ -413,7 +491,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                 <RankBadge rank={s.rank} type={type} />
               </td>
               <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
-              <td className="hidden md:table-cell py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
+              <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
               <td className="hidden md:table-cell py-3 px-3 text-center">
                 <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
                   {s.isSelf ? "✓" : "—"}
@@ -440,7 +518,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
           <tr className="bg-muted/50 text-muted-foreground text-xs">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
-            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-24">상표</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
             <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
             <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">현재가</th>
@@ -455,7 +533,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                 <RankBadge rank={s.rank} type={type} />
               </td>
               <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
-              <td className="hidden md:table-cell py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
+              <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
               <td className="hidden md:table-cell py-3 px-3 text-center">
                 <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
                   {s.isSelf ? "✓" : "—"}
@@ -491,7 +569,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
         <tr className="bg-muted/50 text-muted-foreground text-xs">
           <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
           <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
-          <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-24">상표</th>
+          <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
           <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
           <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
           <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">{isDieselKerosene ? "경유" : "휘발유"}</th>
@@ -506,7 +584,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
               <RankBadge rank={s.rank} type="WIDE" />
             </td>
             <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
-            <td className="hidden md:table-cell py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
+            <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
             <td className="hidden md:table-cell py-3 px-3 text-center">
               <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
                 {s.isSelf ? "✓" : "—"}
