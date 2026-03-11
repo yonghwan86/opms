@@ -414,12 +414,12 @@ export default function DashboardPage() {
           </Card>
 
           {/* 최근 AI 분석 리포트 */}
-          <Card className="border border-border bg-card flex flex-col">
+          <Card className="border border-border bg-card flex flex-col max-h-[430px]">
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
               <h2 className="text-base font-semibold text-foreground">최근 AI 분석 리포트</h2>
               <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트</p>
             </div>
-            <div className="p-4 space-y-2.5 overflow-y-auto flex-1">
+            <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
               {reportItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <AlertCircle className="w-8 h-8 text-muted-foreground/30 mb-3" />
