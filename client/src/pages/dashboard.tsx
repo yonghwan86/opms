@@ -13,6 +13,8 @@ import {
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const regionShort = (r: string) => r.includes(" ") ? r.split(" ").slice(1).join(" ") : r;
+
 // ─── 날씨 위젯 ───────────────────────────────────────────────────────────────
 const HQ_COORDS: Record<string, { lat: number; lon: number }> = {
   HQ_SUDNAM:   { lat: 37.4563, lon: 126.7052 }, // 인천
@@ -503,7 +505,10 @@ export default function DashboardPage() {
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{s.brand}</Badge>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground">{s.region}</span>
+                      <span className="text-xs text-muted-foreground">
+                        <span className="md:hidden">{regionShort(s.region)}</span>
+                        <span className="hidden md:inline">{s.region}</span>
+                      </span>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-bold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
@@ -536,7 +541,10 @@ export default function DashboardPage() {
                     <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm text-foreground leading-snug">
-                        <span className="font-semibold">{s.region}</span>{" "}
+                        <span className="font-semibold">
+                          <span className="md:hidden">{regionShort(s.region)}</span>
+                          <span className="hidden md:inline">{s.region}</span>
+                        </span>{" "}
                         <span className="text-primary font-medium">{s.stationName}</span>
                       </p>
                       <p className="text-sm text-red-600 font-bold mt-0.5">
