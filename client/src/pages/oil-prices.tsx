@@ -296,8 +296,9 @@ export default function OilPricesPage() {
         </div>
 
         {/* 탭 */}
+        <div className="w-fit max-w-full">
         <Tabs value={activeTab} onValueChange={v => handleTabChange(v as AnalysisType)}>
-          <TabsList className="flex gap-0.5 md:gap-1 h-auto p-1 bg-muted">
+          <TabsList className="flex w-full gap-0.5 md:gap-1 h-auto p-1 bg-muted">
             {TABS.map(tab => (
               <TabsTrigger
                 key={tab.type}
@@ -386,6 +387,7 @@ export default function OilPricesPage() {
             </TabsContent>
           ))}
         </Tabs>
+        </div>
       </div>
     </Layout>
   );
