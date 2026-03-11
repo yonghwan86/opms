@@ -437,10 +437,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ["display_name", "email", "position_name", "headquarters_code", "team_code", "role", "enabled"];
+      const headers = ["display_name(선택)", "email", "position_name", "headquarters_code", "team_code", "role", "enabled"];
       const sampleData = [
         ["홍길동", "hong@example.com", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
-        ["김철수", "kim@example.com", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
+        ["", "kim@example.com", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
         ["이영희", "lee@example.com", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
@@ -465,7 +465,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-      const requiredCols = ["display_name", "email", "headquarters_code", "team_code", "role", "enabled"];
+      const requiredCols = ["email", "headquarters_code", "team_code", "role", "enabled"];
       if (rows.length === 0) return res.status(400).json({ message: "데이터가 없습니다." });
 
       const firstRow = rows[0];
@@ -482,7 +482,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
-        const displayName = String(row.display_name || "").trim();
+        const displayName = String(row["display_name(선택)"] || row.display_name || "").trim();
         const email = String(row.email || "").trim().toLowerCase();
         const positionName = String(row.position_name || "").trim();
         const hqCode = String(row.headquarters_code || "").trim();
@@ -490,16 +490,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const role = String(row.role || "HQ_USER").trim();
         const enabled = String(row.enabled || "TRUE").toUpperCase() !== "FALSE";
 
-        // 빈 행 건너뜀
-        if (!email && !displayName) {
-          results.push({ row: rowNum, status: "fail", reason: "빈 행" });
+        // 빈 행 건너뜀 (이메일 기준)
+        if (!email) {
+          results.push({ row: rowNum, status: "fail", reason: "빈 행 또는 email 누락" });
           failCount++;
           continue;
         }
 
         // 유효성 검사
-        if (!displayName) { results.push({ row: rowNum, status: "fail", reason: "display_name 누락" }); failCount++; continue; }
-        if (!email) { results.push({ row: rowNum, status: "fail", reason: "email 누락" }); failCount++; continue; }
         if (!["MASTER", "HQ_USER"].includes(role)) { results.push({ row: rowNum, status: "fail", reason: `role 값 오류: ${role}` }); failCount++; continue; }
 
         // 파일 내 이메일 중복
