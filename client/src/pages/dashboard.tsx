@@ -313,31 +313,45 @@ export default function DashboardPage() {
           {/* 지역별 평균 유가 순위 */}
           <Card className="border border-border bg-card">
             <div className="px-5 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">휘발유 기준 시/도별 평균</p>
+              <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">휘발유 기준 시/도별 평균</p>
             </div>
-            <div className="p-3">
+            <div className="px-3 pt-3 pb-2">
               {regionalLoading ? (
-                <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
+                <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
               ) : regional.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
               ) : (
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={regional} layout="vertical" margin={{ top: 0, right: 55, left: 10, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={regional} layout="vertical" margin={{ top: 8, right: 64, left: 4, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                     <XAxis
                       type="number"
-                      domain={[Math.min(...regional.map(r => r.avgPrice)) - 50, Math.max(...regional.map(r => r.avgPrice)) + 50]}
-                      tick={{ fontSize: 9, fill: "#9ca3af" }}
+                      domain={[Math.min(...regional.map(r => r.avgPrice)) - 30, Math.max(...regional.map(r => r.avgPrice)) + 30]}
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
                       tickFormatter={v => fmt(v)}
                       tickLine={false}
+                      axisLine={false}
                     />
-                    <YAxis type="category" dataKey="sido" tick={{ fontSize: 11, fill: "#374151" }} width={28} />
+                    <YAxis
+                      type="category"
+                      dataKey="sido"
+                      tick={{ fontSize: 13, fill: "#374151", fontWeight: 500 }}
+                      width={40}
+                      tickLine={false}
+                      axisLine={false}
+                    />
                     <Tooltip
                       formatter={(v: any) => [`${fmt(Number(v))}원`, "평균 휘발유"]}
-                      contentStyle={{ fontSize: 11 }}
+                      contentStyle={{ fontSize: 13 }}
                     />
-                    <Bar dataKey="avgPrice" fill="#3b82f6" radius={[0, 3, 3, 0]} label={{ position: "right", fontSize: 10, fill: "#6b7280", formatter: (v: number) => `${fmt(v)}` }} />
+                    <Bar
+                      dataKey="avgPrice"
+                      fill="#3b82f6"
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
+                      label={{ position: "right", fontSize: 12, fill: "#374151", fontWeight: 600, formatter: (v: number) => `${fmt(v)}` }}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
