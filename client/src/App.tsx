@@ -52,18 +52,14 @@ function ProtectedRoute({ component: Component, masterOnly = false }: { componen
   return <Component />;
 }
 
-// 홈: MASTER → 대시보드, HQ_USER → 내 정보
+// 홈: 모든 사용자 → 대시보드
 function HomeRoute() {
-  const { user, isLoading, isMaster } = useAuth();
+  const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
 
   if (isLoading) return <LoadingScreen />;
   if (!user) {
     setTimeout(() => navigate("/login"), 0);
-    return <LoadingScreen />;
-  }
-  if (!isMaster) {
-    setTimeout(() => navigate("/my-info"), 0);
     return <LoadingScreen />;
   }
   return <DashboardPage />;
@@ -87,7 +83,7 @@ function Router() {
       <Route path="/region-permissions" component={() => <ProtectedRoute component={RegionPermissionsPage} />} />
       <Route path="/logs/login" component={() => <ProtectedRoute component={LoginLogsPage} masterOnly />} />
       <Route path="/logs/audit" component={() => <ProtectedRoute component={AuditLogsPage} masterOnly />} />
-      <Route path="/my-info" component={() => <ProtectedRoute component={MyInfoPage} />} />
+      <Route path="/my-info" component={() => <ProtectedRoute component={MyInfoPage} masterOnly />} />
       <Route path="/oil-prices" component={() => <ProtectedRoute component={OilPricesPage} />} />
       <Route path="/oil-prices/upload" component={() => <ProtectedRoute component={OilUploadPage} masterOnly />} />
       <Route component={NotFound} />
