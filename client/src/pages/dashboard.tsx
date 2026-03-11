@@ -38,17 +38,19 @@ const fmt = (n: number) => n.toLocaleString("ko-KR");
 const fmtPrice = (n: number) => `${fmt(n)}원`;
 const fmtUsd = (n: number) => `$${n.toFixed(2)}`;
 
-function ChangeChip({ val, unit = "원", percent }: { val: number; unit?: string; percent?: number }) {
-  if (val === 0) return (
+function ChangeChip({ val, unit = "원", percent, decimals = 0 }: { val: number; unit?: string; percent?: number; decimals?: number }) {
+  const isZero = decimals > 0 ? Math.abs(val) < Math.pow(10, -(decimals + 1)) : Math.round(val) === 0;
+  if (isZero) return (
     <span className="text-muted-foreground text-sm flex items-center gap-1">
       <Minus className="w-4 h-4" /> 변동없음
     </span>
   );
   const up = val > 0;
+  const displayVal = decimals > 0 ? Math.abs(val).toFixed(decimals) : fmt(Math.abs(Math.round(val)));
   return (
     <span className={cn("text-sm font-semibold flex items-center gap-1", up ? "text-red-500" : "text-blue-500")}>
       {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-      {up ? "+" : ""}{fmt(Math.round(val))}{unit}
+      {up ? "+" : "-"}{displayVal}{unit}
       {percent !== undefined && (
         <span className="font-normal text-xs opacity-80">({percent > 0 ? "+" : ""}{percent.toFixed(2)}%)</span>
       )}
@@ -185,7 +187,7 @@ export default function DashboardPage() {
               <>
                 <p className="text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
                 <div className="mt-1.5">
-                  <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} />
+                  <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} decimals={2} />
                 </div>
               </>
             ) : (
