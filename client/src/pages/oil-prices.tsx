@@ -423,7 +423,7 @@ function BrandIcon({ brand }: { brand: string | null }) {
 function StationTable({ type, stations, fuelType }: { type: AnalysisType; stations: OilTopStation[]; fuelType?: FuelType }) {
   if (type === "HIGH" || type === "LOW") {
     return (
-      <table className="w-auto text-sm">
+      <table className="w-full md:w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
@@ -466,7 +466,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
 
   if (type === "RISE" || type === "FALL") {
     return (
-      <table className="w-auto text-sm">
+      <table className="w-full md:w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
@@ -520,7 +520,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
   // WIDE
   const isDieselKerosene = fuelType === "diesel";
   return (
-    <table className="w-auto text-sm">
+    <table className="w-full md:w-auto text-sm">
       <thead>
         <tr className="bg-muted/50 text-muted-foreground text-xs">
           <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
