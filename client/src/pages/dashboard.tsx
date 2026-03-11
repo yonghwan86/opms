@@ -380,17 +380,17 @@ export default function DashboardPage() {
           </Card>
 
           {/* 가격 급변 주유소 TOP 5 */}
-          <Card className="border border-border bg-card flex flex-col">
-            <div className="px-5 py-4 border-b border-border flex-shrink-0">
+          <Card className="border border-border bg-card">
+            <div className="px-5 py-4 border-b border-border">
               <h2 className="text-base font-semibold text-foreground">가격 급변 주유소 TOP 5</h2>
               <p className="text-sm text-muted-foreground mt-0.5">전일 대비 휘발유 가격 상승</p>
             </div>
-            <div className="flex-1 flex flex-col justify-around divide-y divide-border">
+            <div className="divide-y divide-border">
               {riseStations.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
               ) : (
                 riseStations.slice(0, 5).map((s, idx) => (
-                  <div key={s.stationId} className="px-5 py-0 flex items-center gap-3 flex-1" data-testid={`alert-station-${s.stationId}`}>
+                  <div key={s.stationId} className="px-5 py-2 flex items-center gap-3" data-testid={`alert-station-${s.stationId}`}>
                     <span className="text-base font-bold text-muted-foreground/50 w-5 flex-shrink-0">{idx + 1}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
