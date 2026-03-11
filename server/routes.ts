@@ -437,11 +437,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ["display_name", "email", "position_name", "department_name", "headquarters_code", "team_code", "role", "enabled"];
+      const headers = ["display_name", "email", "position_name", "headquarters_code", "team_code", "role", "enabled"];
       const sampleData = [
-        ["홍길동", "hong@example.com", "사원", "영업부", "HQ_SEOUL", "SEOUL_T1", "HQ_USER", "TRUE"],
-        ["김철수", "kim@example.com", "주임", "마케팅부", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
-        ["이영희", "lee@example.com", "대리", "IT운영부", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
+        ["홍길동", "hong@example.com", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
+        ["김철수", "kim@example.com", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
+        ["이영희", "lee@example.com", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
       XLSX.utils.book_append_sheet(wb, ws, "사용자_업로드");
@@ -485,7 +485,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const displayName = String(row.display_name || "").trim();
         const email = String(row.email || "").trim().toLowerCase();
         const positionName = String(row.position_name || "").trim();
-        const departmentName = String(row.department_name || "").trim();
         const hqCode = String(row.headquarters_code || "").trim();
         const teamCode = String(row.team_code || "").trim();
         const role = String(row.role || "HQ_USER").trim();
@@ -534,7 +533,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           displayName: displayName || username,
           email,
           positionName,
-          departmentName,
           role,
           headquartersId: hq.id,
           teamId: team.id,
