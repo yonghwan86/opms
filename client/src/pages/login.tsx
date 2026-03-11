@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import loginBg from "@assets/image_05dcda5a-97b8-4714-97e1-6b89f9b2ac5c_1773201427903.png";
 
 type Step = "email" | "password" | "setup-password";
 
@@ -83,21 +84,18 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left panel - branding */}
-      <div className="hidden lg:flex flex-col w-1/2 bg-primary p-12 text-primary-foreground">
-        <div className="flex items-center gap-3 mb-auto">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <Shield className="w-5 h-5" />
+      <div className="hidden lg:flex flex-col w-1/2 relative overflow-hidden text-white">
+        <img
+          src={loginBg}
+          alt="유가모니터링 시스템"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/20" />
+        <div className="relative z-10 flex items-center gap-3 p-8">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/20">
+            <Shield className="w-4 h-4" />
           </div>
-          <span className="text-xl font-bold">유가모니터링 시스템</span>
-        </div>
-        <div className="mb-auto">
-          <h1 className="text-4xl font-bold mb-4 leading-tight">
-            실시간 유가 정보<br />모니터링 플랫폼
-          </h1>
-          <p className="text-primary-foreground/70 text-lg leading-relaxed">
-            오피넷 기반 전국 주유소 가격 정보를<br />
-            지역별 · 유종별로 실시간 분석합니다.
-          </p>
+          <span className="text-lg font-bold drop-shadow-md">유가모니터링 시스템</span>
         </div>
       </div>
 
