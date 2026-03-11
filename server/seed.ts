@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { headquarters, teams, users, hqTeamRegionPermissions } from "@shared/schema";
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 
 // ─── 조직 구조 정의 ─────────────────────────────────────────────────────────
 const SIDO_ABBREV: Record<string, string> = {
@@ -169,21 +169,30 @@ export async function seedDatabase() {
 }
 
 async function ensureMasterUser() {
-  const [{ total }] = await db.select({ total: count() }).from(users);
-  if (Number(total) > 0) return;
-
   const masterHash = await bcrypt.hash("master1234!", 10);
-  await db.insert(users).values({
-    username: "ax",
-    passwordHash: masterHash,
-    displayName: "관리자",
-    email: "ax@kpetro.or.kr",
-    positionName: "시스템관리자",
-    role: "MASTER",
-    headquartersId: null,
-    teamId: null,
-    enabled: true,
-    mustChangePassword: false,
-  });
-  console.log("마스터 계정 생성 완료 (ax@kpetro.or.kr)");
+
+  const [existing] = await db.select().from(users).where(eq(users.email, "ax@kpetro.or.kr"));
+  if (existing) {
+    await db.update(users).set({
+      passwordHash: masterHash,
+      mustChangePassword: false,
+      enabled: true,
+      role: "MASTER",
+    }).where(eq(users.email, "ax@kpetro.or.kr"));
+    console.log("마스터 계정 비밀번호 동기화 완료 (ax@kpetro.or.kr)");
+  } else {
+    await db.insert(users).values({
+      username: "ax",
+      passwordHash: masterHash,
+      displayName: "관리자",
+      email: "ax@kpetro.or.kr",
+      positionName: "시스템관리자",
+      role: "MASTER",
+      headquartersId: null,
+      teamId: null,
+      enabled: true,
+      mustChangePassword: false,
+    });
+    console.log("마스터 계정 생성 완료 (ax@kpetro.or.kr)");
+  }
 }
