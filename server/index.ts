@@ -7,6 +7,7 @@ import { seedDatabase } from "./seed";
 import { startOilScheduler } from "./services/oilScheduler";
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 declare module "http" {
