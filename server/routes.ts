@@ -41,7 +41,22 @@ function requireMaster(req: Request, res: Response, next: NextFunction) {
 }
 
 // ─── 멀티파트 업로드 설정 (메모리에 저장) ─────────────────────────────────────
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+// multer 오류를 JSON으로 변환하는 래퍼
+function handleUpload(middleware: ReturnType<typeof multer>["array"] | ReturnType<typeof multer>["single"]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    (middleware as any)(req, res, (err: any) => {
+      if (err) {
+        const msg = err.code === "LIMIT_FILE_SIZE"
+          ? "파일 크기가 너무 큽니다. 파일당 최대 50MB까지 업로드 가능합니다."
+          : err.message || "파일 업로드 중 오류가 발생했습니다.";
+        return res.status(400).json({ message: msg });
+      }
+      next();
+    });
+  };
+}
 
 // ─── 라우트 등록 ──────────────────────────────────────────────────────────────
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -459,7 +474,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // POST /api/users/upload-excel (엑셀 업로드)
-  app.post("/api/users/upload-excel", requireMaster, upload.single("file"), async (req, res) => {
+  app.post("/api/users/upload-excel", requireMaster, handleUpload(upload.single("file")), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "파일을 선택해주세요." });
       if (!req.file.originalname.endsWith(".xlsx")) {
@@ -580,7 +595,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // POST /api/hq-team-region-permissions/upload-excel (본부 권한 엑셀 일괄 등록)
-  app.post("/api/hq-team-region-permissions/upload-excel", requireMaster, upload.single("file"), async (req, res) => {
+  app.post("/api/hq-team-region-permissions/upload-excel", requireMaster, handleUpload(upload.single("file")), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "파일을 선택해주세요." });
       if (!req.file.originalname.endsWith(".xlsx")) {
@@ -1007,7 +1022,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── 유가 CSV 업로드 API ─────────────────────────────────────────────────────
 
   // POST /api/oil-prices/upload-csv — MASTER 전용 과거 CSV 직접 업로드
-  app.post("/api/oil-prices/upload-csv", requireMaster, upload.array("files", 50), async (req, res) => {
+  app.post("/api/oil-prices/upload-csv", requireMaster, handleUpload(upload.array("files", 50)), async (req, res) => {
     try {
       const { parseOilPriceCSV, toInsertOilPriceRaw } = await import("./services/oilParser");
       const { runAnalysis } = await import("./services/oilAnalyzer");
