@@ -426,7 +426,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
       <table className="w-full md:w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
-            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 whitespace-nowrap">순위</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
             <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
@@ -469,7 +469,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
       <table className="w-full md:w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
-            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 whitespace-nowrap">순위</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
             <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
@@ -523,7 +523,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
     <table className="w-full md:w-auto text-sm">
       <thead>
         <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
-          <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 whitespace-nowrap">순위</th>
+          <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
           <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
           <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
           <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
