@@ -169,7 +169,7 @@ export async function seedDatabase() {
 }
 
 async function ensureMasterUser() {
-  const masterHash = await bcrypt.hash("master1234!", 10);
+  const masterHash = await bcrypt.hash("kpetro!23", 10);
 
   const [existing] = await db.select().from(users).where(eq(users.email, "ax@kpetro.or.kr"));
   if (existing) {

@@ -16,7 +16,7 @@ Opinet 유가 정보 자동 수집·분석·DB 저장 기능 포함. 향후 웹 
 - **HQ_USER:** 자신의 본부+팀 조합에 할당된 지역만 조회 가능
 
 ## 기본 계정
-- MASTER: `master` / `master1234!`
+- MASTER: `ax@kpetro.or.kr` / `kpetro!23`
 - HQ_USER: `seoul1_user` / `user1234!`
 
 ## DB 테이블
