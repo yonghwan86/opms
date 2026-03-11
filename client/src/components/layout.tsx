@@ -28,7 +28,7 @@ const navItems: NavItem[] = [
   { label: "유가 CSV 업로드", href: "/oil-prices/upload", icon: Upload, masterOnly: true },
   { label: "본부 권한", href: "/region-permissions", icon: MapPin, masterOnly: true },
   { label: "사용자 관리", href: "/users", icon: User2, masterOnly: true },
-  { label: "엑셀 업로드", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
+  { label: "엑셀 업로드(사용자)", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
 ];
