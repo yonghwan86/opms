@@ -169,7 +169,13 @@ export class PostgresStorage implements IStorage {
   }
 
   async getHeadquartersAll(): Promise<Headquarters[]> {
-    return db.select().from(headquarters).orderBy(asc(headquarters.name));
+    const rows = await db.select().from(headquarters);
+    const ORDER = ['HQ_SUDNAM','HQ_SUDBUK','HQ_DAEJEON','HQ_CHUNGBUK','HQ_GWANGJU','HQ_JEONBUK','HQ_BUSAN','HQ_DAEGU','HQ_GANGWON','HQ_JEJU'];
+    return rows.sort((a, b) => {
+      const ai = ORDER.indexOf(a.code);
+      const bi = ORDER.indexOf(b.code);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
   }
 
   async getHeadquartersById(id: number): Promise<Headquarters | undefined> {
