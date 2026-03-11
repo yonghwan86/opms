@@ -169,6 +169,12 @@ function BrandPanel() {
         <div className="relative h-36 opacity-80">
           <KoreaMapDots />
         </div>
+
+        {/* 하단 크레딧 */}
+        <div className="flex items-center justify-between pt-3 border-t border-white/10">
+          <span className="text-[10px] text-white/40 font-medium tracking-wide">K-petro AI전환팀</span>
+          <span className="text-[10px] text-white/30 tracking-wide">dev. kito86</span>
+        </div>
       </div>
     </div>
   );
