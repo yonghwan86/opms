@@ -39,13 +39,19 @@ const fmtPrice = (n: number) => `${fmt(n)}원`;
 const fmtUsd = (n: number) => `$${n.toFixed(2)}`;
 
 function ChangeChip({ val, unit = "원", percent }: { val: number; unit?: string; percent?: number }) {
-  if (val === 0) return <span className="text-muted-foreground text-xs flex items-center gap-0.5"><Minus className="w-3 h-3" /> 변동없음</span>;
+  if (val === 0) return (
+    <span className="text-muted-foreground text-sm flex items-center gap-1">
+      <Minus className="w-4 h-4" /> 변동없음
+    </span>
+  );
   const up = val > 0;
   return (
-    <span className={cn("text-xs font-medium flex items-center gap-0.5", up ? "text-red-500" : "text-blue-500")}>
-      {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+    <span className={cn("text-sm font-semibold flex items-center gap-1", up ? "text-red-500" : "text-blue-500")}>
+      {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
       {up ? "+" : ""}{fmt(Math.round(val))}{unit}
-      {percent !== undefined && ` (${percent > 0 ? "+" : ""}${percent.toFixed(2)}%)`}
+      {percent !== undefined && (
+        <span className="font-normal text-xs opacity-80">({percent > 0 ? "+" : ""}{percent.toFixed(2)}%)</span>
+      )}
     </span>
   );
 }
@@ -58,16 +64,16 @@ function MetricCard({
 }) {
   return (
     <Card className="p-5 border border-border bg-card">
-      <div className="flex items-center gap-2 mb-3">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", iconBg)}>
-          <Icon className="w-4 h-4 text-white" />
+      <div className="flex items-center gap-3 mb-4">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
+          <Icon className="w-5 h-5 text-white" />
         </div>
-        <span className="text-sm font-medium text-muted-foreground">{title}</span>
+        <span className="text-sm font-semibold text-muted-foreground">{title}</span>
       </div>
       {loading ? (
         <div className="space-y-2">
-          <Skeleton className="h-7 w-32" />
-          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-5 w-28" />
         </div>
       ) : children}
     </Card>
@@ -78,7 +84,7 @@ function MetricCard({
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-border rounded-lg shadow-lg p-3 text-xs space-y-1">
+    <div className="bg-white border border-border rounded-lg shadow-lg p-3 text-sm space-y-1.5">
       <p className="font-semibold text-foreground mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.color }}>
@@ -88,7 +94,6 @@ function ChartTooltip({ active, payload, label }: any) {
     </div>
   );
 }
-
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
@@ -145,19 +150,20 @@ export default function DashboardPage() {
     ]);
     return Array.from(allDates).sort().map(date => ({
       date,
-      label: date.slice(5), // MM-DD
+      label: date.slice(5),
       wti: wtiMap.get(date) ?? null,
       gasoline: domMap.get(date)?.gasoline ?? null,
       diesel: domMap.get(date)?.diesel ?? null,
     }));
   }, [wtiRes, domesticHistory]);
 
-  // 이상 징후 리포트: 변동폭 100원 이상 주유소
   const reportItems = riseStations.filter(s => (s.changeAmount ?? 0) >= 100);
-
   const wti = wtiRes?.current;
   const avg = fuelStats?.averages;
   const spread = fuelStats?.spread;
+  const latestDateFmt = latestDate
+    ? `${latestDate.slice(0, 4)}.${latestDate.slice(4, 6)}.${latestDate.slice(6, 8)} 기준`
+    : "";
 
   return (
     <Layout>
@@ -171,11 +177,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
           {/* WTI 국제 유가 */}
-          <MetricCard title="국제 유가(WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading}>
+          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading}>
             {wti ? (
               <>
-                <p className="text-2xl font-bold text-foreground">{fmtUsd(wti.price)}</p>
-                <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} />
+                <p className="text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
+                <div className="mt-1.5">
+                  <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} />
+                </div>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">데이터 없음</p>
@@ -183,17 +191,17 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 국내 유류 평균 */}
-          <MetricCard title="국내 유료 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading}>
+          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading}>
             {avg ? (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {[
                   { label: "휘발유", val: avg.gasoline, change: avg.gasolineChange },
                   { label: "경유", val: avg.diesel, change: avg.dieselChange },
                   { label: "등유", val: avg.kerosene, change: avg.keroseneChange },
                 ].map(row => (
-                  <div key={row.label} className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground w-10">{row.label}</span>
-                    <span className="text-sm font-semibold text-foreground">{fmtPrice(row.val)}</span>
+                  <div key={row.label} className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground w-10 flex-shrink-0">{row.label}</span>
+                    <span className="text-base font-bold text-foreground">{fmtPrice(row.val)}</span>
                     <ChangeChip val={row.change} />
                   </div>
                 ))}
@@ -207,8 +215,10 @@ export default function DashboardPage() {
           <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading}>
             {fx ? (
               <>
-                <p className="text-2xl font-bold text-foreground">{fmt(Math.round(fx.rate))}원</p>
-                <ChangeChip val={fx.change} percent={fx.changePercent} />
+                <p className="text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
+                <div className="mt-1.5">
+                  <ChangeChip val={fx.change} percent={fx.changePercent} />
+                </div>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">데이터 없음</p>
@@ -216,21 +226,26 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 전국 편차 */}
-          <MetricCard title="전국/편차 가격 변차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading}>
+          <MetricCard title="전국 휘발유 가격 편차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading}>
             {spread ? (
               <>
-                <p className="text-2xl font-bold text-foreground">전국 편차 {fmt(spread.spread)}원</p>
-                <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                  <p>
-                    <span className="text-red-500 font-medium">최고</span>{" "}
-                    {spread.maxStation.length > 8 ? spread.maxStation.slice(0, 8) + "…" : spread.maxStation}{" "}
-                    <span className="font-semibold text-foreground">{fmtPrice(spread.maxPrice)}</span>
-                  </p>
-                  <p>
-                    <span className="text-blue-500 font-medium">최저</span>{" "}
-                    {spread.minStation.length > 8 ? spread.minStation.slice(0, 8) + "…" : spread.minStation}{" "}
-                    <span className="font-semibold text-foreground">{fmtPrice(spread.minPrice)}</span>
-                  </p>
+                <p className="text-3xl font-bold text-foreground tracking-tight">{fmt(spread.spread)}원</p>
+                <p className="text-xs text-muted-foreground mb-2">최고가 − 최저가 격차</p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-red-500 font-semibold text-xs">최고</span>
+                    <span className="text-foreground truncate flex-1 mx-1 text-xs">
+                      {spread.maxStation.length > 9 ? spread.maxStation.slice(0, 9) + "…" : spread.maxStation}
+                    </span>
+                    <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(spread.maxPrice)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-blue-500 font-semibold text-xs">최저</span>
+                    <span className="text-foreground truncate flex-1 mx-1 text-xs">
+                      {spread.minStation.length > 9 ? spread.minStation.slice(0, 9) + "…" : spread.minStation}
+                    </span>
+                    <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(spread.minPrice)}</span>
+                  </div>
                 </div>
               </>
             ) : (
@@ -312,7 +327,7 @@ export default function DashboardPage() {
 
           {/* 지역별 평균 유가 순위 */}
           <Card className="border border-border bg-card">
-            <div className="px-5 py-3 border-b border-border">
+            <div className="px-5 py-4 border-b border-border">
               <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
               <p className="text-sm text-muted-foreground mt-0.5">휘발유 기준 시/도별 평균</p>
             </div>
@@ -360,27 +375,30 @@ export default function DashboardPage() {
 
           {/* 가격 급변 주유소 TOP 5 */}
           <Card className="border border-border bg-card">
-            <div className="px-5 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-foreground">가격 급변 주유소 TOP 5</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">전일 대비 휘발유 가격 상승</p>
+            <div className="px-5 py-4 border-b border-border">
+              <h2 className="text-base font-semibold text-foreground">가격 급변 주유소 TOP 5</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">전일 대비 휘발유 가격 상승</p>
             </div>
             <div className="divide-y divide-border">
               {riseStations.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
               ) : (
-                riseStations.slice(0, 5).map((s) => (
-                  <div key={s.stationId} className="px-4 py-2.5 flex items-center gap-2" data-testid={`alert-station-${s.stationId}`}>
+                riseStations.slice(0, 5).map((s, idx) => (
+                  <div key={s.stationId} className="px-5 py-3.5 flex items-center gap-3" data-testid={`alert-station-${s.stationId}`}>
+                    <span className="text-base font-bold text-muted-foreground/50 w-5 flex-shrink-0">{idx + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-foreground truncate">{s.stationName}</span>
-                        {s.brand && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 flex-shrink-0">{s.brand}</Badge>}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground truncate">{s.stationName}</span>
+                        {s.brand && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{s.brand}</Badge>
+                        )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{s.region}</span>
+                      <span className="text-xs text-muted-foreground">{s.region}</span>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-xs font-semibold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
+                      <p className="text-sm font-bold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
                       {s.changeAmount != null && (
-                        <p className="text-[10px] text-red-500 font-medium">▲ {fmt(s.changeAmount)}원</p>
+                        <p className="text-xs text-red-500 font-semibold">▲ {fmt(s.changeAmount)}원</p>
                       )}
                     </div>
                   </div>
@@ -391,30 +409,30 @@ export default function DashboardPage() {
 
           {/* 최근 분석 리포트 */}
           <Card className="border border-border bg-card">
-            <div className="px-5 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-foreground">최근 분석 리포트</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트</p>
+            <div className="px-5 py-4 border-b border-border">
+              <h2 className="text-base font-semibold text-foreground">최근 분석 리포트</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트</p>
             </div>
             <div className="p-4 space-y-3">
               {reportItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <AlertCircle className="w-6 h-6 text-muted-foreground/40 mb-2" />
-                  <p className="text-sm text-muted-foreground">감지된 이상 징후 없음</p>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">전일 대비 100원 이상 변동 주유소 없음</p>
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <AlertCircle className="w-8 h-8 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">감지된 이상 징후 없음</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 주유소 없음</p>
                 </div>
               ) : (
                 reportItems.slice(0, 6).map((s) => (
-                  <div key={s.stationId} className="flex gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs text-foreground leading-snug">
-                        <span className="font-medium">{s.region}</span>{" "}
-                        <span className="text-primary">{s.stationName}</span>{" "}
-                        <span className="text-red-500 font-semibold">비정상 가격 폭등 (+{s.changeAmount}원)</span>
+                  <div key={s.stationId} className="flex gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
+                    <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground leading-snug">
+                        <span className="font-semibold">{s.region}</span>{" "}
+                        <span className="text-primary font-medium">{s.stationName}</span>
                       </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {latestDate ? `${latestDate.slice(0, 4)}.${latestDate.slice(4, 6)}.${latestDate.slice(6, 8)} 기준` : ""}
+                      <p className="text-sm text-red-600 font-bold mt-0.5">
+                        비정상 가격 폭등 +{fmt(s.changeAmount ?? 0)}원
                       </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{latestDateFmt}</p>
                     </div>
                   </div>
                 ))
