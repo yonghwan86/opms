@@ -26,8 +26,8 @@ function CircleGauge({ value, label, color, percent }: { value: string; label: s
             style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center rotate-0">
-          <p className="text-[10px] text-white/60 leading-none mb-0.5">{label}</p>
-          <p className="text-[11px] font-bold text-white leading-none">{value}</p>
+          <p className="text-[11px] text-white/70 leading-none mb-1">{label}</p>
+          <p className="text-xs font-bold text-white leading-none">{value}</p>
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@ function BrandPanel() {
         <div className="mb-4 ml-auto w-52 rounded-xl p-3 border border-white/10"
           style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] text-white/50">휘발유 가격 추이</p>
+            <p className="text-xs text-white/75 font-medium">휘발유 가격 추이</p>
             <span className="text-[10px] text-cyan-400 font-medium">▲ 32원</span>
           </div>
           <div className="h-14">
@@ -132,48 +132,47 @@ function BrandPanel() {
         <div className="flex gap-3 mb-4">
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
-            <CircleGauge value="1,640원/L" label="휘발유" color="#00d4ff" percent={0.72} />
+            <CircleGauge value="1,640원" label="휘발유 /L" color="#00d4ff" percent={0.72} />
           </div>
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
-            <CircleGauge value="1,490원/L" label="경유" color="#4ade80" percent={0.58} />
+            <CircleGauge value="1,490원" label="경유 /L" color="#4ade80" percent={0.58} />
           </div>
         </div>
 
         {/* 배지 */}
         <div className="flex gap-2 mb-6">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-cyan-400/30"
-            style={{ background: "rgba(0,212,255,0.12)" }}>
-            <TrendingUp className="w-3 h-3 text-cyan-400" />
-            <span className="text-[10px] text-cyan-300 font-medium">실시간 변동률</span>
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-cyan-400/50"
+            style={{ background: "rgba(0,212,255,0.15)" }}>
+            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-xs text-cyan-200 font-semibold">실시간 변동률</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-400/30"
-            style={{ background: "rgba(74,222,128,0.10)" }}>
-            <TrendingDown className="w-3 h-3 text-emerald-400" />
-            <span className="text-[10px] text-emerald-300 font-medium">오늘의 최저가</span>
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-emerald-400/50"
+            style={{ background: "rgba(74,222,128,0.15)" }}>
+            <TrendingDown className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs text-emerald-200 font-semibold">오늘의 최저가</span>
           </div>
         </div>
 
         {/* 텍스트 */}
-        <div className="mb-4">
+        <div className="mb-3">
           <h1 className="text-3xl font-bold text-white leading-tight mb-2">
             실시간 유가 정보<br />모니터링 플랫폼
           </h1>
-          <p className="text-sm text-white/50 leading-relaxed">
+          <p className="text-sm text-white/60 leading-relaxed mb-3">
             오피넷 기반 전국 주유소 가격 정보를<br />
             지역별 · 유종별로 실시간 분석합니다.
           </p>
+          {/* 크레딧 */}
+          <div className="flex items-center justify-between pt-2.5 border-t border-white/10">
+            <span className="text-[11px] text-white/55 font-medium tracking-wide">K-petro AI전환팀</span>
+            <span className="text-[11px] text-white/40 tracking-wide">dev. kito86</span>
+          </div>
         </div>
 
         {/* 한국 지도 점 */}
         <div className="relative h-36 opacity-80">
           <KoreaMapDots />
-        </div>
-
-        {/* 하단 크레딧 */}
-        <div className="flex items-center justify-between pt-3 border-t border-white/10">
-          <span className="text-[10px] text-white/40 font-medium tracking-wide">K-petro AI전환팀</span>
-          <span className="text-[10px] text-white/30 tracking-wide">dev. kito86</span>
         </div>
       </div>
     </div>
