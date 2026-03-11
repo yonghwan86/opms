@@ -581,7 +581,7 @@ export class PostgresStorage implements IStorage {
                      diesel, kerosene, (diesel - kerosene) AS diff
               FROM oil_price_raw
               WHERE date = ${date} AND diesel > 0 AND kerosene > 0${sidoCond}${regionCond}
-              ORDER BY (diesel - kerosene) DESC LIMIT 10`
+              ORDER BY ABS(diesel - kerosene) DESC LIMIT 10`
         );
         rawRows = result.rows as any[];
       } else {
@@ -591,7 +591,7 @@ export class PostgresStorage implements IStorage {
                      gasoline, diesel, (gasoline - diesel) AS diff
               FROM oil_price_raw
               WHERE date = ${date} AND gasoline > 0 AND diesel > 0${sidoCond}${regionCond}
-              ORDER BY (gasoline - diesel) DESC LIMIT 10`
+              ORDER BY ABS(gasoline - diesel) DESC LIMIT 10`
         );
         rawRows = result.rows as any[];
       }

@@ -513,7 +513,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
                 : (s.diesel != null ? formatPrice(s.diesel) : "—")}
             </td>
             <td className="py-3 px-3 text-right font-semibold text-orange-500">
-              {s.diff != null ? `+${s.diff.toLocaleString("ko-KR")}원` : "—"}
+              {s.diff != null ? `${s.diff > 0 ? '+' : ''}${s.diff.toLocaleString("ko-KR")}원` : "—"}
             </td>
           </tr>
         ))}
