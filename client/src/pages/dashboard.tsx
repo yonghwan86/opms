@@ -296,6 +296,20 @@ export default function DashboardPage() {
             )}
           </MetricCard>
 
+          {/* KRW-USD 환율 */}
+          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading}>
+            {fx ? (
+              <>
+                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
+                <div className="mt-1.5">
+                  <ChangeChip val={fx.change} percent={fx.changePercent} />
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">데이터 없음</p>
+            )}
+          </MetricCard>
+
           {/* 국내 유류 평균 */}
           <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading}>
             {avg ? (
@@ -312,20 +326,6 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">데이터 없음</p>
-            )}
-          </MetricCard>
-
-          {/* KRW-USD 환율 */}
-          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading}>
-            {fx ? (
-              <>
-                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
-                <div className="mt-1.5">
-                  <ChangeChip val={fx.change} percent={fx.changePercent} />
-                </div>
-              </>
             ) : (
               <p className="text-sm text-muted-foreground">데이터 없음</p>
             )}

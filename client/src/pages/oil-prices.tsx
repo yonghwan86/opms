@@ -440,7 +440,10 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
               <td className="py-3 px-1.5 md:px-3 text-center">
                 <RankBadge rank={s.rank} type={type} />
               </td>
-              <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
+              <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">
+                <span className="md:hidden">{s.stationName.replace(/주유소/g, '')}</span>
+                <span className="hidden md:inline">{s.stationName}</span>
+              </td>
               <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
               <td className="hidden md:table-cell py-3 px-3 text-center">
                 <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
@@ -482,7 +485,10 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
               <td className="py-3 px-1.5 md:px-3 text-center">
                 <RankBadge rank={s.rank} type={type} />
               </td>
-              <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
+              <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">
+                <span className="md:hidden">{s.stationName.replace(/주유소/g, '')}</span>
+                <span className="hidden md:inline">{s.stationName}</span>
+              </td>
               <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
               <td className="hidden md:table-cell py-3 px-3 text-center">
                 <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
@@ -533,7 +539,10 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
             <td className="py-3 px-1.5 md:px-3 text-center">
               <RankBadge rank={s.rank} type="WIDE" />
             </td>
-            <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
+            <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">
+              <span className="md:hidden">{s.stationName.replace(/주유소/g, '')}</span>
+              <span className="hidden md:inline">{s.stationName}</span>
+            </td>
             <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
             <td className="hidden md:table-cell py-3 px-3 text-center">
               <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
