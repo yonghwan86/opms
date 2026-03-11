@@ -194,14 +194,19 @@ export default function OilPricesPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // 관할 지역 조회
-  const { data: permittedRegions } = useQuery<string[] | null>({
-    queryKey: ["/api/users/my-permitted-regions"],
-    staleTime: 5 * 60 * 1000,
-  });
-
   // 날짜 기본값 설정 (최신 날짜)
   const resolvedDate = selectedDate || availableDates[0] || "";
+
+  // 관할 내 시/군/구 목록 조회 (날짜 기준, HQ_USER 전용)
+  const { data: subregions = [] } = useQuery<string[]>({
+    queryKey: ["/api/oil-prices/subregions", resolvedDate],
+    queryFn: () =>
+      resolvedDate
+        ? fetch(`/api/oil-prices/subregions?date=${resolvedDate}`, { credentials: "include" }).then(r => r.json())
+        : Promise.resolve([]),
+    enabled: !isMaster && !!resolvedDate,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // 지역 파라미터 조합
   const regionParam = useMemo(() => {
@@ -234,13 +239,12 @@ export default function OilPricesPage() {
         ...SIDO_LIST.map(s => ({ value: s, label: s })),
       ];
     } else {
-      const regions = permittedRegions ?? [];
       return [
         { value: "ALL", label: "전체 (내 관할)" },
-        ...regions.map(r => ({ value: r, label: r })),
+        ...subregions.map(r => ({ value: r, label: r })),
       ];
     }
-  }, [isMaster, permittedRegions]);
+  }, [isMaster, subregions]);
 
   // 현재 탭 정보
   const currentTab = TABS.find(t => t.type === activeTab)!;

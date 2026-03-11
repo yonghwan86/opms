@@ -134,6 +134,7 @@ export interface IStorage {
   }): Promise<OilTopStation[]>;
   getOilAvailableDates(): Promise<string[]>;
   getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }>;
+  getOilSubregions(date: string, permitted: { sidoList: string[]; regionList: string[] }): Promise<string[]>;
 
   // 대시보드 유가 분석
   getOilNationalAverages(date: string, prevDate: string): Promise<{
@@ -612,6 +613,33 @@ export class PostgresStorage implements IStorage {
       }
     }
     return { sidoList, regionList };
+  }
+
+  async getOilSubregions(date: string, permitted: { sidoList: string[]; regionList: string[] }): Promise<string[]> {
+    const { sidoList, regionList } = permitted;
+    const results: string[] = [];
+
+    if (sidoList.length > 0) {
+      const rows = await db.execute(
+        sql`SELECT DISTINCT region FROM oil_price_raw
+            WHERE date = ${date} AND sido = ANY(${sidoList})
+            ORDER BY region`
+      );
+      rows.rows.forEach((r: any) => results.push(String(r.region)));
+    }
+
+    if (regionList.length > 0) {
+      const rows = await db.execute(
+        sql`SELECT DISTINCT region FROM oil_price_raw
+            WHERE date = ${date} AND region = ANY(${regionList})
+            ORDER BY region`
+      );
+      rows.rows.forEach((r: any) => {
+        if (!results.includes(String(r.region))) results.push(String(r.region));
+      });
+    }
+
+    return results.sort();
   }
 
   // ── 대시보드 유가 분석 ────────────────────────────────────────────────────

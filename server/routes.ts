@@ -823,6 +823,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/oil-prices/subregions?date=YYYYMMDD — HQ_USER 관할 내 시/군/구 목록
+  app.get("/api/oil-prices/subregions", requireAuth, async (req, res) => {
+    try {
+      const { date } = req.query as Record<string, string>;
+      if (!date) return res.status(400).json({ message: "date 파라미터가 필요합니다." });
+      if (req.session.role === "MASTER") {
+        return res.json([]); // MASTER는 sido 드롭다운 유지
+      }
+      const permitted = await storage.getUserPermittedRegions(req.session.userId!);
+      const subregions = await storage.getOilSubregions(date, permitted);
+      res.json(subregions);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // GET /api/users/my-permitted-regions — 내 관할 지역 목록
   app.get("/api/users/my-permitted-regions", requireAuth, async (req, res) => {
     try {
@@ -869,11 +885,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const permitted = await storage.getUserPermittedRegions(req.session.userId!);
         if (region) {
           if (permitted.sidoList.includes(region)) {
+            // sido 전체 선택 (e.g. "충북")
             regions = { sidoList: [region], regionList: [] };
           } else if (permitted.regionList.includes(region)) {
+            // 허용된 시/군 직접 선택
             regions = { sidoList: [], regionList: [region] };
           } else {
-            regions = permitted;
+            // sido 하위 시/군/구 선택 (e.g. "충북 청주시" → sido "충북" 권한 확인)
+            const regionSido = region.split(' ')[0];
+            if (permitted.sidoList.includes(regionSido)) {
+              regions = { sidoList: [], regionList: [region] };
+            } else {
+              regions = permitted;
+            }
           }
         } else {
           regions = permitted;
