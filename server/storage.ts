@@ -148,7 +148,7 @@ export interface IStorage {
     spread: number; maxPrice: number; maxStation: string; maxRegion: string;
     minPrice: number; minStation: string; minRegion: string;
   }>;
-  getOilRegionalAverages(date: string): Promise<{ sido: string; avgPrice: number }[]>;
+  getOilRegionalAverages(date: string): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
   getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
 
   // 푸시 구독
@@ -732,14 +732,21 @@ export class PostgresStorage implements IStorage {
 
   async getOilRegionalAverages(date: string) {
     const result = await db.execute(sql`
-      SELECT sido, ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price
+      SELECT
+        sido,
+        ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
+        ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
       FROM oil_price_raw
       WHERE date = ${date}
       GROUP BY sido
       HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
       ORDER BY avg_price DESC
       LIMIT 10`);
-    return result.rows.map((r: any) => ({ sido: r.sido as string, avgPrice: Number(r.avg_price) }));
+    return result.rows.map((r: any) => ({
+      sido: r.sido as string,
+      avgPrice: Number(r.avg_price),
+      avgDiesel: r.avg_diesel != null ? Number(r.avg_diesel) : null,
+    }));
   }
 
   async getOilDomesticHistory() {

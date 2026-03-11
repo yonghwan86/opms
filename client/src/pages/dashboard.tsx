@@ -127,7 +127,7 @@ interface FuelStats {
   averages: { gasoline: number; diesel: number; kerosene: number; gasolineChange: number; dieselChange: number; keroseneChange: number } | null;
   spread: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
 }
-interface RegionalAvg { sido: string; avgPrice: number; }
+interface RegionalAvg { sido: string; avgPrice: number; avgDiesel: number | null; }
 interface DomesticHistory { date: string; gasoline: number; diesel: number; }
 interface TopStation {
   rank: number; stationId: string; stationName: string; region: string;
@@ -242,6 +242,32 @@ export default function DashboardPage() {
     enabled: !!riseQueryKey,
     staleTime: 2 * 60 * 1000,
   });
+  const fallQueryKey = latestDate
+    ? `/api/oil-prices/top-stations?type=FALL&fuel=gasoline&date=${latestDate}&prevDate=${prevDate}`
+    : null;
+  const { data: fallStations = [] } = useQuery<TopStation[]>({
+    queryKey: [fallQueryKey],
+    enabled: !!fallQueryKey,
+    staleTime: 2 * 60 * 1000,
+  });
+  const lowQueryKey = latestDate
+    ? `/api/oil-prices/top-stations?type=LOW&fuel=gasoline&date=${latestDate}`
+    : null;
+  const { data: lowStations = [] } = useQuery<TopStation[]>({
+    queryKey: [lowQueryKey],
+    enabled: !!lowQueryKey,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // 캐러셀 슬라이드 (0=상승, 1=하락, 2=최저가)
+  const [carouselSlide, setCarouselSlide] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setCarouselSlide(s => (s + 1) % 3), 4500);
+    return () => clearInterval(t);
+  }, []);
+
+  // 지역별 순위 탭
+  const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
 
   // 차트 데이터 병합 (WTI + 국내)
   const chartData = useMemo(() => {
@@ -263,7 +289,19 @@ export default function DashboardPage() {
     }));
   }, [wtiRes, domesticHistory]);
 
-  const reportItems = riseStations.filter(s => (s.changeAmount ?? 0) >= 100);
+  const riseAlerts = riseStations.filter(s => (s.changeAmount ?? 0) >= 100);
+  const fallAlerts = fallStations.filter(s => Math.abs(s.changeAmount ?? 0) >= 100);
+  const allAlerts = [
+    ...riseAlerts.map(s => ({ ...s, dir: 'rise' as const })),
+    ...fallAlerts.map(s => ({ ...s, dir: 'fall' as const })),
+  ].sort((a, b) => Math.abs(b.changeAmount ?? 0) - Math.abs(a.changeAmount ?? 0));
+  const topRegion = (() => {
+    const counts: Record<string, number> = {};
+    allAlerts.forEach(s => { const r = regionShort(s.region); counts[r] = (counts[r] || 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  })();
+  const maxMover = allAlerts[0];
+
   const wti = wtiRes?.current;
   const avg = fuelStats?.averages;
   const spread = fuelStats?.spread;
@@ -434,93 +472,145 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
 
           {/* 지역별 평균 유가 순위 */}
-          <Card className="border border-border bg-card">
-            <div className="px-5 py-4 border-b border-border">
-              <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">휘발유 기준 시/도별 평균</p>
-            </div>
-            <div className="px-3 pt-3 pb-2">
-              {regionalLoading ? (
-                <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-              ) : regional.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={regional} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                    <XAxis
-                      type="number"
-                      domain={[
-                        Math.min(...regional.map(r => r.avgPrice)) - 15,
-                        Math.max(...regional.map(r => r.avgPrice)) + 8,
-                      ]}
-                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
-                      tickFormatter={v => fmt(v)}
-                      tickLine={false}
-                      axisLine={false}
-                      tickCount={4}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="sido"
-                      tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
-                      width={42}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <Tooltip
-                      formatter={(v: any) => [`${fmt(Number(v))}원`, "평균 휘발유"]}
-                      contentStyle={{ fontSize: 13 }}
-                    />
-                    <Bar
-                      dataKey="avgPrice"
-                      fill="#3b82f6"
-                      radius={[0, 4, 4, 0]}
-                      barSize={20}
-                      label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </Card>
-
-          {/* 가격 급변 주유소 TOP 5 */}
-          <Card className="border border-border bg-card flex flex-col">
-            <div className="px-5 py-4 border-b border-border flex-shrink-0">
-              <h2 className="text-base font-semibold text-foreground">가격 급변 주유소 TOP 5</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">전일 대비 휘발유 가격 상승</p>
-            </div>
-            <div className="flex-1 flex flex-col divide-y divide-border">
-              {riseStations.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
-              ) : (
-                riseStations.slice(0, 5).map((s, idx) => (
-                  <div key={s.stationId} className="px-5 flex items-center gap-3 flex-1" data-testid={`alert-station-${s.stationId}`}>
-                    <span className="text-base font-bold text-muted-foreground/50 w-5 flex-shrink-0">{idx + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-foreground truncate">{s.stationName}</span>
-                        {s.brand && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{s.brand}</Badge>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        <span className="md:hidden">{regionShort(s.region)}</span>
-                        <span className="hidden md:inline">{s.region}</span>
-                      </span>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
-                      {s.changeAmount != null && (
-                        <p className="text-xs text-red-500 font-semibold">▲ {fmt(s.changeAmount)}원</p>
-                      )}
-                    </div>
+          {(() => {
+            const isDiesel = regionalTab === 'diesel';
+            const sorted = [...regional].sort((a, b) =>
+              isDiesel ? ((b.avgDiesel ?? 0) - (a.avgDiesel ?? 0)) : (b.avgPrice - a.avgPrice)
+            );
+            const vals = sorted.map(r => isDiesel ? (r.avgDiesel ?? 0) : r.avgPrice).filter(Boolean);
+            const domMin = vals.length ? Math.min(...vals) - 15 : 0;
+            const domMax = vals.length ? Math.max(...vals) + 8 : 100;
+            return (
+              <Card className="border border-border bg-card">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">{isDiesel ? "경유" : "휘발유"} 기준 시/도별 평균</p>
                   </div>
-                ))
-              )}
-            </div>
-          </Card>
+                  <div className="flex gap-1">
+                    {(['gasoline', 'diesel'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setRegionalTab(tab)}
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
+                          regionalTab === tab
+                            ? tab === 'gasoline' ? "bg-blue-500 text-white" : "bg-emerald-500 text-white"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        )}
+                      >
+                        {tab === 'gasoline' ? '휘발유' : '경유'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="px-3 pt-3 pb-2">
+                  {regionalLoading ? (
+                    <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+                  ) : sorted.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={340}>
+                      <BarChart data={sorted} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                        <XAxis
+                          type="number"
+                          domain={[domMin, domMax]}
+                          tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
+                          tickFormatter={v => fmt(v)}
+                          tickLine={false}
+                          axisLine={false}
+                          tickCount={4}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="sido"
+                          tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
+                          width={42}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip
+                          formatter={(v: any) => [`${fmt(Number(v))}원`, isDiesel ? "평균 경유" : "평균 휘발유"]}
+                          contentStyle={{ fontSize: 13 }}
+                        />
+                        <Bar
+                          dataKey={isDiesel ? "avgDiesel" : "avgPrice"}
+                          fill={isDiesel ? "#22c55e" : "#3b82f6"}
+                          radius={[0, 4, 4, 0]}
+                          barSize={20}
+                          label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </Card>
+            );
+          })()}
+
+          {/* 가격 급변 주유소 TOP 5 — 캐러셀 */}
+          {(() => {
+            const slides = [
+              { label: "가격 상승 TOP 5", desc: "전일 대비 최대 상승", stations: riseStations, arrow: "▲", priceColor: "text-red-500" },
+              { label: "가격 하락 TOP 5", desc: "전일 대비 최대 하락", stations: fallStations, arrow: "▼", priceColor: "text-blue-500" },
+              { label: "최저가 TOP 5",   desc: "전국 휘발유 최저가",  stations: lowStations,  arrow: null,  priceColor: "text-emerald-600" },
+            ];
+            const slide = slides[carouselSlide];
+            return (
+              <Card className="border border-border bg-card flex flex-col">
+                <div className="px-5 py-4 border-b border-border flex-shrink-0 flex items-start justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">{slide.label}</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">{slide.desc}</p>
+                  </div>
+                  <div className="flex gap-1 pt-0.5">
+                    {slides.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCarouselSlide(i)}
+                        className={cn(
+                          "w-2 h-2 rounded-full transition-all",
+                          i === carouselSlide ? "bg-primary scale-125" : "bg-muted-foreground/30 hover:bg-muted-foreground/60"
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex-1 flex flex-col divide-y divide-border">
+                  {slide.stations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
+                  ) : (
+                    slide.stations.slice(0, 5).map((s, idx) => (
+                      <div key={s.stationId} className="px-5 flex items-center gap-3 flex-1 py-2" data-testid={`alert-station-${s.stationId}`}>
+                        <span className="text-base font-bold text-muted-foreground/50 w-5 flex-shrink-0">{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-foreground truncate">{s.stationName}</span>
+                            {s.brand && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{s.brand}</Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            <span className="md:hidden">{regionShort(s.region)}</span>
+                            <span className="hidden md:inline">{s.region}</span>
+                          </span>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
+                          {slide.arrow && s.changeAmount != null && (
+                            <p className={cn("text-xs font-semibold", slide.priceColor)}>
+                              {slide.arrow} {fmt(Math.abs(s.changeAmount))}원
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+            );
+          })()}
 
           {/* 최근 AI 분석 리포트 */}
           <Card className="border border-border bg-card flex flex-col max-h-[430px]">
@@ -529,31 +619,54 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트</p>
             </div>
             <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
-              {reportItems.length === 0 ? (
+              {allAlerts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <AlertCircle className="w-8 h-8 text-muted-foreground/30 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">감지된 이상 징후 없음</p>
                   <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 주유소 없음</p>
                 </div>
               ) : (
-                reportItems.slice(0, 10).map((s) => (
-                  <div key={s.stationId} className="flex gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
-                    <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-foreground leading-snug">
-                        <span className="font-semibold">
-                          <span className="md:hidden">{regionShort(s.region)}</span>
-                          <span className="hidden md:inline">{s.region}</span>
-                        </span>{" "}
-                        <span className="text-primary font-medium">{s.stationName}</span>
+                <>
+                  {/* 요약 박스 */}
+                  <div className="rounded-lg bg-muted/60 border border-border p-3 mb-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      오늘 전국 <span className="text-primary">{allAlerts.length}개</span> 주유소 이상 감지
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      급등 <span className="text-red-500 font-semibold">{riseAlerts.length}곳</span>
+                      <span className="mx-1.5 text-border">|</span>
+                      급락 <span className="text-blue-500 font-semibold">{fallAlerts.length}곳</span>
+                    </p>
+                    {topRegion && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        집중 지역 <span className="font-medium text-foreground">{topRegion[0]}</span> {topRegion[1]}곳
+                        {maxMover && (
+                          <> · 최대 변동 <span className="font-medium text-foreground">{maxMover.stationName.replace(/주유소$/, '')} {maxMover.dir === 'rise' ? '+' : '-'}{fmt(Math.abs(maxMover.changeAmount ?? 0))}원</span></>
+                        )}
                       </p>
-                      <p className="text-sm text-red-600 font-bold mt-0.5">
-                        비정상 가격 폭등 +{fmt(s.changeAmount ?? 0)}원
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{latestDateFmt}</p>
-                    </div>
+                    )}
                   </div>
-                ))
+                  {/* 개별 목록 */}
+                  {allAlerts.slice(0, 10).map((s) => (
+                    <div key={s.stationId + s.dir} className={cn("flex gap-3 p-3 rounded-lg border", s.dir === 'rise' ? "bg-red-50 border-red-100" : "bg-blue-50 border-blue-100")}>
+                      <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", s.dir === 'rise' ? "bg-red-500" : "bg-blue-500")} />
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground leading-snug">
+                          <span className="font-semibold">
+                            <span className="md:hidden">{regionShort(s.region)}</span>
+                            <span className="hidden md:inline">{s.region}</span>
+                          </span>
+                          {" · "}
+                          <span className="text-primary font-medium">{s.stationName}</span>
+                        </p>
+                        <p className={cn("text-sm font-bold mt-0.5", s.dir === 'rise' ? "text-red-600" : "text-blue-600")}>
+                          {s.dir === 'rise' ? '가격 급등' : '가격 급락'} {s.dir === 'rise' ? '+' : '-'}{fmt(Math.abs(s.changeAmount ?? 0))}원
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{latestDateFmt}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </Card>
