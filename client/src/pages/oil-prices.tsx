@@ -26,6 +26,7 @@ interface OilTopStation {
   changeAmount?: number;
   gasoline?: number;
   diesel?: number;
+  kerosene?: number;
   diff?: number;
 }
 
@@ -253,6 +254,9 @@ export default function OilPricesPage() {
   // 탭 전환 시 fuel 초기화
   const handleTabChange = (tab: AnalysisType) => {
     setActiveTab(tab);
+    if (tab === "WIDE" && selectedFuel === "kerosene") {
+      setSelectedFuel("gasoline");
+    }
   };
 
   return (
@@ -317,8 +321,26 @@ export default function OilPricesPage() {
                     )}
                   </div>
 
-                  {/* 연료 선택 (WIDE 탭 제외) */}
-                  {tab.type !== "WIDE" && (
+                  {/* 연료 선택 */}
+                  {tab.type === "WIDE" ? (
+                    <div className="flex gap-1" data-testid="fuel-selector-wide">
+                      {([
+                        { value: "gasoline" as FuelType, label: "휘발유-경유" },
+                        { value: "diesel" as FuelType, label: "경유-등유" },
+                      ] as const).map(f => (
+                        <Button
+                          key={f.value}
+                          variant={selectedFuel === f.value ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSelectedFuel(f.value)}
+                          data-testid={`btn-wide-${f.value}`}
+                          className="text-xs"
+                        >
+                          {f.label}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
                     <div className="flex gap-1" data-testid="fuel-selector">
                       {FUELS.map(f => (
                         <Button
@@ -350,7 +372,7 @@ export default function OilPricesPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <StationTable type={tab.type} stations={stations} />
+                    <StationTable type={tab.type} stations={stations} fuelType={selectedFuel} />
                   </div>
                 )}
               </div>
@@ -363,7 +385,7 @@ export default function OilPricesPage() {
 }
 
 // ─── 테이블 컴포넌트 ─────────────────────────────────────────────────────────
-function StationTable({ type, stations }: { type: AnalysisType; stations: OilTopStation[] }) {
+function StationTable({ type, stations, fuelType }: { type: AnalysisType; stations: OilTopStation[]; fuelType?: FuelType }) {
   if (type === "HIGH" || type === "LOW") {
     return (
       <table className="w-full text-sm">
@@ -449,6 +471,7 @@ function StationTable({ type, stations }: { type: AnalysisType; stations: OilTop
   }
 
   // WIDE
+  const isDieselKerosene = fuelType === "diesel";
   return (
     <table className="w-full text-sm">
       <thead>
@@ -458,8 +481,8 @@ function StationTable({ type, stations }: { type: AnalysisType; stations: OilTop
           <th className="text-center py-2.5 px-3 font-medium w-24">상표</th>
           <th className="text-center py-2.5 px-3 font-medium w-16">셀프</th>
           <th className="text-left py-2.5 px-3 font-medium">지역</th>
-          <th className="text-right py-2.5 px-3 font-medium w-24">휘발유</th>
-          <th className="text-right py-2.5 px-3 font-medium w-24">경유</th>
+          <th className="text-right py-2.5 px-3 font-medium w-24">{isDieselKerosene ? "경유" : "휘발유"}</th>
+          <th className="text-right py-2.5 px-3 font-medium w-24">{isDieselKerosene ? "등유" : "경유"}</th>
           <th className="text-right py-2.5 px-3 font-medium w-24">차이</th>
         </tr>
       </thead>
@@ -477,8 +500,16 @@ function StationTable({ type, stations }: { type: AnalysisType; stations: OilTop
               </span>
             </td>
             <td className="py-3 px-3 text-muted-foreground text-xs">{s.region}</td>
-            <td className="py-3 px-3 text-right">{s.gasoline != null ? formatPrice(s.gasoline) : "—"}</td>
-            <td className="py-3 px-3 text-right">{s.diesel != null ? formatPrice(s.diesel) : "—"}</td>
+            <td className="py-3 px-3 text-right">
+              {isDieselKerosene
+                ? (s.diesel != null ? formatPrice(s.diesel) : "—")
+                : (s.gasoline != null ? formatPrice(s.gasoline) : "—")}
+            </td>
+            <td className="py-3 px-3 text-right">
+              {isDieselKerosene
+                ? (s.kerosene != null ? formatPrice(s.kerosene) : "—")
+                : (s.diesel != null ? formatPrice(s.diesel) : "—")}
+            </td>
             <td className="py-3 px-3 text-right font-semibold text-orange-500">
               {s.diff != null ? `+${s.diff.toLocaleString("ko-KR")}원` : "—"}
             </td>

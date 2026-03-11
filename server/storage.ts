@@ -42,6 +42,7 @@ export interface OilTopStation {
   changeAmount?: number;
   gasoline?: number;
   diesel?: number;
+  kerosene?: number;
   diff?: number;
 }
 
@@ -554,15 +555,28 @@ export class PostgresStorage implements IStorage {
       rawRows = result.rows as any[];
 
     } else {
-      // WIDE: 휘발유-경유 가격차 (fuelType 무관)
-      const result = await db.execute(
-        sql`SELECT station_id, station_name, region, sido, brand, is_self,
-                   gasoline, diesel, (gasoline - diesel) AS diff
-            FROM oil_price_raw
-            WHERE date = ${date} AND gasoline > 0 AND diesel > 0${sidoCond}${regionCond}
-            ORDER BY (gasoline - diesel) DESC LIMIT 10`
-      );
-      rawRows = result.rows as any[];
+      // WIDE: fuelType에 따라 분기
+      if (fuelType === 'diesel') {
+        // 경유-등유 가격차
+        const result = await db.execute(
+          sql`SELECT station_id, station_name, region, sido, brand, is_self,
+                     diesel, kerosene, (diesel - kerosene) AS diff
+              FROM oil_price_raw
+              WHERE date = ${date} AND diesel > 0 AND kerosene > 0${sidoCond}${regionCond}
+              ORDER BY (diesel - kerosene) DESC LIMIT 10`
+        );
+        rawRows = result.rows as any[];
+      } else {
+        // 휘발유-경유 가격차 (default)
+        const result = await db.execute(
+          sql`SELECT station_id, station_name, region, sido, brand, is_self,
+                     gasoline, diesel, (gasoline - diesel) AS diff
+              FROM oil_price_raw
+              WHERE date = ${date} AND gasoline > 0 AND diesel > 0${sidoCond}${regionCond}
+              ORDER BY (gasoline - diesel) DESC LIMIT 10`
+        );
+        rawRows = result.rows as any[];
+      }
     }
 
     return rawRows.map((row, idx) => ({
@@ -578,6 +592,7 @@ export class PostgresStorage implements IStorage {
       changeAmount: row.change_amount != null ? Number(row.change_amount) : undefined,
       gasoline: row.gasoline != null ? Number(row.gasoline) : undefined,
       diesel: row.diesel != null ? Number(row.diesel) : undefined,
+      kerosene: row.kerosene != null ? Number(row.kerosene) : undefined,
       diff: row.diff != null ? Number(row.diff) : undefined,
     }));
   }
