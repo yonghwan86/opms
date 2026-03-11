@@ -65,20 +65,34 @@ export default function OilUploadPage() {
     addFiles(e.dataTransfer.files);
   }, [addFiles]);
 
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // data:...;base64,XXXX → XXXX 부분만 추출
+        resolve(result.split(",")[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const handleUpload = async () => {
     if (files.length === 0) return;
     setIsPending(true);
     setResult(null);
     setError(null);
 
-    const formData = new FormData();
-    files.forEach((f) => formData.append("files", f));
-
     try {
+      const filePayloads = await Promise.all(
+        files.map(async (f) => ({ name: f.name, content: await readFileAsBase64(f) }))
+      );
+
       const res = await fetch("/api/oil-prices/upload-csv", {
         method: "POST",
         credentials: "include",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: filePayloads }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "업로드 실패");

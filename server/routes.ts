@@ -1021,25 +1021,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── 유가 CSV 업로드 API ─────────────────────────────────────────────────────
 
-  // POST /api/oil-prices/upload-csv — MASTER 전용 과거 CSV 직접 업로드
-  app.post("/api/oil-prices/upload-csv", requireMaster, handleUpload(upload.array("files", 50)), async (req, res) => {
+  // POST /api/oil-prices/upload-csv — MASTER 전용 과거 CSV 직접 업로드 (JSON 방식)
+  app.post("/api/oil-prices/upload-csv", requireMaster, async (req, res) => {
     try {
       const { parseOilPriceCSV, toInsertOilPriceRaw } = await import("./services/oilParser");
       const { runAnalysis } = await import("./services/oilAnalyzer");
 
-      const files = req.files as Express.Multer.File[];
-      if (!files || files.length === 0) {
+      // JSON body: { files: [{ name: string, content: string }] }
+      const body = req.body as { files?: Array<{ name: string; content: string }> };
+      if (!body.files || body.files.length === 0) {
         return res.status(400).json({ message: "업로드할 CSV 파일을 선택해주세요." });
       }
+      const files = body.files;
 
       let totalRaw = 0;
       let totalAnalysis = 0;
       const processedDates = new Set<string>();
 
-      // 모든 파일의 rows를 합산
+      // 모든 파일의 rows를 합산 (content는 base64 인코딩된 원본 바이너리)
       const allRows: Awaited<ReturnType<typeof parseOilPriceCSV>> = [];
       for (const file of files) {
-        const rows = parseOilPriceCSV(file.buffer);
+        const buf = Buffer.from(file.content, "base64");
+        const rows = parseOilPriceCSV(buf);
         allRows.push(...rows);
       }
 
