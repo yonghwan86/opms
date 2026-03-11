@@ -147,8 +147,8 @@ function ChangeChip({ val, unit = "원", percent, decimals = 0 }: { val: number;
   const up = val > 0;
   const displayVal = decimals > 0 ? Math.abs(val).toFixed(decimals) : fmt(Math.abs(Math.round(val)));
   return (
-    <span className={cn("text-sm font-semibold flex items-center gap-1", up ? "text-red-500" : "text-blue-500")}>
-      {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+    <span className={cn("text-xs md:text-sm font-semibold flex items-center gap-0.5 md:gap-1 whitespace-nowrap", up ? "text-red-500" : "text-blue-500")}>
+      {up ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
       {up ? "+" : "-"}{displayVal}{unit}
       {percent !== undefined && (
         <span className="font-normal text-xs opacity-80">({percent > 0 ? "+" : ""}{percent.toFixed(2)}%)</span>
@@ -164,13 +164,13 @@ function MetricCard({
   title: string; subtitle?: string; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
 }) {
   return (
-    <Card className="px-4 pt-4 pb-3 border border-border bg-card">
-      <div className="flex items-center gap-3 mb-1">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
-          <Icon className="w-5 h-5 text-white" />
+    <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card">
+      <div className="flex items-center gap-2 md:gap-3 mb-1">
+        <div className={cn("w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
+          <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <p className="text-base font-semibold text-muted-foreground leading-tight">{title}</p>
+          <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight">{title}</p>
           {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
         </div>
       </div>
@@ -286,7 +286,7 @@ export default function DashboardPage() {
           <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading}>
             {wti ? (
               <>
-                <p className="text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
+                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
                 <div className="mt-1.5">
                   <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} decimals={2} />
                 </div>
@@ -305,10 +305,10 @@ export default function DashboardPage() {
                   { label: "경유", val: avg.diesel, change: avg.dieselChange },
                   { label: "등유", val: avg.kerosene, change: avg.keroseneChange },
                 ].map(row => (
-                  <div key={row.label} className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-muted-foreground w-10 flex-shrink-0">{row.label}</span>
-                    <span className="text-base font-bold text-foreground">{fmtPrice(row.val)}</span>
-                    <ChangeChip val={row.change} />
+                  <div key={row.label} className="flex items-center justify-between gap-1">
+                    <span className="text-xs md:text-sm text-muted-foreground w-8 md:w-10 flex-shrink-0">{row.label}</span>
+                    <span className="text-sm md:text-base font-bold text-foreground whitespace-nowrap flex-shrink-0">{fmtPrice(row.val)}</span>
+                    <span className="flex-shrink-0"><ChangeChip val={row.change} /></span>
                   </div>
                 ))}
               </div>
@@ -321,7 +321,7 @@ export default function DashboardPage() {
           <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading}>
             {fx ? (
               <>
-                <p className="text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
+                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
                 <div className="mt-1.5">
                   <ChangeChip val={fx.change} percent={fx.changePercent} />
                 </div>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
           <MetricCard title="전국 휘발유 가격 편차" subtitle="최고가 − 최저가 격차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading}>
             {spread ? (
               <>
-                <p className="text-3xl font-bold text-foreground tracking-tight">{fmt(spread.spread)}원</p>
+                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(spread.spread)}원</p>
                 <div className="space-y-1 mt-2">
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-red-500 font-semibold text-xs flex-shrink-0">최고</span>

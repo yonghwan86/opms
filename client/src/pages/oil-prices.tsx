@@ -12,6 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ─── 지역 단축 (도명 제거) ────────────────────────────────────────────────────
+const regionShort = (r: string) => r.includes(" ") ? r.split(" ").slice(1).join(" ") : r;
+
 // ─── 타입 ────────────────────────────────────────────────────────────────────
 interface OilTopStation {
   rank: number;
@@ -393,29 +396,29 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs">
-            <th className="text-center py-2.5 px-3 font-medium w-12">순위</th>
-            <th className="text-left py-2.5 px-3 font-medium">상호</th>
-            <th className="text-center py-2.5 px-3 font-medium w-24">상표</th>
-            <th className="text-center py-2.5 px-3 font-medium w-16">셀프</th>
-            <th className="text-left py-2.5 px-3 font-medium">지역</th>
-            <th className="text-right py-2.5 px-3 font-medium w-24">가격</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
+            <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
+            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-24">상표</th>
+            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
+            <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
+            <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">가격</th>
           </tr>
         </thead>
         <tbody>
           {stations.map((s) => (
             <tr key={s.stationId} className="border-t border-border hover:bg-muted/30 transition-colors" data-testid={`row-station-${s.stationId}`}>
-              <td className="py-3 px-3 text-center">
+              <td className="py-3 px-1.5 md:px-3 text-center">
                 <RankBadge rank={s.rank} type={type} />
               </td>
-              <td className="py-3 px-3 font-medium text-foreground">{s.stationName}</td>
-              <td className="py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
-              <td className="py-3 px-3 text-center">
+              <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
+              <td className="hidden md:table-cell py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
+              <td className="hidden md:table-cell py-3 px-3 text-center">
                 <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
                   {s.isSelf ? "✓" : "—"}
                 </span>
               </td>
-              <td className="py-3 px-3 text-muted-foreground text-xs">{s.region}</td>
-              <td className="py-3 px-3 text-right font-semibold text-foreground">
+              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">{regionShort(s.region)}</td>
+              <td className="py-3 px-1.5 md:px-3 text-right font-semibold text-foreground whitespace-nowrap">
                 {s.price != null ? formatPrice(s.price) : "—"}
               </td>
             </tr>
@@ -430,33 +433,33 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs">
-            <th className="text-center py-2.5 px-3 font-medium w-12">순위</th>
-            <th className="text-left py-2.5 px-3 font-medium">상호</th>
-            <th className="text-center py-2.5 px-3 font-medium w-24">상표</th>
-            <th className="text-center py-2.5 px-3 font-medium w-16">셀프</th>
-            <th className="text-left py-2.5 px-3 font-medium">지역</th>
-            <th className="text-right py-2.5 px-3 font-medium w-24">현재가</th>
-            <th className="text-right py-2.5 px-3 font-medium w-24">전일가</th>
-            <th className="text-right py-2.5 px-3 font-medium w-24">변동</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
+            <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
+            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-24">상표</th>
+            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
+            <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
+            <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">현재가</th>
+            <th className="hidden md:table-cell text-right py-2.5 px-3 font-medium w-24">전일가</th>
+            <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">변동</th>
           </tr>
         </thead>
         <tbody>
           {stations.map((s) => (
             <tr key={s.stationId} className="border-t border-border hover:bg-muted/30 transition-colors" data-testid={`row-station-${s.stationId}`}>
-              <td className="py-3 px-3 text-center">
+              <td className="py-3 px-1.5 md:px-3 text-center">
                 <RankBadge rank={s.rank} type={type} />
               </td>
-              <td className="py-3 px-3 font-medium text-foreground">{s.stationName}</td>
-              <td className="py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
-              <td className="py-3 px-3 text-center">
+              <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
+              <td className="hidden md:table-cell py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
+              <td className="hidden md:table-cell py-3 px-3 text-center">
                 <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
                   {s.isSelf ? "✓" : "—"}
                 </span>
               </td>
-              <td className="py-3 px-3 text-muted-foreground text-xs">{s.region}</td>
-              <td className="py-3 px-3 text-right font-semibold">{s.price != null ? formatPrice(s.price) : "—"}</td>
-              <td className="py-3 px-3 text-right text-muted-foreground">{s.prevPrice != null ? formatPrice(s.prevPrice) : "—"}</td>
-              <td className="py-3 px-3 text-right font-semibold">
+              <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">{regionShort(s.region)}</td>
+              <td className="py-3 px-1.5 md:px-3 text-right font-semibold whitespace-nowrap">{s.price != null ? formatPrice(s.price) : "—"}</td>
+              <td className="hidden md:table-cell py-3 px-3 text-right text-muted-foreground whitespace-nowrap">{s.prevPrice != null ? formatPrice(s.prevPrice) : "—"}</td>
+              <td className="py-3 px-1.5 md:px-3 text-right font-semibold whitespace-nowrap">
                 {s.changeAmount != null ? (
                   <span className={cn(
                     type === "RISE" ? "text-red-500" : "text-blue-500"
@@ -478,41 +481,41 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
     <table className="w-full text-sm">
       <thead>
         <tr className="bg-muted/50 text-muted-foreground text-xs">
-          <th className="text-center py-2.5 px-3 font-medium w-12">순위</th>
-          <th className="text-left py-2.5 px-3 font-medium">상호</th>
-          <th className="text-center py-2.5 px-3 font-medium w-24">상표</th>
-          <th className="text-center py-2.5 px-3 font-medium w-16">셀프</th>
-          <th className="text-left py-2.5 px-3 font-medium">지역</th>
-          <th className="text-right py-2.5 px-3 font-medium w-24">{isDieselKerosene ? "경유" : "휘발유"}</th>
-          <th className="text-right py-2.5 px-3 font-medium w-24">{isDieselKerosene ? "등유" : "경유"}</th>
-          <th className="text-right py-2.5 px-3 font-medium w-24">차이</th>
+          <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">순위</th>
+          <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
+          <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-24">상표</th>
+          <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
+          <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
+          <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">{isDieselKerosene ? "경유" : "휘발유"}</th>
+          <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">{isDieselKerosene ? "등유" : "경유"}</th>
+          <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">차이</th>
         </tr>
       </thead>
       <tbody>
         {stations.map((s) => (
           <tr key={s.stationId} className="border-t border-border hover:bg-muted/30 transition-colors" data-testid={`row-station-${s.stationId}`}>
-            <td className="py-3 px-3 text-center">
+            <td className="py-3 px-1.5 md:px-3 text-center">
               <RankBadge rank={s.rank} type="WIDE" />
             </td>
-            <td className="py-3 px-3 font-medium text-foreground">{s.stationName}</td>
-            <td className="py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
-            <td className="py-3 px-3 text-center">
+            <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">{s.stationName}</td>
+            <td className="hidden md:table-cell py-3 px-3 text-center text-xs text-muted-foreground">{s.brand ?? "—"}</td>
+            <td className="hidden md:table-cell py-3 px-3 text-center">
               <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
                 {s.isSelf ? "✓" : "—"}
               </span>
             </td>
-            <td className="py-3 px-3 text-muted-foreground text-xs">{s.region}</td>
-            <td className="py-3 px-3 text-right">
+            <td className="py-3 px-1.5 md:px-3 text-muted-foreground text-xs whitespace-nowrap">{regionShort(s.region)}</td>
+            <td className="py-3 px-1.5 md:px-3 text-right whitespace-nowrap">
               {isDieselKerosene
                 ? (s.diesel != null ? formatPrice(s.diesel) : "—")
                 : (s.gasoline != null ? formatPrice(s.gasoline) : "—")}
             </td>
-            <td className="py-3 px-3 text-right">
+            <td className="py-3 px-1.5 md:px-3 text-right whitespace-nowrap">
               {isDieselKerosene
                 ? (s.kerosene != null ? formatPrice(s.kerosene) : "—")
                 : (s.diesel != null ? formatPrice(s.diesel) : "—")}
             </td>
-            <td className="py-3 px-3 text-right font-semibold text-orange-500">
+            <td className="py-3 px-1.5 md:px-3 text-right font-semibold text-orange-500 whitespace-nowrap">
               {s.diff != null ? `+${s.diff.toLocaleString("ko-KR")}원` : "—"}
             </td>
           </tr>

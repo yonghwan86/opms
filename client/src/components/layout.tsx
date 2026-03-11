@@ -60,7 +60,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const handleBell = async () => {
-    if (pushState === "subscribed") {
+    if (pushState === "unsupported") {
+      toast({ title: "알림 미지원", description: "iOS는 홈 화면에 앱을 추가한 후 알림을 사용할 수 있습니다.", variant: "destructive" });
+    } else if (pushState === "subscribed") {
       const ok = await unsubscribe();
       if (ok) toast({ title: "알림 구독 해제", description: "푸시 알림이 해제되었습니다." });
     } else if (pushState === "default") {
@@ -197,47 +199,47 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* 알림 + 로그아웃 */}
         <div className="p-2 border-t border-sidebar-border space-y-1">
-          {pushState !== "unsupported" && (
-            <div className="relative">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full text-muted-foreground",
-                  pushState === "subscribed" && "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10",
-                  pushState !== "subscribed" && "hover:text-foreground hover:bg-sidebar-accent",
-                  !sidebarOpen && "justify-center px-0"
-                )}
-                onClick={handleBell}
-                disabled={pushState === "loading"}
-                data-testid="button-push-bell"
-                title={
-                  pushState === "subscribed" ? "알림 구독 중 (클릭하여 해제)" :
-                  pushState === "denied" ? "알림이 차단됨" :
-                  "알림 구독"
-                }
-              >
-                {pushState === "subscribed" ? (
-                  <Bell className="w-4 h-4 flex-shrink-0" />
-                ) : (
-                  <BellOff className="w-4 h-4 flex-shrink-0" />
-                )}
-                {sidebarOpen && (
-                  <span className="ml-2 text-sm">
-                    {pushState === "subscribed" ? "알림 구독 중" :
-                     pushState === "denied" ? "알림 차단됨" :
-                     pushState === "loading" ? "처리 중..." :
-                     "알림 구독"}
-                  </span>
-                )}
-                {pushState === "subscribed" && sidebarOpen && (
-                  <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </Button>
-              {pushState === "subscribed" && !sidebarOpen && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500" />
+          <div className="relative">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full text-muted-foreground",
+                pushState === "subscribed" && "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10",
+                pushState !== "subscribed" && "hover:text-foreground hover:bg-sidebar-accent",
+                !sidebarOpen && "justify-center px-0"
               )}
-            </div>
-          )}
+              onClick={handleBell}
+              disabled={pushState === "loading"}
+              data-testid="button-push-bell"
+              title={
+                pushState === "subscribed" ? "알림 구독 중 (클릭하여 해제)" :
+                pushState === "denied" ? "알림이 차단됨" :
+                pushState === "unsupported" ? "이 기기에서 알림 미지원" :
+                "알림 구독"
+              }
+            >
+              {pushState === "subscribed" ? (
+                <Bell className="w-4 h-4 flex-shrink-0" />
+              ) : (
+                <BellOff className="w-4 h-4 flex-shrink-0" />
+              )}
+              {sidebarOpen && (
+                <span className="ml-2 text-sm">
+                  {pushState === "subscribed" ? "알림 구독 중" :
+                   pushState === "denied" ? "알림 차단됨" :
+                   pushState === "unsupported" ? "알림 미지원" :
+                   pushState === "loading" ? "처리 중..." :
+                   "알림 구독"}
+                </span>
+              )}
+              {pushState === "subscribed" && sidebarOpen && (
+                <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+              )}
+            </Button>
+            {pushState === "subscribed" && !sidebarOpen && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500" />
+            )}
+          </div>
           {isMaster && pushState === "subscribed" && (
             <Button
               variant="ghost"
