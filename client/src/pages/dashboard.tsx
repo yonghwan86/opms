@@ -339,22 +339,26 @@ export default function DashboardPage() {
               ) : regional.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
               ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={regional} layout="vertical" margin={{ top: 8, right: 52, left: 4, bottom: 4 }}>
+                <ResponsiveContainer width="100%" height={340}>
+                  <BarChart data={regional} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                     <XAxis
                       type="number"
-                      domain={[Math.min(...regional.map(r => r.avgPrice)) - 30, Math.max(...regional.map(r => r.avgPrice)) + 30]}
-                      tick={{ fontSize: 12, fill: "#6b7280", fontWeight: 500 }}
+                      domain={[
+                        Math.min(...regional.map(r => r.avgPrice)) - 15,
+                        Math.max(...regional.map(r => r.avgPrice)) + 8,
+                      ]}
+                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
                       tickFormatter={v => fmt(v)}
                       tickLine={false}
                       axisLine={false}
+                      tickCount={4}
                     />
                     <YAxis
                       type="category"
                       dataKey="sido"
                       tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
-                      width={40}
+                      width={42}
                       tickLine={false}
                       axisLine={false}
                     />
@@ -367,7 +371,7 @@ export default function DashboardPage() {
                       fill="#3b82f6"
                       radius={[0, 4, 4, 0]}
                       barSize={20}
-                      label={{ position: "right", fontSize: 13, fill: "#111827", fontWeight: 700, formatter: (v: number) => `${fmt(v)}` }}
+                      label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
                     />
                   </BarChart>
                 </ResponsiveContainer>
