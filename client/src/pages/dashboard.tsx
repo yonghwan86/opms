@@ -308,6 +308,9 @@ export default function DashboardPage() {
   const latestDateFmt = latestDate
     ? `${latestDate.slice(0, 4)}.${latestDate.slice(4, 6)}.${latestDate.slice(6, 8)} 기준`
     : "";
+  const shortDateLabel = latestDate
+    ? `(${parseInt(latestDate.slice(4, 6))}.${parseInt(latestDate.slice(6, 8))} 기준)`
+    : "";
 
   return (
     <Layout>
@@ -485,7 +488,7 @@ export default function DashboardPage() {
                 <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">{isDiesel ? "경유" : "휘발유"} 기준 시/도별 평균</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{isDiesel ? "경유" : "휘발유"} 기준 시/도별 평균 {shortDateLabel}</p>
                   </div>
                   <div className="flex gap-1">
                     {(['gasoline', 'diesel'] as const).map(tab => (
@@ -562,7 +565,7 @@ export default function DashboardPage() {
                 <div className="px-5 py-4 border-b border-border flex-shrink-0 flex items-start justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">{slide.label}</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">{slide.desc}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{slide.desc} {shortDateLabel}</p>
                   </div>
                   <div className="flex gap-1 pt-0.5">
                     {slides.map((_, i) => (
@@ -616,7 +619,7 @@ export default function DashboardPage() {
           <Card className="border border-border bg-card flex flex-col max-h-[430px]">
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
               <h2 className="text-base font-semibold text-foreground">최근 AI 분석 리포트</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트</p>
+              <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트 {shortDateLabel}</p>
             </div>
             <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
               {allAlerts.length === 0 ? (
@@ -662,7 +665,6 @@ export default function DashboardPage() {
                         <p className={cn("text-sm font-bold mt-0.5", s.dir === 'rise' ? "text-red-600" : "text-blue-600")}>
                           {s.dir === 'rise' ? '가격 급등' : '가격 급락'} {s.dir === 'rise' ? '+' : '-'}{fmt(Math.abs(s.changeAmount ?? 0))}원
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{latestDateFmt}</p>
                       </div>
                     </div>
                   ))}
