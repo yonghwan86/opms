@@ -390,7 +390,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
               ) : (
                 riseStations.slice(0, 5).map((s, idx) => (
-                  <div key={s.stationId} className="px-5 py-3.5 flex items-center gap-3" data-testid={`alert-station-${s.stationId}`}>
+                  <div key={s.stationId} className="px-5 py-2 flex items-center gap-3" data-testid={`alert-station-${s.stationId}`}>
                     <span className="text-base font-bold text-muted-foreground/50 w-5 flex-shrink-0">{idx + 1}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
