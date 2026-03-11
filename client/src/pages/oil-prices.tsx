@@ -245,7 +245,7 @@ export default function OilPricesPage() {
     } else {
       return [
         { value: "ALL", label: "전체 (내 관할)" },
-        ...subregions.map(r => ({ value: r, label: r })),
+        ...subregions.map(r => ({ value: r, label: regionShort(r) })),
       ];
     }
   }, [isMaster, subregions]);
