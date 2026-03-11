@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ComposedChart, Line, Bar, BarChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, ReferenceLine,
+  ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -89,24 +89,6 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
-// ─── 커스텀 참조선 레이블 ──────────────────────────────────────────────────────
-function RefLineLabel({ viewBox, value }: any) {
-  const { x = 0, y = 0 } = viewBox ?? {};
-  const text = value ?? "";
-  const px = 6;
-  const py = 4;
-  const textWidth = text.length * 6.2;
-  const bw = textWidth + px * 2;
-  const bh = 16 + py * 2;
-  return (
-    <g>
-      <rect x={x - bw / 2} y={y - bh - 4} width={bw} height={bh} rx={3} fill="white" stroke="#d1d5db" strokeWidth={1} />
-      <text x={x} y={y - 4 - py} textAnchor="middle" dominantBaseline="auto" fontSize={10} fill="#6b7280">
-        {text}
-      </text>
-    </g>
-  );
-}
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
@@ -262,17 +244,17 @@ export default function DashboardPage() {
           <div className="px-5 pt-4 pb-2 flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
+              <p className="text-sm text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
             </div>
             <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">최근 3개월</span>
           </div>
-          <div className="px-2 pb-4">
+          <div className="px-2 pb-2">
             <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={chartData} margin={{ top: 44, right: 75, left: 10, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 14, right: 80, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
                   tickLine={false}
                   axisLine={{ stroke: "#e5e7eb" }}
                   interval={Math.max(1, Math.floor(chartData.length / 8))}
@@ -280,30 +262,30 @@ export default function DashboardPage() {
                 <YAxis
                   yAxisId="wti"
                   orientation="left"
-                  tick={{ fontSize: 10, fill: "#3b82f6" }}
+                  tick={{ fontSize: 12, fill: "#3b82f6" }}
                   tickFormatter={v => `$${v}`}
                   domain={["auto", "auto"]}
                   tickCount={6}
-                  width={52}
+                  width={56}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   yAxisId="domestic"
                   orientation="right"
-                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
                   tickFormatter={v => `${fmt(v)}원`}
                   domain={["auto", "auto"]}
                   tickCount={6}
-                  width={75}
+                  width={80}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <Legend
-                  wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
+                  wrapperStyle={{ fontSize: 13, paddingTop: 14 }}
                   iconType="circle"
-                  iconSize={8}
+                  iconSize={10}
                   formatter={(val) => {
                     if (val === "wti") return "WTI (국제)";
                     if (val === "gasoline") return "휘발유 주유평균";
@@ -311,20 +293,17 @@ export default function DashboardPage() {
                     return val;
                   }}
                 />
-                {chartData.length > 20 && (
-                  <ReferenceLine
-                    yAxisId="wti"
-                    x={chartData[Math.floor(chartData.length * 0.35)]?.label}
-                    stroke="#9ca3af"
-                    strokeDasharray="5 5"
-                    label={<RefLineLabel value="국제 유가 반영 시차 2~3주" />}
-                  />
-                )}
                 <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="wti" connectNulls />
                 <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#f97316" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
                 <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+          <div className="px-5 pb-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle" />
+              국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+            </p>
           </div>
         </Card>
 
