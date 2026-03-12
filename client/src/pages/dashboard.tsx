@@ -574,6 +574,8 @@ export default function DashboardPage() {
                     axisLine={{ stroke: "#e5e7eb" }}
                     interval={Math.max(0, Math.floor(displayChartData.length / 6) - 1)}
                     height={36}
+                    padding={{ left: 24, right: 24 }}
+                    tickMargin={10}
                   />
                   <YAxis
                     yAxisId="wti"
@@ -630,6 +632,8 @@ export default function DashboardPage() {
                       axisLine={{ stroke: "#e5e7eb" }}
                       interval={Math.max(0, Math.floor(displayRegionalChartData.length / 8) - 1)}
                       height={36}
+                      padding={{ left: 24, right: 24 }}
+                      tickMargin={10}
                     />
                     <YAxis
                       orientation="left"
