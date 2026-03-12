@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -202,6 +203,13 @@ function MetricCard({
 }
 
 // ─── 커스텀 툴팁 ─────────────────────────────────────────────────────────────
+const FUEL_NAME_KO: Record<string, string> = {
+  gasoline: "휘발유",
+  diesel: "경유",
+  kerosene: "등유",
+  wti: "WTI",
+};
+
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
@@ -209,7 +217,7 @@ function ChartTooltip({ active, payload, label }: any) {
       <p className="font-semibold text-foreground mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.color }}>
-          {p.name}: {p.dataKey === "wti" ? `$${Number(p.value).toFixed(2)}` : `${fmt(Number(p.value))}원`}
+          {FUEL_NAME_KO[p.dataKey] ?? p.name}: {p.dataKey === "wti" ? `$${Number(p.value).toFixed(2)}` : `${fmt(Number(p.value))}원`}
         </p>
       ))}
     </div>
@@ -219,6 +227,7 @@ function ChartTooltip({ active, payload, label }: any) {
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, isMaster } = useAuth();
+  const isMobile = useIsMobile();
 
   const { data: wtiRes, isLoading: wtiLoading } = useQuery<WtiResponse>({
     queryKey: ["/api/dashboard/wti"],
@@ -328,6 +337,14 @@ export default function DashboardPage() {
       kerosene: d.kerosene,
     }));
   }, [regionalHistory]);
+
+  const displayChartData = useMemo(() =>
+    isMobile ? chartData.slice(-7) : chartData,
+  [isMobile, chartData]);
+
+  const displayRegionalChartData = useMemo(() =>
+    isMobile ? regionalChartData.slice(-7) : regionalChartData,
+  [isMobile, regionalChartData]);
 
   const riseAlerts = riseStations.filter(s => (s.changeAmount ?? 0) >= 100);
   const fallAlerts = fallStations.filter(s => Math.abs(s.changeAmount ?? 0) >= 100);
@@ -518,7 +535,9 @@ export default function DashboardPage() {
                   {oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : '관할 지역 유가 추이'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {oilAnalysisTab === 'global' ? 'WTI 국제 유가 vs 국내 평균 유가' : '관할 시/도 평균 휘발유·경유·등유 (최근 3개월)'}
+                  {oilAnalysisTab === 'global'
+                    ? 'WTI 국제 유가 vs 국내 평균 유가'
+                    : `관할 시/도 평균 휘발유·경유·등유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
                 </p>
               </div>
               <div className="flex gap-1 flex-shrink-0">
@@ -546,16 +565,15 @@ export default function DashboardPage() {
           <div className="px-2 pb-4 pt-2">
             {oilAnalysisTab === 'global' ? (
               <ResponsiveContainer width="100%" height={380}>
-                <ComposedChart data={chartData} margin={{ top: 14, right: 8, left: 10, bottom: 28 }}>
+                <ComposedChart data={displayChartData} margin={{ top: 14, right: 8, left: 10, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "end" }}
+                    tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "middle" }}
                     tickLine={false}
                     axisLine={{ stroke: "#e5e7eb" }}
-                    interval={Math.max(1, Math.floor(chartData.length / 6))}
-                    angle={-35}
-                    height={45}
+                    interval={Math.max(0, Math.floor(displayChartData.length / 6) - 1)}
+                    height={28}
                   />
                   <YAxis
                     yAxisId="wti"
@@ -597,22 +615,21 @@ export default function DashboardPage() {
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              regionalChartData.length === 0 ? (
+              displayRegionalChartData.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[380px]">
                   <p className="text-sm text-muted-foreground">데이터 없음</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={380}>
-                  <ComposedChart data={regionalChartData} margin={{ top: 14, right: 8, left: 10, bottom: 28 }}>
+                  <ComposedChart data={displayRegionalChartData} margin={{ top: 14, right: 8, left: 10, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "end" }}
+                      tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "middle" }}
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
-                      interval={Math.max(1, Math.floor(regionalChartData.length / 8))}
-                      angle={-35}
-                      height={45}
+                      interval={Math.max(0, Math.floor(displayRegionalChartData.length / 8) - 1)}
+                      height={28}
                     />
                     <YAxis
                       orientation="left"
