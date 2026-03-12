@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const regionShort = (r: string) => r.includes(" ") ? r.split(" ").slice(1).join(" ") : r;
 
@@ -178,7 +178,7 @@ function MetricCard({
             <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight">{title}</p>
+            <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
             {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
           </div>
         </div>
@@ -446,37 +446,37 @@ export default function DashboardPage() {
               return sp ? (
                 <>
                   <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(sp.spread)}원</p>
-                  <TooltipProvider delayDuration={200}>
-                    <div className="space-y-1.5 mt-2">
-                      {[
-                        { label: "최고", labelColor: "text-red-500", station: sp.maxStation, region: sp.maxRegion, price: sp.maxPrice },
-                        { label: "최저", labelColor: "text-blue-500", station: sp.minStation, region: sp.minRegion, price: sp.minPrice },
-                      ].map(row => (
-                        <div key={row.label} className="flex items-center justify-between gap-1">
-                          <span className={cn("font-semibold text-xs flex-shrink-0", row.labelColor)}>{row.label}</span>
-                          <UITooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-foreground text-xs truncate flex-1 mx-1 cursor-default underline decoration-dotted underline-offset-2">{row.station}</span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs space-y-0.5">
-                              <p className="font-semibold">{row.station}</p>
-                              <p className="text-muted-foreground">{row.region}</p>
-                              <div className="flex items-center gap-1.5">
-                                <span className={cn(
-                                  "inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white",
-                                  spreadTab === "gasoline" ? "bg-yellow-400" : "bg-emerald-500"
-                                )}>
-                                  {spreadTab === "gasoline" ? "휘" : "경"}
-                                </span>
-                                <p className="font-bold">{fmtPrice(row.price)}</p>
-                              </div>
-                            </TooltipContent>
-                          </UITooltip>
-                          <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(row.price)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </TooltipProvider>
+                  <div className="space-y-1.5 mt-2">
+                    {[
+                      { label: "최고", labelColor: "text-red-500", station: sp.maxStation, region: sp.maxRegion, price: sp.maxPrice },
+                      { label: "최저", labelColor: "text-blue-500", station: sp.minStation, region: sp.minRegion, price: sp.minPrice },
+                    ].map(row => (
+                      <div key={row.label} className="flex items-center justify-between gap-1">
+                        <span className={cn("font-semibold text-xs flex-shrink-0", row.labelColor)}>{row.label}</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="text-foreground text-xs truncate flex-1 mx-1 text-left underline decoration-dotted underline-offset-2 cursor-pointer">
+                              {row.station}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent side="top" className="w-56 p-3 space-y-2">
+                            <p className="font-semibold text-sm leading-snug">{row.station}</p>
+                            <p className="text-sm text-muted-foreground">{row.region}</p>
+                            <div className="flex items-center gap-2 pt-0.5">
+                              <span className={cn(
+                                "inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white",
+                                spreadTab === "gasoline" ? "bg-yellow-400" : "bg-emerald-500"
+                              )}>
+                                {spreadTab === "gasoline" ? "휘" : "경"}
+                              </span>
+                              <p className="font-bold text-base">{fmtPrice(row.price)}</p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(row.price)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">데이터 없음</p>
@@ -496,7 +496,7 @@ export default function DashboardPage() {
               <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">최근 3개월</span>
             </div>
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              <span className="inline-block w-3 h-px border-t-2 border-dashed border-muted-foreground/50 align-middle mr-1.5" />국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+              · 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
             </p>
           </div>
           <div className="px-2 pb-4">
