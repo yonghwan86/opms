@@ -940,7 +940,7 @@ export default function DashboardPage() {
                   <PopoverContent side="bottom" align="start" className="w-72 text-sm p-3">
                     <p className="text-foreground leading-relaxed">{reportReason.main}</p>
                     {reportReason.sub && (
-                      <p className="text-muted-foreground mt-1">{reportReason.sub}</p>
+                      <p className="text-foreground font-semibold mt-1">{reportReason.sub}</p>
                     )}
                   </PopoverContent>
                 </Popover>
