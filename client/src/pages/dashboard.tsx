@@ -796,12 +796,14 @@ export default function DashboardPage() {
                           type="category"
                           dataKey="sido"
                           tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
-                          width={42}
+                          width={52}
                           tickLine={false}
                           axisLine={false}
+                          tickFormatter={(v: string) => v.includes(' ') ? v.split(' ').slice(1).join(' ') : v}
                         />
                         <Tooltip
                           formatter={(v: any) => [`${fmt(Number(v))}원`, isDiesel ? "평균 경유" : "평균 휘발유"]}
+                          labelFormatter={(label: string) => label.includes(' ') ? label.split(' ').slice(1).join(' ') : label}
                           contentStyle={{ fontSize: 13 }}
                         />
                         <Bar
