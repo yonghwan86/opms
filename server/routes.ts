@@ -1026,7 +1026,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let sidoFilter: string[] | undefined;
         if (req.session.role !== "MASTER") {
           const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-          if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+          const sidoFromRegions = [...new Set(permitted.regionList.map(r => r.split(' ')[0]))];
+          const allSidos = [...new Set([...permitted.sidoList, ...sidoFromRegions])];
+          if (allSidos.length > 0) sidoFilter = allSidos;
         }
         spread = await storage.getOilPriceSpread(dates[0], sidoFilter);
       }
@@ -1045,7 +1047,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let sidoFilter: string[] | undefined;
       if (req.session.role !== "MASTER") {
         const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-        if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+        const sidoFromRegions = [...new Set(permitted.regionList.map(r => r.split(' ')[0]))];
+        const allSidos = [...new Set([...permitted.sidoList, ...sidoFromRegions])];
+        if (allSidos.length > 0) sidoFilter = allSidos;
       }
       const data = await storage.getOilRegionalAverages(dates[0], sidoFilter);
       res.json(data);
@@ -1060,7 +1064,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let sidoFilter: string[] | undefined;
       if (req.session.role !== "MASTER") {
         const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-        if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+        const sidoFromRegions = [...new Set(permitted.regionList.map(r => r.split(' ')[0]))];
+        const allSidos = [...new Set([...permitted.sidoList, ...sidoFromRegions])];
+        if (allSidos.length > 0) sidoFilter = allSidos;
       }
       const data = await storage.getOilRegionalHistory(sidoFilter);
       res.json(data);
