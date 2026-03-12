@@ -71,7 +71,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     saveUninitialized: false,
     store: new PgStore({
       conString: process.env.DATABASE_URL,
-      createTableIfMissing: true,
       ttl: 7 * 24 * 60 * 60,
     }),
     cookie: {
