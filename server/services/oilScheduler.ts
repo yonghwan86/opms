@@ -112,12 +112,15 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
   }
 }
 
-async function runWithRetryAndNotify(source: string): Promise<void> {
+async function runWithRetryAndNotify(source: string, notifyMasterOnSuccess = false): Promise<void> {
   const result = await runOilPriceJob();
   console.log(`[OilScheduler] ${source} 수집 결과:`, result);
 
   if (result.success && result.analysisCount > 0) {
     await sendUserPush(result.today);
+    if (notifyMasterOnSuccess) {
+      await sendMasterPush(`${source} 수집 성공`, `수집 완료: 원본 ${result.rawCount}건, 분석 ${result.analysisCount}건`);
+    }
     return;
   }
 
@@ -166,7 +169,7 @@ async function checkAndRecoverOnStartup(): Promise<void> {
     }
 
     console.log(`[OilScheduler] 시작 복구: 오늘(${todayStr}) 분석 데이터 없음, 자동 수집 시작`);
-    await runWithRetryAndNotify("시작 복구");
+    await runWithRetryAndNotify("시작 복구", true);
   } catch (err) {
     console.error("[OilScheduler] 시작 복구 확인 오류:", err);
   }
