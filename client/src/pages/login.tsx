@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import kpetroCiSrc from "@assets/kpetro-ci.png";
 
 type Step = "username" | "password" | "setup-password";
 
@@ -256,15 +257,19 @@ export default function LoginPage() {
       <BrandPanel />
 
       {/* 오른쪽 로그인 패널 */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white">
-        <div className="w-full max-w-sm">
-          {/* 모바일 로고 */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Shield className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold">유가모니터링 시스템</span>
+      <div className="flex-1 flex flex-col lg:items-center lg:justify-center bg-white">
+        {/* 모바일 전용 상단: KPetro CI + 앱 아이콘 + 제목 */}
+        <div className="lg:hidden flex flex-col items-center px-8 pt-10 pb-0">
+          <div className="w-full mb-10">
+            <img src={kpetroCiSrc} alt="한국석유관리원" className="h-9 object-contain" data-testid="img-kpetro-ci-login" />
           </div>
+          <img src="/icon-192.png" alt="앱 아이콘" className="w-28 h-28 rounded-2xl mb-5" data-testid="img-app-icon-login" />
+          <h1 className="text-2xl font-bold text-center text-foreground leading-snug mb-10">
+            유가 이상징후<br />탐지 시스템
+          </h1>
+        </div>
+
+        <div className="w-full lg:max-w-sm px-8 lg:px-0 pb-10 lg:pb-0">
 
           {/* Step 1: 아이디 입력 */}
           {step === "username" && (
@@ -289,7 +294,7 @@ export default function LoginPage() {
                     className="h-11"
                   />
                 </div>
-                <Button type="submit" className="w-full h-11 font-medium" disabled={checkUserPending} data-testid="button-next">
+                <Button type="submit" className="w-full h-12 font-semibold rounded-full !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next">
                   {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   다음
                 </Button>
