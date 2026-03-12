@@ -11,7 +11,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -416,6 +416,24 @@ export default function DashboardPage() {
     if (riseCount > 0) return `급등 주유소 ${riseCount}곳 감지`;
     if (fallCount > 0) return `급락 주유소 ${fallCount}곳 감지`;
     return "100원 이상 급변 감지 이벤트";
+  })();
+
+  const reportReason = (() => {
+    const total = allAlerts.length;
+    const riseCount = riseAlerts.length;
+    const fallCount = fallAlerts.length;
+    if (total === 0) return "전일 대비 100원 이상 변동된 주유소가 감지되지 않았습니다.";
+    const maxChange = Math.abs(maxMover?.changeAmount ?? 0);
+    if (topRegion && topRegion[1] / total > 0.5 && total >= 3) {
+      return `급변 감지된 주유소 ${total}곳 중 ${topRegion[1]}곳(${Math.round(topRegion[1] / total * 100)}%)이 ${topRegion[0]} 지역에 집중되어 있습니다.`;
+    }
+    if (maxChange >= 300) return `오늘 가장 크게 변동한 주유소의 변동폭이 ${fmt(maxChange)}원으로, 300원 기준을 초과했습니다. (급등 ${riseCount}곳, 급락 ${fallCount}곳)`;
+    if (fallCount >= 2 * riseCount && fallCount >= 3) return `전일 대비 100원 이상 하락한 주유소가 ${fallCount}곳으로, 급등 주유소(${riseCount}곳)의 2배를 넘었습니다.`;
+    if (riseCount >= 2 * fallCount && riseCount >= 3) return `전일 대비 100원 이상 상승한 주유소가 ${riseCount}곳으로, 급락 주유소(${fallCount}곳)의 2배를 넘었습니다.`;
+    if (riseCount > 0 && fallCount > 0) return `전일 대비 100원 이상 급등 ${riseCount}곳, 급락 ${fallCount}곳이 동시에 감지되었습니다.`;
+    if (riseCount > 0) return `전일 대비 100원 이상 상승한 주유소가 ${riseCount}곳 감지되었습니다.`;
+    if (fallCount > 0) return `전일 대비 100원 이상 하락한 주유소가 ${fallCount}곳 감지되었습니다.`;
+    return "전일 대비 100원 이상 변동된 주유소가 감지되었습니다.";
   })();
 
   const wti = wtiRes?.current;
@@ -899,7 +917,19 @@ export default function DashboardPage() {
           <Card className="border border-border bg-card flex flex-col max-h-[430px]">
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
               <h2 className="text-base font-semibold text-foreground">일일 AI 분석 리포트</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">{reportHeadline} {shortDateLabel}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm text-muted-foreground">{reportHeadline} {shortDateLabel}</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button data-testid="btn-report-reason" className="text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0">
+                      <HelpCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="start" className="w-72 text-sm p-3">
+                    <p className="text-foreground leading-relaxed">{reportReason}</p>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
             <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
               {allAlerts.length === 0 ? (
