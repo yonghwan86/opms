@@ -413,7 +413,7 @@ export default function DashboardPage() {
           <MetricCard
             title={`전국 ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
             subtitle="최고가 − 최저가 격차"
-            icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading} source="오피넷"
+            icon={BarChart2} iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"} loading={fuelLoading} source="오피넷"
             headerRight={
               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                 <div className="flex items-center gap-0.5">
@@ -424,7 +424,9 @@ export default function DashboardPage() {
                       className={cn(
                         "w-6 h-5 flex items-center justify-center rounded text-[11px] font-semibold transition-colors",
                         spreadTab === tab
-                          ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                          ? tab === 'gasoline'
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300"
+                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
                           : "text-muted-foreground hover:bg-muted"
                       )}
                       data-testid={`tab-spread-${tab}`}
@@ -579,7 +581,7 @@ export default function DashboardPage() {
                         className={cn(
                           "text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
                           regionalTab === tab
-                            ? tab === 'gasoline' ? "bg-blue-500 text-white" : "bg-emerald-500 text-white"
+                            ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
                             : "bg-muted text-muted-foreground hover:bg-muted/80"
                         )}
                       >
@@ -620,7 +622,7 @@ export default function DashboardPage() {
                         />
                         <Bar
                           dataKey={isDiesel ? "avgDiesel" : "avgPrice"}
-                          fill={isDiesel ? "#22c55e" : "#3b82f6"}
+                          fill={isDiesel ? "#22c55e" : "#facc15"}
                           radius={[0, 4, 4, 0]}
                           barSize={20}
                           label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
