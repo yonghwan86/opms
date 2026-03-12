@@ -137,6 +137,9 @@ async function runWithRetryAndNotify(source: string, notifyMasterOnSuccess = fal
 
     if (retry.success && retry.analysisCount > 0) {
       await sendUserPush(retry.today);
+      if (notifyMasterOnSuccess) {
+        await sendMasterPush(`${source} 재시도 성공`, `재시도 수집 완료: 원본 ${retry.rawCount}건, 분석 ${retry.analysisCount}건`);
+      }
     } else {
       await sendMasterPush(
         "유가 수집 최종 실패",
