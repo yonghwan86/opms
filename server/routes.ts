@@ -5,10 +5,10 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { storage } from "./storage";
-import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import { initPush, getVapidPublicKey, sendPushToAll } from "./services/pushService";
 
-const MemStore = MemoryStore(session);
+const PgStore = connectPgSimple(session);
 
 // ─── 세션 타입 확장 ───────────────────────────────────────────────────────────
 declare module "express-session" {
@@ -69,12 +69,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     secret: process.env.SESSION_SECRET || "fuel-admin-secret-2024",
     resave: false,
     saveUninitialized: false,
-    store: new MemStore({ checkPeriod: 86400000 }),
+    store: new PgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: true,
+      ttl: 7 * 24 * 60 * 60,
+    }),
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }));
 
