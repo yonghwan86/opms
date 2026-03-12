@@ -421,7 +421,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-red-500 font-semibold text-xs flex-shrink-0">최고</span>
                       <div className="flex flex-col min-w-0 flex-1 mx-1">
-                        <span className="text-foreground text-xs truncate">{sp.maxStation}</span>
+                        <span className="text-foreground text-xs truncate">{sp.maxStation.length > 8 ? sp.maxStation.slice(0, 8) + "…" : sp.maxStation}</span>
                         <span className="text-[10px] text-muted-foreground">{regionShort(sp.maxRegion)}</span>
                       </div>
                       <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(sp.maxPrice)}</span>
@@ -429,7 +429,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-blue-500 font-semibold text-xs flex-shrink-0">최저</span>
                       <div className="flex flex-col min-w-0 flex-1 mx-1">
-                        <span className="text-foreground text-xs truncate">{sp.minStation}</span>
+                        <span className="text-foreground text-xs truncate">{sp.minStation.length > 8 ? sp.minStation.slice(0, 8) + "…" : sp.minStation}</span>
                         <span className="text-[10px] text-muted-foreground">{regionShort(sp.minRegion)}</span>
                       </div>
                       <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(sp.minPrice)}</span>
