@@ -989,15 +989,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/dashboard/fuel-stats — 국내 유류 평균 + 전국 편차
   app.get("/api/dashboard/fuel-stats", requireAuth, async (_req, res) => {
     try {
+      const { getCachedFuelAverages } = await import("./services/opinetApi");
+      const cached = getCachedFuelAverages();
+
+      const isCacheFresh = cached !== null;
+
       const dates = await storage.getOilAvailableDates();
-      if (dates.length === 0) return res.json({ averages: null, spread: null });
-      const date = dates[0];
-      const prevDate = dates[1] ?? dates[0];
-      const [averages, spread] = await Promise.all([
-        storage.getOilNationalAverages(date, prevDate),
-        storage.getOilPriceSpread(date),
-      ]);
-      res.json({ date, averages, spread });
+
+      let averages;
+      let averagesDate: string | null = null;
+
+      if (isCacheFresh && cached) {
+        averages = {
+          gasoline: cached.gasoline,
+          diesel: cached.diesel,
+          kerosene: cached.kerosene,
+          gasolineChange: cached.gasolineChange,
+          dieselChange: cached.dieselChange,
+          keroseneChange: cached.keroseneChange,
+        };
+        averagesDate = cached.tradeDate;
+      } else if (dates.length > 0) {
+        const prevDate = dates[1] ?? dates[0];
+        averages = await storage.getOilNationalAverages(dates[0], prevDate);
+        averagesDate = dates[0];
+      } else {
+        return res.json({ averages: null, spread: null });
+      }
+
+      let spread = null;
+      if (dates.length > 0) {
+        spread = await storage.getOilPriceSpread(dates[0]);
+      }
+
+      res.json({ date: averagesDate, averages, spread });
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
     }

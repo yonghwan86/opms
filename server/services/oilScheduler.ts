@@ -4,6 +4,7 @@ import { parseOilPriceCSV, toInsertOilPriceRaw } from "./oilParser";
 import { runAnalysis } from "./oilAnalyzer";
 import { storage } from "../storage";
 import { sendPushToAll } from "./pushService";
+import { fetchFuelAveragesWithRetry, setCachedFuelAverages } from "./opinetApi";
 
 function getDateStr(date: Date): string {
   const y = date.getFullYear();
@@ -178,13 +179,33 @@ async function checkAndRecoverOnStartup(): Promise<void> {
   }
 }
 
+async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
+  console.log("[OpinetScheduler] 유류 평균 수집 시작");
+  const retryDelay = isStartup ? 10 * 1000 : 5 * 60 * 1000;
+  const result = await fetchFuelAveragesWithRetry(3, retryDelay);
+  if (!result) {
+    setCachedFuelAverages(null);
+    console.warn("[OpinetScheduler] 유류 평균 수집 실패, 캐시 초기화 (DB fallback 사용)");
+  }
+}
+
 export function startOilScheduler(): void {
   cron.schedule("10 9 * * *", async () => {
     console.log("[OilScheduler] 정기 수집 시작 (매일 오전 9시 10분)");
     await runWithRetryAndNotify("정기 수집");
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (수집: 오전 9시 10분 KST / 수집 성공 시 사용자 푸시 자동 발송)");
+  cron.schedule("0 1,2,9,12,16,19 * * *", async () => {
+    console.log("[OpinetScheduler] 정기 유류 평균 수집 (KST)");
+    await fetchOpinetFuelAverages();
+  }, { timezone: "Asia/Seoul" });
+
+  console.log("[OilScheduler] 스케줄러 등록 완료 (CSV 수집: 오전 9시 10분 KST / 유류 평균: 1,2,9,12,16,19시 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
+
+  setTimeout(() => {
+    console.log("[OpinetScheduler] 서버 시작 직후 유류 평균 즉시 수집");
+    fetchOpinetFuelAverages(true);
+  }, 3000);
 }
