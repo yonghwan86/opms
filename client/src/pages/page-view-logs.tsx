@@ -31,8 +31,8 @@ export default function PageViewLogsPage() {
   if (filterDevice !== "all") params.set("device", filterDevice);
 
   const { data, isLoading } = useQuery<PaginatedResult<PageViewLog>>({
-    queryKey: ["/api/page-views", { filterPage, filterDevice, page }],
-    queryFn: () => fetch(`/api/page-views?${params.toString()}`).then(r => r.json()),
+    queryKey: ["/api/logs/page-view", { filterPage, filterDevice, page }],
+    queryFn: () => fetch(`/api/logs/page-view?${params.toString()}`).then(r => r.json()),
   });
 
   const uniquePages = data?.data ? [...new Set(data.data.map(d => d.page))] : [];

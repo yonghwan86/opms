@@ -802,8 +802,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // GET /api/page-views (MASTER 전용 — 목록 조회)
-  app.get("/api/page-views", requireMaster, async (req, res) => {
+  // GET /api/logs/page-view (MASTER 전용 — 목록 조회)
+  app.get("/api/logs/page-view", requireMaster, async (req, res) => {
     try {
       const { userId, pageFilter, device, page, pageSize } = req.query;
       const result = await storage.getPageViews({
@@ -848,10 +848,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const rows = await storage.getAllLoginLogsForCsv();
       const BOM = "\uFEFF";
-      const header = csvRow(["ID", "사용자ID", "아이디", "이름", "IP주소", "기기", "브라우저", "로그인시각"]);
+      const header = csvRow(["ID", "사용자ID", "아이디", "이름", "IP주소", "기기", "로그인시각"]);
       const lines = rows.map(r => csvRow([
         String(r.id), String(r.userId), r.username, r.displayName,
-        r.ipAddress || "", detectDevice(r.userAgent), r.userAgent?.slice(0, 200) || "",
+        r.ipAddress || "", detectDevice(r.userAgent),
         formatDateKr(r.loginAt),
       ]));
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
