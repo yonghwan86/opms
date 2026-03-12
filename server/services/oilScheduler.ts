@@ -156,6 +156,7 @@ async function checkAndRecoverOnStartup(): Promise<void> {
   try {
     const kstHour = getKSTHour();
     if (kstHour < 9) {
+      // 오피넷은 당일 유가 데이터를 오전 9시경 제공; 이전에 수집하면 항상 analysisCount=0 → 불필요한 재시도 유발
       console.log(`[OilScheduler] 시작 복구: 현재 KST ${kstHour}시 (9시 이전), 오늘 데이터 아직 미제공 — 복구 건너뜀`);
       return;
     }
