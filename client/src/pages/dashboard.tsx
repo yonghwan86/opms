@@ -496,7 +496,7 @@ export default function DashboardPage() {
               <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">최근 3개월</span>
             </div>
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              · 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+              ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
             </p>
           </div>
           <div className="px-2 pb-4">
