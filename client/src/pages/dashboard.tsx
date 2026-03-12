@@ -161,20 +161,28 @@ function ChangeChip({ val, unit = "원", percent, decimals = 0 }: { val: number;
 
 // ─── 메트릭 카드 ─────────────────────────────────────────────────────────────
 function MetricCard({
-  title, subtitle, source, icon: Icon, iconBg, loading, children,
+  title, subtitle, source, live, icon: Icon, iconBg, loading, children,
 }: {
-  title: string; subtitle?: string; source?: string; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
+  title: string; subtitle?: string; source?: string; live?: boolean; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
 }) {
   return (
     <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card flex flex-col">
-      <div className="flex items-center gap-2 md:gap-3 mb-1">
-        <div className={cn("w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
-          <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <div className={cn("w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
+            <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight">{title}</p>
+            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight">{title}</p>
-          {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
-        </div>
+        {live && !loading && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5" data-testid="badge-live">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            실시간
+          </span>
+        )}
       </div>
       {loading ? (
         <div className="space-y-2 mt-3">
@@ -327,7 +335,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
 
           {/* WTI 국제 유가 */}
-          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading} source="Yahoo Finance">
+          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading} source="Yahoo Finance" live>
             {wti ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
@@ -341,7 +349,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* KRW-USD 환율 */}
-          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading} source="Yahoo Finance">
+          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading} source="Yahoo Finance" live>
             {fx ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
@@ -355,7 +363,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 국내 유류 평균 */}
-          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading} source="오피넷">
+          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading} source="오피넷" live>
             {avg ? (
               <div className="space-y-2">
                 {[
