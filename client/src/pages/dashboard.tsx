@@ -780,7 +780,7 @@ export default function DashboardPage() {
                   ) : sorted.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
                   ) : (
-                    <ResponsiveContainer width="100%" height={340}>
+                    <ResponsiveContainer width="100%" height={Math.max(340, sorted.length * 28 + 20)}>
                       <BarChart data={sorted} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                         <XAxis

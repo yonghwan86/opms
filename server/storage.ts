@@ -845,7 +845,7 @@ export class PostgresStorage implements IStorage {
         GROUP BY sido
         HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
         ORDER BY avg_price DESC
-        LIMIT 10`);
+        LIMIT 20`);
       return result.rows.map((r: any) => ({
         sido: r.sido as string,
         avgPrice: Number(r.avg_price),

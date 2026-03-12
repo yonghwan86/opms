@@ -930,7 +930,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } else {
         // HQ_USER: 관할 지역 자동 주입, region 쿼리가 있으면 그 값만
         const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-        if (region) {
+        // 본부·팀 미지정(전국) HQ_USER는 MASTER와 동일하게 전국 처리
+        if (permitted.sidoList.length === 0 && permitted.regionList.length === 0) {
+          regions = null;
+        } else if (region) {
           if (permitted.sidoList.includes(region)) {
             // sido 전체 선택 (e.g. "충북")
             regions = { sidoList: [region], regionList: [] };
