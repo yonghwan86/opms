@@ -440,7 +440,15 @@ export default function DashboardPage() {
                             <TooltipContent side="top" className="text-xs space-y-0.5">
                               <p className="font-semibold">{row.station}</p>
                               <p className="text-muted-foreground">{row.region}</p>
-                              <p className="font-bold">{fmtPrice(row.price)}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-bold">{fmtPrice(row.price)}</p>
+                                <span className={cn(
+                                  "inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white",
+                                  spreadTab === "gasoline" ? "bg-yellow-400" : "bg-emerald-500"
+                                )}>
+                                  {spreadTab === "gasoline" ? "휘" : "경"}
+                                </span>
+                              </div>
                             </TooltipContent>
                           </UITooltip>
                           <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(row.price)}</span>
