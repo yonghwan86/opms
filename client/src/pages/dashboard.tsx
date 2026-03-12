@@ -318,6 +318,25 @@ export default function DashboardPage() {
   })();
   const maxMover = allAlerts[0];
 
+  const reportHeadline = (() => {
+    const total = allAlerts.length;
+    const riseCount = riseAlerts.length;
+    const fallCount = fallAlerts.length;
+    if (total === 0) return "유가 안정세 — 급변 감지 없음";
+    const maxChange = Math.abs(maxMover?.changeAmount ?? 0);
+    if (topRegion && topRegion[1] / total > 0.5 && total >= 3) {
+      const trend = fallCount >= riseCount ? "급락" : "급등";
+      return `${topRegion[0]} 집중 ${trend} 현상`;
+    }
+    if (maxChange >= 300) return `최대 ${fmt(maxChange)}원 초과 급변 경보`;
+    if (fallCount >= 2 * riseCount && fallCount >= 3) return `전국 ${fallCount}곳 대규모 가격 인하`;
+    if (riseCount >= 2 * fallCount && riseCount >= 3) return `광역 급등 주의 — ${riseCount}곳 상승`;
+    if (riseCount > 0 && fallCount > 0) return `급등 ${riseCount}곳 · 급락 ${fallCount}곳 혼조세`;
+    if (riseCount > 0) return `급등 주유소 ${riseCount}곳 감지`;
+    if (fallCount > 0) return `급락 주유소 ${fallCount}곳 감지`;
+    return "100원 이상 급변 감지 이벤트";
+  })();
+
   const wti = wtiRes?.current;
   const avg = fuelStats?.averages;
   const spread = fuelStats?.spread;
@@ -681,7 +700,7 @@ export default function DashboardPage() {
           <Card className="border border-border bg-card flex flex-col max-h-[430px]">
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
               <h2 className="text-base font-semibold text-foreground">최근 AI 분석 리포트</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">100원 이상 급변 감지 이벤트 {shortDateLabel}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{reportHeadline} {shortDateLabel}</p>
             </div>
             <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
               {allAlerts.length === 0 ? (
