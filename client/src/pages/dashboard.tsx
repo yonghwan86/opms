@@ -761,7 +761,7 @@ export default function DashboardPage() {
                         key={i}
                         onClick={() => setCarouselSlide(i)}
                         data-testid={`dot-carousel-${i}`}
-                        style={{ minWidth: 44, minHeight: 44 }}
+                        style={{ minWidth: 20, minHeight: 44 }}
                         className="flex items-center justify-center"
                       >
                         <span className={cn(
