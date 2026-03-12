@@ -144,13 +144,13 @@ export interface IStorage {
     gasoline: number; diesel: number; kerosene: number;
     gasolineChange: number; dieselChange: number; keroseneChange: number;
   }>;
-  getOilPriceSpread(date: string): Promise<{
+  getOilPriceSpread(date: string, sidoFilter?: string[], regionFilter?: string[]): Promise<{
     gasoline: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
     diesel: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
   }>;
-  getOilRegionalAverages(date: string, sidoFilter?: string[]): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
+  getOilRegionalAverages(date: string, sidoFilter?: string[], regionFilter?: string[]): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
   getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
-  getOilRegionalHistory(sidoFilter?: string[]): Promise<{ date: string; gasoline: number | null; diesel: number | null; kerosene: number | null }[]>;
+  getOilRegionalHistory(sidoFilter?: string[], regionFilter?: string[]): Promise<{ date: string; gasoline: number | null; diesel: number | null; kerosene: number | null }[]>;
 
   // 푸시 구독
   savePushSubscription(userId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<void>;
@@ -731,10 +731,21 @@ export class PostgresStorage implements IStorage {
     };
   }
 
-  async getOilPriceSpread(date: string, sidoFilter?: string[]) {
-    const sidoWhere = sidoFilter && sidoFilter.length > 0
-      ? sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
-      : sql``;
+  async getOilPriceSpread(date: string, sidoFilter?: string[], regionFilter?: string[]) {
+    const hasSido = sidoFilter && sidoFilter.length > 0;
+    const hasRegion = regionFilter && regionFilter.length > 0;
+    let whereExpr: ReturnType<typeof sql>;
+    if (hasSido && hasRegion) {
+      const sidoArr = sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','));
+      const regionArr = sql.raw(regionFilter!.map(r => `'${r.replace(/'/g, "''")}'`).join(','));
+      whereExpr = sql`AND (sido = ANY(ARRAY[${sidoArr}]) OR region = ANY(ARRAY[${regionArr}]))`;
+    } else if (hasSido) {
+      whereExpr = sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`;
+    } else if (hasRegion) {
+      whereExpr = sql`AND region = ANY(ARRAY[${sql.raw(regionFilter!.map(r => `'${r.replace(/'/g, "''")}'`).join(','))}])`;
+    } else {
+      whereExpr = sql``;
+    }
     const spreadFor = async (fuel: 'gasoline' | 'diesel') => {
       const col = fuel === 'gasoline' ? sql`gasoline` : sql`diesel`;
       const spreadRes = await db.execute(sql`
@@ -742,14 +753,14 @@ export class PostgresStorage implements IStorage {
           MAX(${col}) AS max_price,
           MIN(CASE WHEN ${col} > 0 THEN ${col} END) AS min_price,
           MAX(${col}) - MIN(CASE WHEN ${col} > 0 THEN ${col} END) AS spread
-        FROM oil_price_raw WHERE date = ${date} AND ${col} > 0 ${sidoWhere}`);
+        FROM oil_price_raw WHERE date = ${date} AND ${col} > 0 ${whereExpr}`);
       const s = spreadRes.rows[0] as any;
       const maxPrice = Number(s?.max_price) || 0;
       const minPrice = Number(s?.min_price) || 0;
       if (!maxPrice || !minPrice) return null;
       const [maxRow, minRow] = await Promise.all([
-        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${maxPrice} ${sidoWhere} LIMIT 1`),
-        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${minPrice} ${sidoWhere} LIMIT 1`),
+        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${maxPrice} ${whereExpr} LIMIT 1`),
+        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${minPrice} ${whereExpr} LIMIT 1`),
       ]);
       return {
         spread: Number(s?.spread) || 0,
@@ -765,22 +776,54 @@ export class PostgresStorage implements IStorage {
     return { gasoline, diesel };
   }
 
-  async getOilRegionalAverages(date: string, sidoFilter?: string[]) {
-    const hasSidoFilter = sidoFilter && sidoFilter.length > 0;
-    const singleSido = hasSidoFilter && sidoFilter!.length === 1;
-    const sidoCondition = hasSidoFilter
-      ? sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
-      : sql``;
+  async getOilRegionalAverages(date: string, sidoFilter?: string[], regionFilter?: string[]) {
+    const hasSido = sidoFilter && sidoFilter.length > 0;
+    const hasRegion = regionFilter && regionFilter.length > 0;
 
-    if (singleSido) {
-      // 단일 도: 시/군/구 단위로 집계
+    // 필터 조건 빌드
+    let whereExpr: ReturnType<typeof sql>;
+    if (hasSido && hasRegion) {
+      const sidoArr = sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','));
+      const regionArr = sql.raw(regionFilter!.map(r => `'${r.replace(/'/g, "''")}'`).join(','));
+      whereExpr = sql`AND (sido = ANY(ARRAY[${sidoArr}]) OR region = ANY(ARRAY[${regionArr}]))`;
+    } else if (hasSido) {
+      whereExpr = sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`;
+    } else if (hasRegion) {
+      whereExpr = sql`AND region = ANY(ARRAY[${sql.raw(regionFilter!.map(r => `'${r.replace(/'/g, "''")}'`).join(','))}])`;
+    } else {
+      whereExpr = sql``;
+    }
+
+    // 시도 권한 없고 시/군/구만 있으면 city-level 집계, 아니면 sido-level 집계
+    const groupByRegion = !hasSido && hasRegion;
+
+    if (groupByRegion) {
+      // 시/군/구 단위로 집계 (담당 시/군/구만)
       const result = await db.execute(sql`
         SELECT
           region AS sido,
           ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
           ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
         FROM oil_price_raw
-        WHERE date = ${date} ${sidoCondition}
+        WHERE date = ${date} ${whereExpr}
+        GROUP BY region
+        HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
+        ORDER BY avg_price DESC
+        LIMIT 20`);
+      return result.rows.map((r: any) => ({
+        sido: r.sido as string,
+        avgPrice: Number(r.avg_price),
+        avgDiesel: r.avg_diesel != null ? Number(r.avg_diesel) : null,
+      }));
+    } else if (hasSido && sidoFilter!.length === 1 && !hasRegion) {
+      // 단일 도, 시/군/구 없음: 해당 도 내 시/군/구 단위 집계
+      const result = await db.execute(sql`
+        SELECT
+          region AS sido,
+          ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
+          ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
+        FROM oil_price_raw
+        WHERE date = ${date} ${whereExpr}
         GROUP BY region
         HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
         ORDER BY avg_price DESC
@@ -791,14 +834,14 @@ export class PostgresStorage implements IStorage {
         avgDiesel: r.avg_diesel != null ? Number(r.avg_diesel) : null,
       }));
     } else {
-      // 전국 또는 여러 도: 도 단위로 집계
+      // 전국 또는 여러 도 (또는 sido+region 혼합): 도 단위로 집계
       const result = await db.execute(sql`
         SELECT
           sido,
           ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
           ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
         FROM oil_price_raw
-        WHERE date = ${date} ${sidoCondition}
+        WHERE date = ${date} ${whereExpr}
         GROUP BY sido
         HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
         ORDER BY avg_price DESC
@@ -827,10 +870,24 @@ export class PostgresStorage implements IStorage {
     }));
   }
 
-  async getOilRegionalHistory(sidoFilter?: string[]) {
-    const sidoCondition = sidoFilter && sidoFilter.length > 0
-      ? sql`WHERE sido = ANY(ARRAY[${sql.raw(sidoFilter.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
-      : sql``;
+  async getOilRegionalHistory(sidoFilter?: string[], regionFilter?: string[]) {
+    const hasSido = sidoFilter && sidoFilter.length > 0;
+    const hasRegion = regionFilter && regionFilter.length > 0;
+    const hasFilter = hasSido || hasRegion;
+
+    let filterExpr: ReturnType<typeof sql>;
+    if (hasSido && hasRegion) {
+      const sidoArr = sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','));
+      const regionArr = sql.raw(regionFilter!.map(r => `'${r.replace(/'/g, "''")}'`).join(','));
+      filterExpr = sql`WHERE (sido = ANY(ARRAY[${sidoArr}]) OR region = ANY(ARRAY[${regionArr}]))`;
+    } else if (hasSido) {
+      filterExpr = sql`WHERE sido = ANY(ARRAY[${sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`;
+    } else if (hasRegion) {
+      filterExpr = sql`WHERE region = ANY(ARRAY[${sql.raw(regionFilter!.map(r => `'${r.replace(/'/g, "''")}'`).join(','))}])`;
+    } else {
+      filterExpr = sql``;
+    }
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 90);
     const cutoff = cutoffDate.toISOString().slice(0, 10).replace(/-/g, "");
@@ -841,8 +898,8 @@ export class PostgresStorage implements IStorage {
         ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS diesel,
         ROUND(AVG(CASE WHEN kerosene > 0 THEN kerosene END)) AS kerosene
       FROM oil_price_raw
-      ${sidoCondition}
-      ${sidoFilter && sidoFilter.length > 0 ? sql`AND date >= ${cutoff}` : sql`WHERE date >= ${cutoff}`}
+      ${filterExpr}
+      ${hasFilter ? sql`AND date >= ${cutoff}` : sql`WHERE date >= ${cutoff}`}
       GROUP BY date
       ORDER BY date ASC`);
     return result.rows.map((r: any) => ({

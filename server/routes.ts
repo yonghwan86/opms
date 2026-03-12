@@ -1024,13 +1024,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let spread = null;
       if (dates.length > 0) {
         let sidoFilter: string[] | undefined;
+        let regionFilter: string[] | undefined;
         if (req.session.role !== "MASTER") {
           const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-          const sidoFromRegions = [...new Set(permitted.regionList.map(r => r.split(' ')[0]))];
-          const allSidos = [...new Set([...permitted.sidoList, ...sidoFromRegions])];
-          if (allSidos.length > 0) sidoFilter = allSidos;
+          if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+          if (permitted.regionList.length > 0) regionFilter = permitted.regionList;
         }
-        spread = await storage.getOilPriceSpread(dates[0], sidoFilter);
+        spread = await storage.getOilPriceSpread(dates[0], sidoFilter, regionFilter);
       }
 
       res.json({ date: averagesDate, averages, spread });
@@ -1045,13 +1045,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const dates = await storage.getOilAvailableDates();
       if (dates.length === 0) return res.json([]);
       let sidoFilter: string[] | undefined;
+      let regionFilter: string[] | undefined;
       if (req.session.role !== "MASTER") {
         const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-        const sidoFromRegions = [...new Set(permitted.regionList.map(r => r.split(' ')[0]))];
-        const allSidos = [...new Set([...permitted.sidoList, ...sidoFromRegions])];
-        if (allSidos.length > 0) sidoFilter = allSidos;
+        if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+        if (permitted.regionList.length > 0) regionFilter = permitted.regionList;
       }
-      const data = await storage.getOilRegionalAverages(dates[0], sidoFilter);
+      const data = await storage.getOilRegionalAverages(dates[0], sidoFilter, regionFilter);
       res.json(data);
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
@@ -1062,13 +1062,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/dashboard/regional-price-history", requireAuth, async (req, res) => {
     try {
       let sidoFilter: string[] | undefined;
+      let regionFilter: string[] | undefined;
       if (req.session.role !== "MASTER") {
         const permitted = await storage.getUserPermittedRegions(req.session.userId!);
-        const sidoFromRegions = [...new Set(permitted.regionList.map(r => r.split(' ')[0]))];
-        const allSidos = [...new Set([...permitted.sidoList, ...sidoFromRegions])];
-        if (allSidos.length > 0) sidoFilter = allSidos;
+        if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+        if (permitted.regionList.length > 0) regionFilter = permitted.regionList;
       }
-      const data = await storage.getOilRegionalHistory(sidoFilter);
+      const data = await storage.getOilRegionalHistory(sidoFilter, regionFilter);
       res.json(data);
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
