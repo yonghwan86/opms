@@ -16,6 +16,7 @@ import { usePush } from "@/hooks/use-push";
 import { apiRequest } from "@/lib/queryClient";
 
 const appIconSrc = "/icon-192.png";
+import kpetroCiSrc from "@assets/IMG_6858_1773329686379.jpeg";
 
 interface NavItem {
   label: string;
@@ -142,11 +143,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
           <Menu className="w-5 h-5" />
         </Button>
-        <div className="flex-1 flex items-center justify-center gap-2">
+        <div className="flex-1 flex items-center gap-2 ml-1">
           <img src={appIconSrc} alt="앱 아이콘" className="w-6 h-6 rounded flex-shrink-0" />
           <span className="text-sm font-semibold text-sidebar-foreground">유가 이상징후 탐지 시스템</span>
         </div>
-        <div className="w-9" />
+        <img src={kpetroCiSrc} alt="한국석유관리원" className="h-7 object-contain flex-shrink-0" data-testid="img-kpetro-ci" />
       </header>
 
       {/* 모바일 오버레이 배경 */}
