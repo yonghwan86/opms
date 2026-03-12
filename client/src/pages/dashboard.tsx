@@ -687,7 +687,7 @@ export default function DashboardPage() {
                 <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">{isDiesel ? "경유" : "휘발유"} 시/도별 평균 {shortDateLabel}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{isDiesel ? "경유" : "휘발유"} {user?.teamId ? "시/군별" : "시/도별"} 평균 {shortDateLabel}</p>
                   </div>
                   <div className="flex gap-1">
                     {(['gasoline', 'diesel'] as const).map(tab => (

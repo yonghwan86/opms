@@ -627,23 +627,48 @@ export class PostgresStorage implements IStorage {
 
   async getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }> {
     const user = await this.getUserById(userId);
-    if (!user || !user.teamId) return { sidoList: [], regionList: [] };
-    const perms = await db
-      .select()
-      .from(hqTeamRegionPermissions)
-      .where(and(
-        eq(hqTeamRegionPermissions.teamId, user.teamId),
-        eq(hqTeamRegionPermissions.enabled, true),
-      ));
+    if (!user) return { sidoList: [], regionList: [] };
+
+    let perms;
+    if (user.teamId) {
+      // 팀 계정: 해당 팀 권한만 조회
+      perms = await db
+        .select()
+        .from(hqTeamRegionPermissions)
+        .where(and(
+          eq(hqTeamRegionPermissions.teamId, user.teamId),
+          eq(hqTeamRegionPermissions.enabled, true),
+        ));
+    } else if (user.headquartersId) {
+      // 본부 계정: 해당 본부 소속 모든 팀의 권한 합산
+      const hqTeams = await db
+        .select({ id: teams.id })
+        .from(teams)
+        .where(eq(teams.headquartersId, user.headquartersId));
+      const teamIds = hqTeams.map(t => t.id);
+      if (teamIds.length === 0) return { sidoList: [], regionList: [] };
+      perms = await db
+        .select()
+        .from(hqTeamRegionPermissions)
+        .where(and(
+          inArray(hqTeamRegionPermissions.teamId, teamIds),
+          eq(hqTeamRegionPermissions.enabled, true),
+        ));
+    } else {
+      return { sidoList: [], regionList: [] };
+    }
+
     const sidoList: string[] = [];
     const regionList: string[] = [];
     for (const p of perms) {
       const sigungu = p.guName || p.siName || p.gunName;
       if (sigungu) {
         const sidoAbbrev = p.doName ? (SIDO_ABBREV[p.doName] || p.doName) : '';
-        regionList.push(`${sidoAbbrev} ${sigungu}`.trim());
+        const r = `${sidoAbbrev} ${sigungu}`.trim();
+        if (!regionList.includes(r)) regionList.push(r);
       } else if (p.doName) {
-        sidoList.push(SIDO_ABBREV[p.doName] || p.doName);
+        const s = SIDO_ABBREV[p.doName] || p.doName;
+        if (!sidoList.includes(s)) sidoList.push(s);
       }
     }
     return { sidoList, regionList };
@@ -738,25 +763,49 @@ export class PostgresStorage implements IStorage {
   }
 
   async getOilRegionalAverages(date: string, sidoFilter?: string[]) {
-    const sidoCondition = sidoFilter && sidoFilter.length > 0
-      ? sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
+    const hasSidoFilter = sidoFilter && sidoFilter.length > 0;
+    const singleSido = hasSidoFilter && sidoFilter!.length === 1;
+    const sidoCondition = hasSidoFilter
+      ? sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter!.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
       : sql``;
-    const result = await db.execute(sql`
-      SELECT
-        sido,
-        ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
-        ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
-      FROM oil_price_raw
-      WHERE date = ${date} ${sidoCondition}
-      GROUP BY sido
-      HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
-      ORDER BY avg_price DESC
-      LIMIT 10`);
-    return result.rows.map((r: any) => ({
-      sido: r.sido as string,
-      avgPrice: Number(r.avg_price),
-      avgDiesel: r.avg_diesel != null ? Number(r.avg_diesel) : null,
-    }));
+
+    if (singleSido) {
+      // 단일 도: 시/군/구 단위로 집계
+      const result = await db.execute(sql`
+        SELECT
+          region AS sido,
+          ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
+          ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
+        FROM oil_price_raw
+        WHERE date = ${date} ${sidoCondition}
+        GROUP BY region
+        HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
+        ORDER BY avg_price DESC
+        LIMIT 15`);
+      return result.rows.map((r: any) => ({
+        sido: r.sido as string,
+        avgPrice: Number(r.avg_price),
+        avgDiesel: r.avg_diesel != null ? Number(r.avg_diesel) : null,
+      }));
+    } else {
+      // 전국 또는 여러 도: 도 단위로 집계
+      const result = await db.execute(sql`
+        SELECT
+          sido,
+          ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
+          ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
+        FROM oil_price_raw
+        WHERE date = ${date} ${sidoCondition}
+        GROUP BY sido
+        HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
+        ORDER BY avg_price DESC
+        LIMIT 10`);
+      return result.rows.map((r: any) => ({
+        sido: r.sido as string,
+        avgPrice: Number(r.avg_price),
+        avgDiesel: r.avg_diesel != null ? Number(r.avg_diesel) : null,
+      }));
+    }
   }
 
   async getOilDomesticHistory() {
