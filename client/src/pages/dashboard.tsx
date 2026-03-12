@@ -452,7 +452,7 @@ export default function DashboardPage() {
 
           {/* 전국 편차 */}
           <MetricCard
-            title={`전국 ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
+            title={`${isMaster ? "전국" : "관할 지역"} ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
             subtitle="최고가 − 최저가 격차"
             icon={BarChart2} iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"} loading={fuelLoading} source="오피넷"
             headerRight={
@@ -753,8 +753,8 @@ export default function DashboardPage() {
             const slides = [
               { label: "가격 상승 TOP 5", desc: "전일 대비 최대 상승", stations: riseStations, arrow: "▲", priceColor: "text-red-500" },
               { label: "가격 하락 TOP 5", desc: "전일 대비 최대 하락", stations: fallStations, arrow: "▼", priceColor: "text-blue-500" },
-              { label: "최고가 TOP 5",   desc: "전국 휘발유 최고가",  stations: highStations, arrow: null, priceColor: "text-orange-500" },
-              { label: "최저가 TOP 5",   desc: "전국 휘발유 최저가",  stations: lowStations,  arrow: null, priceColor: "text-emerald-600" },
+              { label: "최고가 TOP 5",   desc: `${isMaster ? "전국" : "관할 지역"} 휘발유 최고가`,  stations: highStations, arrow: null, priceColor: "text-orange-500" },
+              { label: "최저가 TOP 5",   desc: `${isMaster ? "전국" : "관할 지역"} 휘발유 최저가`,  stations: lowStations,  arrow: null, priceColor: "text-emerald-600" },
             ];
             const slide = slides[carouselSlide];
             const handleTouchStart = (e: React.TouchEvent) => {
