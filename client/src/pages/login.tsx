@@ -4,9 +4,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kpetroCiSrc from "@assets/kpetro-ci.png";
+import loginIconSrc from "@assets/file_1773328850418_1773332426820.jpeg";
 
 type Step = "username" | "password" | "setup-password";
 
@@ -258,15 +259,17 @@ export default function LoginPage() {
 
       {/* 오른쪽 로그인 패널 */}
       <div className="flex-1 flex flex-col lg:items-center lg:justify-center bg-white">
-        {/* 모바일 전용 상단: KPetro CI + 앱 아이콘 + 제목 */}
-        <div className="lg:hidden flex flex-col items-center px-8 pt-10 pb-0">
-          <div className="w-full mb-10">
+        {/* 모바일 전용 상단: KPetro CI + 아이콘(좌)+제목(우) */}
+        <div className="lg:hidden px-8 pt-10 pb-0">
+          <div className="mb-12">
             <img src={kpetroCiSrc} alt="한국석유관리원" className="h-9 object-contain" data-testid="img-kpetro-ci-login" />
           </div>
-          <img src="/icon-192.png" alt="앱 아이콘" className="w-28 h-28 rounded-2xl mb-5" data-testid="img-app-icon-login" />
-          <h1 className="text-2xl font-bold text-center text-foreground leading-snug mb-10">
-            유가 이상징후<br />탐지 시스템
-          </h1>
+          <div className="flex items-center gap-4 mb-10">
+            <img src={loginIconSrc} alt="앱 아이콘" className="w-20 h-20 rounded-2xl flex-shrink-0" data-testid="img-app-icon-login" />
+            <h1 className="text-2xl font-bold text-foreground leading-snug">
+              유가 이상징후 탐지 시스템
+            </h1>
+          </div>
         </div>
 
         <div className="w-full lg:max-w-sm px-8 lg:px-0 pb-10 lg:pb-0">
@@ -281,18 +284,21 @@ export default function LoginPage() {
               <form onSubmit={handleUsernameSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="username" className="text-sm font-medium">아이디(ID)</Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder=""
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    autoFocus
-                    autoComplete="username"
-                    data-testid="input-username"
-                    className="h-11"
-                  />
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="아이디(ID)"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      autoFocus
+                      autoComplete="username"
+                      data-testid="input-username"
+                      className="h-11 pl-10"
+                    />
+                  </div>
                 </div>
                 <Button type="submit" className="w-full h-12 font-semibold rounded-full !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next">
                   {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
