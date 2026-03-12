@@ -275,6 +275,22 @@ export default function DashboardPage() {
     enabled: !!fallQueryKey,
     staleTime: 2 * 60 * 1000,
   });
+  const riseQueryKeyDiesel = latestDate
+    ? `/api/oil-prices/top-stations?type=RISE&fuel=diesel&date=${latestDate}&prevDate=${prevDate}`
+    : null;
+  const { data: riseStationsDiesel = [] } = useQuery<TopStation[]>({
+    queryKey: [riseQueryKeyDiesel],
+    enabled: !!riseQueryKeyDiesel,
+    staleTime: 2 * 60 * 1000,
+  });
+  const fallQueryKeyDiesel = latestDate
+    ? `/api/oil-prices/top-stations?type=FALL&fuel=diesel&date=${latestDate}&prevDate=${prevDate}`
+    : null;
+  const { data: fallStationsDiesel = [] } = useQuery<TopStation[]>({
+    queryKey: [fallQueryKeyDiesel],
+    enabled: !!fallQueryKeyDiesel,
+    staleTime: 2 * 60 * 1000,
+  });
   const lowQueryKey = latestDate
     ? `/api/oil-prices/top-stations?type=LOW&fuel=gasoline&date=${latestDate}`
     : null;
@@ -347,8 +363,14 @@ export default function DashboardPage() {
     isMobile ? regionalChartData.slice(-7) : regionalChartData,
   [isMobile, regionalChartData]);
 
-  const riseAlerts = riseStations.filter(s => (s.changeAmount ?? 0) >= 100);
-  const fallAlerts = fallStations.filter(s => Math.abs(s.changeAmount ?? 0) >= 100);
+  const riseAlerts = [
+    ...riseStations.filter(s => (s.changeAmount ?? 0) >= 100).map(s => ({ ...s, fuelType: 'gasoline' as const })),
+    ...riseStationsDiesel.filter(s => (s.changeAmount ?? 0) >= 100).map(s => ({ ...s, fuelType: 'diesel' as const })),
+  ];
+  const fallAlerts = [
+    ...fallStations.filter(s => Math.abs(s.changeAmount ?? 0) >= 100).map(s => ({ ...s, fuelType: 'gasoline' as const })),
+    ...fallStationsDiesel.filter(s => Math.abs(s.changeAmount ?? 0) >= 100).map(s => ({ ...s, fuelType: 'diesel' as const })),
+  ];
   const allAlerts = [
     ...riseAlerts.map(s => ({ ...s, dir: 'rise' as const })),
     ...fallAlerts.map(s => ({ ...s, dir: 'fall' as const })),
@@ -878,7 +900,10 @@ export default function DashboardPage() {
                           {" · "}
                           <span className="text-primary font-medium">{s.stationName}</span>
                         </p>
-                        <p className={cn("text-sm font-bold mt-0.5", s.dir === 'rise' ? "text-red-600" : "text-blue-600")}>
+                        <p className={cn("text-sm font-bold mt-0.5 flex items-center gap-1.5", s.dir === 'rise' ? "text-red-600" : "text-blue-600")}>
+                          <span className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", s.fuelType === 'diesel' ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700")}>
+                            {s.fuelType === 'diesel' ? '경유' : '휘발유'}
+                          </span>
                           {s.dir === 'rise' ? '가격 급등' : '가격 급락'} {s.dir === 'rise' ? '+' : '-'}{fmt(Math.abs(s.changeAmount ?? 0))}원
                         </p>
                       </div>
