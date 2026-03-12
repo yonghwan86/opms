@@ -595,7 +595,7 @@ export default function DashboardPage() {
               <p className="text-xs md:text-sm text-muted-foreground">
                 {oilAnalysisTab === 'global'
                   ? 'WTI 국제 유가 vs 국내 평균 유가'
-                  : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유·등유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
+                  : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
               </p>
             </div>
             {oilAnalysisTab === 'global' && (
@@ -695,13 +695,11 @@ export default function DashboardPage() {
                       formatter={(val) => {
                         if (val === "gasoline") return "휘발유";
                         if (val === "diesel") return "경유";
-                        if (val === "kerosene") return "등유";
                         return val;
                       }}
                     />
                     <Line type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
                     <Line type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
-                    <Line type="monotone" dataKey="kerosene" stroke="#94a3b8" strokeWidth={2} dot={false} name="kerosene" connectNulls />
                   </ComposedChart>
                 </ResponsiveContainer>
               )
