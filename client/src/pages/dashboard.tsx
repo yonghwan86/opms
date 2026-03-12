@@ -422,6 +422,7 @@ export default function DashboardPage() {
     const total = allAlerts.length;
     const riseCount = riseAlerts.length;
     const fallCount = fallAlerts.length;
+    const riseSub = <><span className="text-red-500">급등 {riseCount}곳</span>, <span className="text-blue-500">급락 {fallCount}곳</span></>;
     if (total === 0) return { main: "전일 대비 100원 이상 변동된 주유소가 감지되지 않았습니다." };
     const maxChange = Math.abs(maxMover?.changeAmount ?? 0);
     if (topRegion && topRegion[1] / total > 0.5 && total >= 3) {
@@ -429,19 +430,19 @@ export default function DashboardPage() {
     }
     if (maxChange >= 300) return {
       main: `오늘 가장 크게 변동한 주유소의 변동폭이 ${fmt(maxChange)}원으로, 300원 기준을 초과했습니다.`,
-      sub: `급등 ${riseCount}곳, 급락 ${fallCount}곳`,
+      sub: riseSub,
     };
     if (fallCount >= 2 * riseCount && fallCount >= 3) return {
       main: `전일 대비 100원 이상 하락한 주유소가 ${fallCount}곳으로,`,
-      sub: `급등 주유소(${riseCount}곳)의 2배를 넘었습니다.`,
+      sub: <><span className="text-red-500">급등 주유소({riseCount}곳)</span>의 2배를 넘었습니다.</>,
     };
     if (riseCount >= 2 * fallCount && riseCount >= 3) return {
       main: `전일 대비 100원 이상 상승한 주유소가 ${riseCount}곳으로,`,
-      sub: `급락 주유소(${fallCount}곳)의 2배를 넘었습니다.`,
+      sub: <><span className="text-blue-500">급락 주유소({fallCount}곳)</span>의 2배를 넘었습니다.</>,
     };
     if (riseCount > 0 && fallCount > 0) return {
       main: `전일 대비 100원 이상 변동 주유소가 동시에 감지되었습니다.`,
-      sub: `급등 ${riseCount}곳, 급락 ${fallCount}곳`,
+      sub: riseSub,
     };
     if (riseCount > 0) return { main: `전일 대비 100원 이상 상승한 주유소가 ${riseCount}곳 감지되었습니다.` };
     if (fallCount > 0) return { main: `전일 대비 100원 이상 하락한 주유소가 ${fallCount}곳 감지되었습니다.` };
