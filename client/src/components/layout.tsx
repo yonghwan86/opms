@@ -16,7 +16,7 @@ import { usePush } from "@/hooks/use-push";
 import { apiRequest } from "@/lib/queryClient";
 
 const appIconSrc = "/icon-192.png";
-import kpetroCiSrc from "@assets/IMG_6858_1773329686379.jpeg";
+import kpetroCiSrc from "@assets/kpetro-ci.png";
 
 interface NavItem {
   label: string;
