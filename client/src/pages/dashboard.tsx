@@ -361,7 +361,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
 
           {/* WTI 국제 유가 */}
-          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading} source="Yahoo Finance" live>
+          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance" live>
             {wti ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
@@ -375,7 +375,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* KRW-USD 환율 */}
-          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading} source="Yahoo Finance" live>
+          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-blue-700" loading={fxLoading} source="Yahoo Finance" live>
             {fx ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                 <YAxis
                   yAxisId="wti"
                   orientation="left"
-                  tick={{ fontSize: 12, fill: "#3b82f6" }}
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   tickFormatter={v => `$${v}`}
                   domain={["auto", "auto"]}
                   tickCount={6}
@@ -546,8 +546,8 @@ export default function DashboardPage() {
                     return val;
                   }}
                 />
-                <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="wti" connectNulls />
-                <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#f97316" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
+                <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
+                <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
                 <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
@@ -701,7 +701,7 @@ export default function DashboardPage() {
           {/* 최근 AI 분석 리포트 */}
           <Card className="border border-border bg-card flex flex-col max-h-[430px]">
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
-              <h2 className="text-base font-semibold text-foreground">최근 AI 분석 리포트</h2>
+              <h2 className="text-base font-semibold text-foreground">일일 AI 분석 리포트</h2>
               <p className="text-sm text-muted-foreground mt-0.5">{reportHeadline} {shortDateLabel}</p>
             </div>
             <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
