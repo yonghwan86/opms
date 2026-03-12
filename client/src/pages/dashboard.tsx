@@ -343,6 +343,23 @@ export default function DashboardPage() {
   // 편차 카드 탭
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
 
+  // PC 여부 감지 (lg = 1024px 이상)
+  const [isLg, setIsLg] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  useEffect(() => {
+    const check = () => setIsLg(window.innerWidth >= 1024);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // 왼쪽 카드 높이 계산 (세 카드 공통 기준)
+  const leftCardH = useMemo(() => {
+    const sorted = [...regional].sort((a, b) =>
+      regionalTab === 'diesel' ? ((b.avgDiesel ?? 0) - (a.avgDiesel ?? 0)) : (b.avgPrice - a.avgPrice)
+    );
+    const chartH = Math.max(340, sorted.length * 28 + 20);
+    return chartH + 100; // 헤더(~80px) + 상하 패딩(~20px)
+  }, [regional, regionalTab]);
+
   // 차트 데이터 병합 (WTI + 국내)
   const chartData = useMemo(() => {
     const domMap = new Map(domesticHistory.map(d => [
@@ -739,7 +756,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* ── 하단 3섹션 ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 items-start lg:items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 items-start">
 
           {/* 지역별 평균 유가 순위 */}
           {(() => {
@@ -751,7 +768,7 @@ export default function DashboardPage() {
             const domMin = vals.length ? Math.min(...vals) - 15 : 0;
             const domMax = vals.length ? Math.max(...vals) + 8 : 100;
             return (
-              <Card className="border border-border bg-card flex flex-col">
+              <Card className="border border-border bg-card flex flex-col" style={{ height: isLg ? leftCardH : undefined }}>
                 <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
@@ -845,7 +862,7 @@ export default function DashboardPage() {
               }
             };
             return (
-              <Card className="border border-border bg-card flex flex-col lg:h-full" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+              <Card className="border border-border bg-card flex flex-col" style={{ height: isLg ? leftCardH : undefined }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 <div className="px-5 py-4 border-b border-border flex-shrink-0 flex items-start justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">{slide.label}</h2>
@@ -929,7 +946,7 @@ export default function DashboardPage() {
           })()}
 
           {/* 최근 AI 분석 리포트 */}
-          <Card className="border border-border bg-card flex flex-col lg:h-full">
+          <Card className="border border-border bg-card flex flex-col" style={{ height: isLg ? leftCardH : undefined }}>
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
               <h2 className="text-base font-semibold text-foreground">일일 AI 분석 리포트</h2>
               <div className="flex items-center gap-1.5 mt-0.5">
