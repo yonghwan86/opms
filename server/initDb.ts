@@ -112,6 +112,12 @@ export async function initDb() {
       // 이미 nullable인 경우 무시
     });
 
+    // badge_count 컬럼 추가 — users 테이블 (기존 DB에 없을 경우만)
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS badge_count INTEGER NOT NULL DEFAULT 0;
+    `);
+
     console.log("DB 테이블 초기화 완료");
   } finally {
     client.release();

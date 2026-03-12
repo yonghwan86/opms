@@ -165,6 +165,9 @@ export interface IStorage {
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
   getMasterPushSubscriptions(): Promise<PushSubscription[]>;
   getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]>;
+  incrementBadgeCount(userId: number): Promise<number>;
+  resetBadgeCount(userId: number): Promise<void>;
+  getBadgeCount(userId: number): Promise<number>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -1028,6 +1031,31 @@ export class PostgresStorage implements IStorage {
 
   async getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]> {
     return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async incrementBadgeCount(userId: number): Promise<number> {
+    const result = await db
+      .update(users)
+      .set({ badgeCount: sql`${users.badgeCount} + 1` })
+      .where(eq(users.id, userId))
+      .returning({ badgeCount: users.badgeCount });
+    return result.length > 0 ? result[0].badgeCount : 1;
+  }
+
+  async resetBadgeCount(userId: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ badgeCount: 0 })
+      .where(eq(users.id, userId));
+  }
+
+  async getBadgeCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ badgeCount: users.badgeCount })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return result.length > 0 ? (result[0].badgeCount ?? 0) : 0;
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────

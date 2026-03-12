@@ -6,7 +6,7 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import { storage } from "./storage";
 import connectPgSimple from "connect-pg-simple";
-import { initPush, getVapidPublicKey, sendPushToAll } from "./services/pushService";
+import { initPush, getVapidPublicKey, sendPush, sendPushToAll } from "./services/pushService";
 
 const PgStore = connectPgSimple(session);
 
@@ -926,19 +926,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!result.success) {
         return res.status(502).json({ message: result.error || "수집 실패" });
       }
-      // 수집 성공 시 구독자 전원 푸시
+      // 수집 성공 시 구독자 전원 푸시 (유저별 배지 카운트 증가)
       try {
         const subs = await storage.getAllPushSubscriptions();
         if (subs.length > 0) {
-          const payload = {
-            title: "유가 모니터링",
-            body: "오늘의 유가 데이터가 업데이트되었습니다.",
-            icon: "/icon-192.png",
-            url: "/oil-prices",
-          };
-          const { sent, failed } = await sendPushToAll(subs, payload);
+          // 유저별로 배지 카운트 증가 후 발송
+          const userIds = [...new Set(subs.map(s => s.userId))];
+          const badgeByUser = new Map<number, number>();
+          await Promise.all(userIds.map(async uid => {
+            const count = await storage.incrementBadgeCount(uid);
+            badgeByUser.set(uid, count);
+          }));
+
+          let sent = 0, failed = 0;
+          await Promise.all(subs.map(async sub => {
+            const badgeCount = badgeByUser.get(sub.userId) ?? 1;
+            const payload = {
+              title: "유가 모니터링",
+              body: "오늘의 유가 데이터가 업데이트되었습니다.",
+              icon: "/icon-192.png",
+              url: "/oil-prices",
+              badgeCount,
+            };
+            const ok = await sendPush(sub, payload);
+            if (ok) sent++; else failed++;
+          }));
           console.log(`푸시 발송 완료: 성공 ${sent}건, 실패 ${failed}건`);
-          // 만료된 구독 정리 (410/404 응답 받은 것들은 sendPush에서 false 반환)
         }
       } catch (pushErr) {
         console.error("푸시 발송 오류 (수집은 성공):", pushErr);
@@ -1348,6 +1361,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/push/badge-reset — 배지 카운트 초기화 (앱 열릴 때 호출)
+  app.post("/api/push/badge-reset", requireAuth, async (req, res) => {
+    try {
+      await storage.resetBadgeCount(req.session.userId!);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // POST /api/push/send-test — MASTER 전용 테스트 푸시
   app.post("/api/push/send-test", requireMaster, async (req, res) => {
     try {
@@ -1356,11 +1379,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (subs.length === 0) {
         return res.status(404).json({ message: "구독 정보가 없습니다. 먼저 알림을 구독해주세요." });
       }
+      const badgeCount = await storage.incrementBadgeCount(userId);
       const payload = {
         title: "유가 모니터링 테스트",
         body: "푸시 알림이 정상적으로 동작하고 있습니다.",
         icon: "/icon-192.png",
         url: "/oil-prices",
+        badgeCount,
       };
       const { sent, failed } = await sendPushToAll(subs, payload);
       res.json({ ok: true, sent, failed });

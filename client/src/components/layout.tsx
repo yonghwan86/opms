@@ -74,6 +74,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [location, user, isMobile]);
 
+  useEffect(() => {
+    if (!user) return;
+    const clearBadge = () => {
+      if ("clearAppBadge" in navigator) {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
+      fetch("/api/push/badge-reset", { method: "POST", credentials: "include" }).catch(() => {});
+    };
+    clearBadge();
+    const onVisibility = () => { if (document.visibilityState === "visible") clearBadge(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [user]);
+
   const visibleNav = navItems.filter(item => {
     if (item.masterOnly && !isMaster) return false;
     if (item.hqUserOnly && isMaster) return false;

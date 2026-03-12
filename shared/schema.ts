@@ -47,6 +47,8 @@ export const users = pgTable("users", {
   enabled: boolean("enabled").notNull().default(true),
   // 최초 로그인 시 비밀번호 설정 필요 여부 (엑셀 임포트/초기화 후 true)
   mustChangePassword: boolean("must_change_password").notNull().default(false),
+  // PWA 아이콘 배지 카운트 (알림 수신 시 증가, 앱 오픈 시 초기화)
+  badgeCount: integer("badge_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
