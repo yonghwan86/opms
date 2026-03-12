@@ -164,8 +164,9 @@ function BrandPanel() {
             지역별 · 유종별로 실시간 분석합니다.
           </p>
           {/* 크레딧 */}
-          <div className="pt-2.5 border-t border-white/10">
+          <div className="flex items-center justify-between pt-2.5 border-t border-white/10">
             <span className="text-[11px] text-white/55 font-medium tracking-wide">K Petro 한국석유관리원</span>
+            <span className="text-[11px] text-white/40 tracking-wide">dev. kito86</span>
           </div>
         </div>
 
@@ -278,7 +279,7 @@ export default function LoginPage() {
                   <Input
                     id="username"
                     type="text"
-                    placeholder="아이디"
+                    placeholder=""
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
