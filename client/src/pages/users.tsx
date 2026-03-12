@@ -187,6 +187,7 @@ export default function UsersPage() {
             <TableHeader>
               <TableRow className="bg-muted/30">
                 <TableHead>아이디(ID)</TableHead>
+                <TableHead>이메일</TableHead>
                 <TableHead>권한</TableHead>
                 <TableHead>본부</TableHead>
                 <TableHead>팀</TableHead>
@@ -197,11 +198,11 @@ export default function UsersPage() {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>{Array.from({ length: 6 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
                 ))
               ) : data?.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     <User2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     사용자 데이터가 없습니다.
                   </TableCell>
@@ -218,6 +219,9 @@ export default function UsersPage() {
                           </span>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground" data-testid={`text-email-${user.id}`}>
+                      {user.email || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell>
                       <Badge variant={user.role === "MASTER" ? "default" : "secondary"} className="text-xs">
