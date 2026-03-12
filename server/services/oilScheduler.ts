@@ -164,15 +164,20 @@ async function checkAndRecoverOnStartup(): Promise<void> {
       return;
     }
 
-    const todayStr = getKSTDateStr();
-    const analysis = await storage.getOilPriceAnalysis({ analysisDate: todayStr });
+    // 오피넷은 항상 전날 데이터만 제공 → 어제 날짜 기준으로 최신 여부 확인
+    const kstYesterday = new Date(kstNow);
+    kstYesterday.setUTCDate(kstYesterday.getUTCDate() - 1);
+    const yesterdayStr = getDateStr(kstYesterday);
 
-    if (analysis.length > 0) {
-      console.log(`[OilScheduler] 시작 복구: 오늘(${todayStr}) 분석 데이터 ${analysis.length}건 존재, 수집 불필요`);
+    const availableDates = await storage.getOilAvailableDates();
+    const latestAvailable = availableDates[0];
+
+    if (latestAvailable && latestAvailable >= yesterdayStr) {
+      console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 어제(${yesterdayStr}), 수집 불필요`);
       return;
     }
 
-    console.log(`[OilScheduler] 시작 복구: 오늘(${todayStr}) 분석 데이터 없음, 자동 수집 시작`);
+    console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable ?? '없음'}) < 어제(${yesterdayStr}), 자동 수집 시작`);
     await runWithRetryAndNotify("시작 복구", true);
   } catch (err) {
     console.error("[OilScheduler] 시작 복구 확인 오류:", err);
