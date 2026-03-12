@@ -395,20 +395,20 @@ export default function DashboardPage() {
             subtitle={`최고가 − 최저가 격차 ${shortDateLabel}`}
             icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading} source="오피넷"
             headerRight={
-              <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 {(['gasoline', 'diesel'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setSpreadTab(tab)}
                     className={cn(
-                      "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
+                      "w-6 h-5 flex items-center justify-center rounded text-[11px] font-semibold transition-colors",
                       spreadTab === tab
                         ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
                         : "text-muted-foreground hover:bg-muted"
                     )}
                     data-testid={`tab-spread-${tab}`}
                   >
-                    {tab === 'gasoline' ? '휘발유' : '경유'}
+                    {tab === 'gasoline' ? '휘' : '경'}
                   </button>
                 ))}
               </div>
