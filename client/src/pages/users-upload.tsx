@@ -85,10 +85,11 @@ export default function UsersUploadPage() {
               <p className="text-sm font-medium text-foreground">업로드 전 확인 사항</p>
               <ul className="text-sm text-muted-foreground space-y-0.5 list-disc list-inside">
                 <li>파일 형식은 반드시 <strong>.xlsx</strong>이어야 합니다.</li>
-                <li>필수 컬럼: username, display_name, email, position_name, department_name, headquarters_code, team_code, role, enabled, initial_password</li>
+                <li>필수 컬럼: <strong>id</strong>, display_name(선택), position_name, headquarters_code, team_code, role, enabled</li>
+                <li><strong>id</strong>는 로그인 시 사용할 아이디입니다 (영문/숫자/점/하이픈/언더스코어만 허용).</li>
                 <li>headquarters_code, team_code는 시스템에 등록된 코드와 정확히 일치해야 합니다.</li>
                 <li>role은 MASTER 또는 HQ_USER만 허용됩니다.</li>
-                <li>initial_password가 비어있으면 임시 비밀번호가 자동 생성됩니다.</li>
+                <li>비밀번호는 최초 로그인 시 사용자가 직접 설정합니다.</li>
               </ul>
             </div>
           </div>

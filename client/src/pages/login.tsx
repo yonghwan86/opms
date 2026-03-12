@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "email" | "password" | "setup-password";
+type Step = "username" | "password" | "setup-password";
 
 // ─── 원형 게이지 ──────────────────────────────────────────────────────────────
 function CircleGauge({ value, label, color, percent }: { value: string; label: string; color: string; percent: number }) {
@@ -181,8 +181,8 @@ function BrandPanel() {
 
 // ─── 메인 ─────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
-  const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<Step>("username");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -190,15 +190,15 @@ export default function LoginPage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [, navigate] = useLocation();
-  const { checkEmail, checkEmailPending, login, loginPending, setupPassword, setupPasswordPending } = useAuth();
+  const { checkUser, checkUserPending, login, loginPending, setupPassword, setupPasswordPending } = useAuth();
   const { toast } = useToast();
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = await checkEmail(email.trim().toLowerCase());
+      const result = await checkUser(username.trim().toLowerCase());
       if (!result.exists) {
-        toast({ title: "로그인 실패", description: "등록되지 않은 이메일입니다.", variant: "destructive" });
+        toast({ title: "로그인 실패", description: "등록되지 않은 아이디입니다.", variant: "destructive" });
         return;
       }
       if (result.needsPasswordSetup) {
@@ -214,7 +214,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = await login({ email: email.trim().toLowerCase(), password });
+      const result = await login({ username: username.trim().toLowerCase(), password });
       if (result.needsPasswordSetup) {
         setStep("setup-password");
         setPassword("");
@@ -237,15 +237,15 @@ export default function LoginPage() {
       return;
     }
     try {
-      await setupPassword({ email: email.trim().toLowerCase(), newPassword });
+      await setupPassword({ username: username.trim().toLowerCase(), newPassword });
       navigate("/");
     } catch (err: any) {
       toast({ title: "오류", description: err?.message || "비밀번호 설정에 실패했습니다.", variant: "destructive" });
     }
   };
 
-  const goBackToEmail = () => {
-    setStep("email");
+  const goBackToUsername = () => {
+    setStep("username");
     setPassword("");
     setNewPassword("");
     setConfirmPassword("");
@@ -266,31 +266,31 @@ export default function LoginPage() {
             <span className="text-lg font-bold">유가모니터링 시스템</span>
           </div>
 
-          {/* Step 1: 이메일 입력 */}
-          {step === "email" && (
+          {/* Step 1: 아이디 입력 */}
+          {step === "username" && (
             <>
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-foreground">로그인</h2>
-                <p className="text-muted-foreground mt-1.5 text-sm">이메일을 입력하세요</p>
+                <p className="text-muted-foreground mt-1.5 text-sm">아이디(ID)를 입력하세요</p>
               </div>
-              <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <form onSubmit={handleUsernameSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-sm font-medium">이메일</Label>
+                  <Label htmlFor="username" className="text-sm font-medium">아이디(ID)</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@kpetro.or.kr"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    type="text"
+                    placeholder="kito86"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                     autoFocus
-                    autoComplete="email"
-                    data-testid="input-email"
+                    autoComplete="username"
+                    data-testid="input-username"
                     className="h-11"
                   />
                 </div>
-                <Button type="submit" className="w-full h-11 font-medium" disabled={checkEmailPending} data-testid="button-next">
-                  {checkEmailPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                <Button type="submit" className="w-full h-11 font-medium" disabled={checkUserPending} data-testid="button-next">
+                  {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   다음
                 </Button>
               </form>
@@ -302,7 +302,7 @@ export default function LoginPage() {
             <>
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-foreground">비밀번호 입력</h2>
-                <p className="text-sm text-primary font-medium mt-1.5">{email}</p>
+                <p className="text-sm text-primary font-medium mt-1.5">{username}</p>
               </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
@@ -331,8 +331,8 @@ export default function LoginPage() {
                   {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   로그인
                 </Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={goBackToEmail} data-testid="button-back-email">
-                  <ArrowLeft className="w-4 h-4 mr-1" /> 이메일 변경
+                <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
+                  <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
                 </Button>
               </form>
             </>
@@ -349,7 +349,7 @@ export default function LoginPage() {
                 <p className="text-muted-foreground mt-1.5 text-sm">
                   처음 로그인하셨습니다. 사용할 비밀번호를 직접 설정해주세요.
                 </p>
-                <p className="text-xs text-primary font-medium mt-2">{email}</p>
+                <p className="text-xs text-primary font-medium mt-2">{username}</p>
               </div>
               <form onSubmit={handleSetupPassword} className="space-y-4">
                 <div className="space-y-1.5">
@@ -389,8 +389,8 @@ export default function LoginPage() {
                   {setupPasswordPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   비밀번호 설정 완료
                 </Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={goBackToEmail} data-testid="button-back-email">
-                  <ArrowLeft className="w-4 h-4 mr-1" /> 이메일 변경
+                <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
+                  <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
                 </Button>
               </form>
             </>

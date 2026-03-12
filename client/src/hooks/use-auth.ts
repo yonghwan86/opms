@@ -25,15 +25,15 @@ export function useAuth() {
     staleTime: 60 * 1000,
   });
 
-  const checkEmailMutation = useMutation({
-    mutationFn: async (email: string) => {
-      const res = await apiRequest("POST", "/api/auth/check-email", { email });
+  const checkUserMutation = useMutation({
+    mutationFn: async (username: string) => {
+      const res = await apiRequest("POST", "/api/auth/check-user", { username });
       return res.json() as Promise<{ exists: boolean; needsPasswordSetup?: boolean }>;
     },
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (creds: { email: string; password: string }) => {
+    mutationFn: async (creds: { username: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/login", creds);
       return res.json();
     },
@@ -45,7 +45,7 @@ export function useAuth() {
   });
 
   const setupPasswordMutation = useMutation({
-    mutationFn: async (payload: { email: string; newPassword: string }) => {
+    mutationFn: async (payload: { username: string; newPassword: string }) => {
       const res = await apiRequest("POST", "/api/auth/setup-password", payload);
       return res.json();
     },
@@ -66,8 +66,8 @@ export function useAuth() {
   return {
     user: user ?? null,
     isLoading,
-    checkEmail: checkEmailMutation.mutateAsync,
-    checkEmailPending: checkEmailMutation.isPending,
+    checkUser: checkUserMutation.mutateAsync,
+    checkUserPending: checkUserMutation.isPending,
     login: loginMutation.mutateAsync,
     loginPending: loginMutation.isPending,
     loginError: loginMutation.error,

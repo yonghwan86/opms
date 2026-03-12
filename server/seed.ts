@@ -171,21 +171,21 @@ export async function seedDatabase() {
 async function ensureMasterUser() {
   const masterHash = await bcrypt.hash("kpetro!23", 10);
 
-  const [existing] = await db.select().from(users).where(eq(users.email, "ax@kpetro.or.kr"));
+  const [existing] = await db.select().from(users).where(eq(users.username, "ax"));
   if (existing) {
     await db.update(users).set({
       passwordHash: masterHash,
       mustChangePassword: false,
       enabled: true,
       role: "MASTER",
-    }).where(eq(users.email, "ax@kpetro.or.kr"));
-    console.log("마스터 계정 비밀번호 동기화 완료 (ax@kpetro.or.kr)");
+    }).where(eq(users.username, "ax"));
+    console.log("마스터 계정 비밀번호 동기화 완료 (ax)");
   } else {
     await db.insert(users).values({
       username: "ax",
       passwordHash: masterHash,
       displayName: "관리자",
-      email: "ax@kpetro.or.kr",
+      email: null,
       positionName: "시스템관리자",
       role: "MASTER",
       headquartersId: null,
@@ -193,6 +193,6 @@ async function ensureMasterUser() {
       enabled: true,
       mustChangePassword: false,
     });
-    console.log("마스터 계정 생성 완료 (ax@kpetro.or.kr)");
+    console.log("마스터 계정 생성 완료 (ax)");
   }
 }

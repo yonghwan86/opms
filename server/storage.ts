@@ -148,8 +148,9 @@ export interface IStorage {
     gasoline: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
     diesel: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
   }>;
-  getOilRegionalAverages(date: string): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
+  getOilRegionalAverages(date: string, sidoFilter?: string[]): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
   getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
+  getOilRegionalHistory(sidoFilter?: string[]): Promise<{ date: string; gasoline: number | null; diesel: number | null; kerosene: number | null }[]>;
 
   // 푸시 구독
   savePushSubscription(userId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<void>;
@@ -266,7 +267,6 @@ export class PostgresStorage implements IStorage {
     if (search) conditions.push(or(
       ilike(users.username, `%${search}%`),
       ilike(users.displayName, `%${search}%`),
-      ilike(users.email, `%${search}%`),
       ilike(users.departmentName, `%${search}%`)
     ));
     if (headquartersId) conditions.push(eq(users.headquartersId, headquartersId));
@@ -737,14 +737,17 @@ export class PostgresStorage implements IStorage {
     return { gasoline, diesel };
   }
 
-  async getOilRegionalAverages(date: string) {
+  async getOilRegionalAverages(date: string, sidoFilter?: string[]) {
+    const sidoCondition = sidoFilter && sidoFilter.length > 0
+      ? sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
+      : sql``;
     const result = await db.execute(sql`
       SELECT
         sido,
         ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS avg_price,
         ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS avg_diesel
       FROM oil_price_raw
-      WHERE date = ${date}
+      WHERE date = ${date} ${sidoCondition}
       GROUP BY sido
       HAVING AVG(CASE WHEN gasoline > 0 THEN gasoline END) IS NOT NULL
       ORDER BY avg_price DESC
@@ -769,6 +772,32 @@ export class PostgresStorage implements IStorage {
       date: r.date as string,
       gasoline: Number(r.gasoline),
       diesel: Number(r.diesel),
+    }));
+  }
+
+  async getOilRegionalHistory(sidoFilter?: string[]) {
+    const sidoCondition = sidoFilter && sidoFilter.length > 0
+      ? sql`WHERE sido = ANY(ARRAY[${sql.raw(sidoFilter.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
+      : sql``;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 90);
+    const cutoff = cutoffDate.toISOString().slice(0, 10).replace(/-/g, "");
+    const result = await db.execute(sql`
+      SELECT
+        date,
+        ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS gasoline,
+        ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS diesel,
+        ROUND(AVG(CASE WHEN kerosene > 0 THEN kerosene END)) AS kerosene
+      FROM oil_price_raw
+      ${sidoCondition}
+      ${sidoFilter && sidoFilter.length > 0 ? sql`AND date >= ${cutoff}` : sql`WHERE date >= ${cutoff}`}
+      GROUP BY date
+      ORDER BY date ASC`);
+    return result.rows.map((r: any) => ({
+      date: r.date as string,
+      gasoline: r.gasoline != null ? Number(r.gasoline) : null,
+      diesel: r.diesel != null ? Number(r.diesel) : null,
+      kerosene: r.kerosene != null ? Number(r.kerosene) : null,
     }));
   }
 

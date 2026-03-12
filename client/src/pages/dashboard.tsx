@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -134,6 +134,7 @@ interface FuelStats {
 }
 interface RegionalAvg { sido: string; avgPrice: number; avgDiesel: number | null; }
 interface DomesticHistory { date: string; gasoline: number; diesel: number; }
+interface RegionalHistory { date: string; gasoline: number | null; diesel: number | null; kerosene: number | null; }
 interface TopStation {
   rank: number; stationId: string; stationName: string; region: string;
   brand: string | null; isSelf: boolean; price?: number; prevPrice?: number; changeAmount?: number;
@@ -272,13 +273,27 @@ export default function DashboardPage() {
     enabled: !!lowQueryKey,
     staleTime: 2 * 60 * 1000,
   });
+  const highQueryKey = latestDate
+    ? `/api/oil-prices/top-stations?type=HIGH&fuel=gasoline&date=${latestDate}`
+    : null;
+  const { data: highStations = [] } = useQuery<TopStation[]>({
+    queryKey: [highQueryKey],
+    enabled: !!highQueryKey,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  // 캐러셀 슬라이드 (0=상승, 1=하락, 2=최저가)
+  const { data: regionalHistory = [] } = useQuery<RegionalHistory[]>({
+    queryKey: ["/api/dashboard/regional-price-history"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 캐러셀 슬라이드 (0=상승, 1=하락, 2=최고가, 3=최저가) — 자동 회전 없음
   const [carouselSlide, setCarouselSlide] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setCarouselSlide(s => (s + 1) % 3), 4500);
-    return () => clearInterval(t);
-  }, []);
+  const carouselTouchRef = useRef({ startX: 0, startY: 0 });
+  const TOTAL_SLIDES = 4;
+
+  // 유가 분석 카드 탭 (MASTER=국제-국내 연동, HQ_USER=지역별 추이)
+  const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'regional'>(isMaster ? 'global' : 'regional');
 
   // 지역별 순위 탭
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
@@ -304,6 +319,15 @@ export default function DashboardPage() {
       diesel: domMap.get(date)?.diesel ?? null,
     }));
   }, [wtiRes, domesticHistory]);
+
+  const regionalChartData = useMemo(() => {
+    return regionalHistory.map(d => ({
+      label: `${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`,
+      gasoline: d.gasoline,
+      diesel: d.diesel,
+      kerosene: d.kerosene,
+    }));
+  }, [regionalHistory]);
 
   const riseAlerts = riseStations.filter(s => (s.changeAmount ?? 0) >= 100);
   const fallAlerts = fallStations.filter(s => Math.abs(s.changeAmount ?? 0) >= 100);
@@ -485,72 +509,140 @@ export default function DashboardPage() {
           </MetricCard>
         </div>
 
-        {/* ── 국제-국내 유가 연동 분석 차트 ── */}
+        {/* ── 유가 분석 카드 (탭: 국제-국내 연동 / 지역별 추이) ── */}
         <Card className="border border-border bg-card">
-          <div className="px-5 pt-4 pb-2">
-            <div className="flex items-start justify-between gap-2">
+          <div className="px-5 pt-4 pb-0">
+            <div className="flex items-start justify-between gap-2 pb-3 border-b border-border">
               <div>
-                <h2 className="text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">WTI 국제 유가 vs 국내 평균 유가</p>
+                <h2 className="text-base font-semibold text-foreground">
+                  {oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : '관할 지역 유가 추이'}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {oilAnalysisTab === 'global' ? 'WTI 국제 유가 vs 국내 평균 유가' : '관할 시/도 평균 휘발유·경유·등유 (최근 3개월)'}
+                </p>
               </div>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">최근 3개월</span>
+              <div className="flex gap-1 flex-shrink-0">
+                {([['global', '국제-국내 연동'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setOilAnalysisTab(key)}
+                    data-testid={`tab-oil-${key}`}
+                    className={cn(
+                      "text-xs px-3 py-1.5 rounded-md font-medium transition-colors",
+                      oilAnalysisTab === key
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                  >{label}</button>
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-            </p>
+            {oilAnalysisTab === 'global' && (
+              <p className="text-xs text-muted-foreground mt-2 mb-1 leading-relaxed">
+                ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+              </p>
+            )}
           </div>
-          <div className="px-2 pb-4">
-            <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={chartData} margin={{ top: 14, right: 8, left: 10, bottom: 28 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "end" }}
-                  tickLine={false}
-                  axisLine={{ stroke: "#e5e7eb" }}
-                  interval={Math.max(1, Math.floor(chartData.length / 6))}
-                  angle={-35}
-                  height={45}
-                />
-                <YAxis
-                  yAxisId="wti"
-                  orientation="left"
-                  tick={{ fontSize: 12, fill: "#64748b" }}
-                  tickFormatter={v => `$${v}`}
-                  domain={["auto", "auto"]}
-                  tickCount={6}
-                  width={56}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  yAxisId="domestic"
-                  orientation="right"
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  tickFormatter={v => `${fmt(v)}원`}
-                  domain={["auto", "auto"]}
-                  tickCount={6}
-                  width={64}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend
-                  wrapperStyle={{ fontSize: 13, paddingTop: 14 }}
-                  iconType="circle"
-                  iconSize={10}
-                  formatter={(val) => {
-                    if (val === "wti") return "WTI (국제)";
-                    if (val === "gasoline") return "휘발유 주유평균";
-                    if (val === "diesel") return "경유 주유평균";
-                    return val;
-                  }}
-                />
-                <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
-                <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
-                <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
-              </ComposedChart>
-            </ResponsiveContainer>
+          <div className="px-2 pb-4 pt-2">
+            {oilAnalysisTab === 'global' ? (
+              <ResponsiveContainer width="100%" height={380}>
+                <ComposedChart data={chartData} margin={{ top: 14, right: 8, left: 10, bottom: 28 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "end" }}
+                    tickLine={false}
+                    axisLine={{ stroke: "#e5e7eb" }}
+                    interval={Math.max(1, Math.floor(chartData.length / 6))}
+                    angle={-35}
+                    height={45}
+                  />
+                  <YAxis
+                    yAxisId="wti"
+                    orientation="left"
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    tickFormatter={v => `$${v}`}
+                    domain={["auto", "auto"]}
+                    tickCount={6}
+                    width={56}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="domestic"
+                    orientation="right"
+                    tick={{ fontSize: 12, fill: "#6b7280" }}
+                    tickFormatter={v => `${fmt(v)}원`}
+                    domain={["auto", "auto"]}
+                    tickCount={6}
+                    width={64}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Legend
+                    wrapperStyle={{ fontSize: 13, paddingTop: 14 }}
+                    iconType="circle"
+                    iconSize={10}
+                    formatter={(val) => {
+                      if (val === "wti") return "WTI (국제)";
+                      if (val === "gasoline") return "휘발유 주유평균";
+                      if (val === "diesel") return "경유 주유평균";
+                      return val;
+                    }}
+                  />
+                  <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
+                  <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
+                  <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              regionalChartData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-[380px]">
+                  <p className="text-sm text-muted-foreground">데이터 없음</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={380}>
+                  <ComposedChart data={regionalChartData} margin={{ top: 14, right: 8, left: 10, bottom: 28 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "end" }}
+                      tickLine={false}
+                      axisLine={{ stroke: "#e5e7eb" }}
+                      interval={Math.max(1, Math.floor(regionalChartData.length / 8))}
+                      angle={-35}
+                      height={45}
+                    />
+                    <YAxis
+                      orientation="left"
+                      tick={{ fontSize: 12, fill: "#6b7280" }}
+                      tickFormatter={v => `${fmt(v)}원`}
+                      domain={["auto", "auto"]}
+                      tickCount={6}
+                      width={70}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Legend
+                      wrapperStyle={{ fontSize: 13, paddingTop: 14 }}
+                      iconType="circle"
+                      iconSize={10}
+                      formatter={(val) => {
+                        if (val === "gasoline") return "휘발유";
+                        if (val === "diesel") return "경유";
+                        if (val === "kerosene") return "등유";
+                        return val;
+                      }}
+                    />
+                    <Line type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
+                    <Line type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
+                    <Line type="monotone" dataKey="kerosene" stroke="#94a3b8" strokeWidth={2} dot={false} name="kerosene" connectNulls />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )
+            )}
           </div>
         </Card>
 
@@ -635,31 +727,48 @@ export default function DashboardPage() {
             );
           })()}
 
-          {/* 가격 급변 주유소 TOP 5 — 캐러셀 */}
+          {/* 가격 급변 주유소 TOP 5 — 캐러셀 (스와이프 가능) */}
           {(() => {
             const slides = [
               { label: "가격 상승 TOP 5", desc: "전일 대비 최대 상승", stations: riseStations, arrow: "▲", priceColor: "text-red-500" },
               { label: "가격 하락 TOP 5", desc: "전일 대비 최대 하락", stations: fallStations, arrow: "▼", priceColor: "text-blue-500" },
-              { label: "최저가 TOP 5",   desc: "전국 휘발유 최저가",  stations: lowStations,  arrow: null,  priceColor: "text-emerald-600" },
+              { label: "최고가 TOP 5",   desc: "전국 휘발유 최고가",  stations: highStations, arrow: null, priceColor: "text-orange-500" },
+              { label: "최저가 TOP 5",   desc: "전국 휘발유 최저가",  stations: lowStations,  arrow: null, priceColor: "text-emerald-600" },
             ];
             const slide = slides[carouselSlide];
+            const handleTouchStart = (e: React.TouchEvent) => {
+              carouselTouchRef.current.startX = e.touches[0].clientX;
+              carouselTouchRef.current.startY = e.touches[0].clientY;
+            };
+            const handleTouchEnd = (e: React.TouchEvent) => {
+              const dx = e.changedTouches[0].clientX - carouselTouchRef.current.startX;
+              const dy = e.changedTouches[0].clientY - carouselTouchRef.current.startY;
+              if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+                if (dx < 0) setCarouselSlide(s => (s + 1) % TOTAL_SLIDES);
+                else setCarouselSlide(s => (s - 1 + TOTAL_SLIDES) % TOTAL_SLIDES);
+              }
+            };
             return (
-              <Card className="border border-border bg-card flex flex-col">
+              <Card className="border border-border bg-card flex flex-col" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 <div className="px-5 py-4 border-b border-border flex-shrink-0 flex items-start justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">{slide.label}</h2>
                     <p className="text-sm text-muted-foreground mt-0.5">{slide.desc} {shortDateLabel}</p>
                   </div>
-                  <div className="flex gap-1 pt-0.5">
+                  <div className="flex items-center gap-0.5 pt-0.5">
                     {slides.map((_, i) => (
                       <button
                         key={i}
                         onClick={() => setCarouselSlide(i)}
-                        className={cn(
-                          "w-2 h-2 rounded-full transition-all",
-                          i === carouselSlide ? "bg-primary scale-125" : "bg-muted-foreground/30 hover:bg-muted-foreground/60"
-                        )}
-                      />
+                        data-testid={`dot-carousel-${i}`}
+                        style={{ minWidth: 44, minHeight: 44 }}
+                        className="flex items-center justify-center"
+                      >
+                        <span className={cn(
+                          "block rounded-full transition-all",
+                          i === carouselSlide ? "w-2.5 h-2.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+                        )} />
+                      </button>
                     ))}
                   </div>
                 </div>

@@ -41,7 +41,7 @@ export default function UsersPage() {
   const [resetDone, setResetDone] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [form, setForm] = useState({
-    displayName: "", email: "",
+    displayName: "", username: "",
     positionName: "", departmentName: "", role: "HQ_USER",
     headquartersId: "", teamId: "", enabled: true
   });
@@ -77,15 +77,19 @@ export default function UsersPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
-        ...form,
+      const base: any = {
+        displayName: form.displayName,
+        positionName: form.positionName,
+        departmentName: form.departmentName,
+        role: form.role,
         headquartersId: form.headquartersId ? Number(form.headquartersId) : null,
         teamId: form.teamId ? Number(form.teamId) : null,
+        enabled: form.enabled,
       };
       if (editing) {
-        return apiRequest("PATCH", `/api/users/${editing.id}`, payload).then(r => r.json());
+        return apiRequest("PATCH", `/api/users/${editing.id}`, base).then(r => r.json());
       }
-      return apiRequest("POST", "/api/users", payload).then(r => r.json());
+      return apiRequest("POST", "/api/users", { ...base, username: form.username }).then(r => r.json());
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/users"] });
@@ -125,13 +129,13 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ displayName: "", email: "", positionName: "", departmentName: "", role: "HQ_USER", headquartersId: "", teamId: "", enabled: true });
+    setForm({ displayName: "", username: "", positionName: "", departmentName: "", role: "HQ_USER", headquartersId: "", teamId: "", enabled: true });
     setDialogOpen(true);
   };
 
   const openEdit = (u: User) => {
     setEditing(u);
-    setForm({ displayName: u.displayName, email: u.email, positionName: u.positionName || "", departmentName: u.departmentName || "", role: u.role, headquartersId: u.headquartersId ? String(u.headquartersId) : "", teamId: u.teamId ? String(u.teamId) : "", enabled: u.enabled });
+    setForm({ displayName: u.displayName, username: u.username, positionName: u.positionName || "", departmentName: u.departmentName || "", role: u.role, headquartersId: u.headquartersId ? String(u.headquartersId) : "", teamId: u.teamId ? String(u.teamId) : "", enabled: u.enabled });
     setDialogOpen(true);
   };
 
@@ -152,7 +156,7 @@ export default function UsersPage() {
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="이름, 이메일 검색" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" data-testid="input-search-user" />
+            <Input placeholder="이름, 아이디 검색" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-9" data-testid="input-search-user" />
           </div>
           <Select value={filterHq} onValueChange={v => { setFilterHq(v); setFilterTeam("all"); setPage(1); }}>
             <SelectTrigger className="w-36" data-testid="select-filter-user-hq"><SelectValue placeholder="전체 본부" /></SelectTrigger>
@@ -183,7 +187,7 @@ export default function UsersPage() {
             <TableHeader>
               <TableRow className="bg-muted/30">
                 <TableHead>이름</TableHead>
-                <TableHead>이메일</TableHead>
+                <TableHead>아이디(ID)</TableHead>
                 <TableHead>권한</TableHead>
                 <TableHead>본부</TableHead>
                 <TableHead>팀</TableHead>
@@ -216,7 +220,7 @@ export default function UsersPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{user.username}</TableCell>
                     <TableCell>
                       <Badge variant={user.role === "MASTER" ? "default" : "secondary"} className="text-xs">
                         {user.role}
@@ -304,13 +308,13 @@ export default function UsersPage() {
                 <KeyRound className="w-6 h-6 text-green-600" />
               </div>
               <p className="font-medium">초기화 완료</p>
-              <p className="text-sm text-muted-foreground">해당 사용자가 다음 로그인 시 이메일로 로그인하면 비밀번호를 직접 설정할 수 있습니다.</p>
+              <p className="text-sm text-muted-foreground">해당 사용자가 다음 로그인 시 아이디(ID)로 접속하여 비밀번호를 직접 설정합니다.</p>
               <Button className="w-full" onClick={() => { setResetPwUserId(null); setResetDone(false); }}>확인</Button>
             </div>
           ) : (
             <>
               <div className="space-y-3 py-2">
-                <p className="text-sm text-muted-foreground">비밀번호를 초기화하면 해당 사용자가 다음 로그인 시 이메일로 접속하여 비밀번호를 직접 설정하게 됩니다.</p>
+                <p className="text-sm text-muted-foreground">비밀번호를 초기화하면 해당 사용자가 다음 로그인 시 아이디로 접속하여 비밀번호를 직접 설정하게 됩니다.</p>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setResetPwUserId(null)}>취소</Button>
@@ -334,7 +338,7 @@ export default function UsersPage() {
           {!editing && (
             <div className="flex items-start gap-2 px-1 py-2 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-              등록 후 사용자가 이메일로 최초 로그인 시 비밀번호를 직접 설정합니다.
+              등록 후 사용자가 최초 로그인 시 아이디(ID)와 비밀번호를 설정합니다.
             </div>
           )}
           <div className="space-y-4 py-2">
@@ -345,9 +349,9 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>이메일 *</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="user@example.com" data-testid="input-user-email" disabled={!!editing} />
-              {!editing && <p className="text-xs text-muted-foreground">로그인 아이디로 사용됩니다.</p>}
+              <Label>아이디(ID) *</Label>
+              <Input type="text" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="kito86" data-testid="input-user-username" disabled={!!editing} />
+              {!editing && <p className="text-xs text-muted-foreground">로그인 시 사용할 아이디입니다. 영문/숫자/점/하이픈만 허용됩니다.</p>}
             </div>
             <div className="space-y-1.5">
               <Label>직책</Label>
@@ -391,7 +395,7 @@ export default function UsersPage() {
             <Button variant="outline" onClick={closeDialog}>취소</Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !form.displayName || !form.email}
+              disabled={saveMutation.isPending || !form.displayName || !form.username}
               data-testid="button-save-user"
             >
               {editing ? "수정" : "등록"}

@@ -16,8 +16,8 @@ Opinet 유가 정보 자동 수집·분석·DB 저장 기능 포함. 향후 웹 
 - **HQ_USER:** 자신의 본부+팀 조합에 할당된 지역만 조회 가능
 
 ## 기본 계정
-- MASTER: `ax@kpetro.or.kr` / `kpetro!23`
-- HQ_USER: `seoul1_user` / `user1234!`
+- MASTER: username=`ax` / `kpetro!23` (이메일 없음, NULL)
+- HQ_USER: username=`honggildong` / 초기 비밀번호 설정 필요
 
 ## DB 테이블
 - `headquarters` - 본부
@@ -46,8 +46,14 @@ Opinet 유가 정보 자동 수집·분석·DB 저장 기능 포함. 향후 웹 
   - 마스터 푸시: 수집 실패/재시도 실패 시 MASTER 구독자에게만 알림 발송
 - **수동 실행:** `POST /api/oil-prices/refresh` (MASTER)
 
+## 인증 (로그인) 흐름
+- `POST /api/auth/check-user` — `{username}` 전송, 사용자 존재 여부 및 초기설정 필요 여부 확인
+- `POST /api/auth/login` — `{username, password}` 전송, 세션 발급
+- `POST /api/auth/setup-password` — `{username, newPassword}`, 최초 비밀번호 설정 (mustChangePassword=true 시)
+- DB: `users.email` 컬럼 nullable (현재 모두 NULL), `users.username` 으로 식별
+
 ## 주요 API
-- `POST /api/auth/login` - 로그인
+- `POST /api/auth/login` - 로그인 (username 기반)
 - `POST /api/auth/logout` - 로그아웃
 - `GET /api/auth/me` - 현재 사용자
 - `GET/POST/PATCH/DELETE /api/headquarters` - 본부 CRUD
@@ -63,6 +69,13 @@ Opinet 유가 정보 자동 수집·분석·DB 저장 기능 포함. 향후 웹 
 - `POST /api/oil-prices/refresh` - 유가 수동 수집·분석·저장 (MASTER)
 - `GET /api/oil-prices/latest-date` - 최근 수집 날짜
 - `GET /api/oil-prices/analysis` - 분석 결과 조회 (type/subType/fuelType/sido/date 필터)
+- `GET /api/dashboard/wti` - WTI 국제 유가 및 3개월 시계열
+- `GET /api/dashboard/exchange-rate` - 원/달러 환율
+- `GET /api/dashboard/fuel-stats` - 당일 국내 유가 통계 (평균+편차)
+- `GET /api/dashboard/regional-averages` - 시/도별 평균 유가 (HQ_USER는 자동 필터링)
+- `GET /api/dashboard/domestic-history` - 전국 국내 유가 시계열 (WTI 연동 분석용)
+- `GET /api/dashboard/regional-price-history` - 관할 지역 유가 시계열 (HQ_USER 자동 필터, 지역별 추이 탭용)
+- `GET /api/oil-prices/top-stations` - TOP5 주유소 (type=RISE/FALL/HIGH/LOW)
 
 ## 페이지 구조
 - `/login` - 로그인

@@ -30,7 +30,7 @@ export async function initDb() {
         username VARCHAR(100) NOT NULL UNIQUE,
         password_hash TEXT,
         display_name TEXT NOT NULL,
-        email VARCHAR(255) NOT NULL UNIQUE,
+        email VARCHAR(255) UNIQUE,
         position_name TEXT,
         department_name TEXT,
         role VARCHAR(20) NOT NULL DEFAULT 'HQ_USER',

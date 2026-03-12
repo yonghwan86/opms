@@ -83,14 +83,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── 인증 ─────────────────────────────────────────────────────────────────
 
-  // POST /api/auth/check-email (이메일 존재 여부 + 비밀번호 설정 필요 여부 확인)
-  app.post("/api/auth/check-email", async (req, res) => {
+  // POST /api/auth/check-user (아이디 존재 여부 + 비밀번호 설정 필요 여부 확인)
+  app.post("/api/auth/check-user", async (req, res) => {
     try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ message: "이메일을 입력해주세요." });
+      const { username } = req.body;
+      if (!username) {
+        return res.status(400).json({ message: "아이디를 입력해주세요." });
       }
-      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      const user = await storage.getUserByUsername(username.trim().toLowerCase());
       if (!user || !user.enabled) {
         return res.json({ exists: false });
       }
@@ -104,16 +104,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/auth/login (이메일 로그인)
+  // POST /api/auth/check-email (하위 호환 — 기존 세션 유지용)
+  app.post("/api/auth/check-email", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "이메일을 입력해주세요." });
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      if (!user || !user.enabled) return res.json({ exists: false });
+      return res.json({ exists: true, needsPasswordSetup: !user.passwordHash || user.mustChangePassword });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "서버 오류가 발생했습니다." });
+    }
+  });
+
+  // POST /api/auth/login (아이디 로그인)
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(400).json({ message: "이메일과 비밀번호를 입력해주세요." });
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: "아이디와 비밀번호를 입력해주세요." });
       }
-      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      const user = await storage.getUserByUsername(username.trim().toLowerCase());
       if (!user) {
-        return res.status(401).json({ message: "이메일 또는 비밀번호가 올바르지 않습니다." });
+        return res.status(401).json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." });
       }
       if (!user.enabled) {
         return res.status(403).json({ message: "비활성화된 계정입니다. 관리자에게 문의하세요." });
@@ -126,7 +140,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) {
-        return res.status(401).json({ message: "이메일 또는 비밀번호가 올바르지 않습니다." });
+        return res.status(401).json({ message: "아이디 또는 비밀번호가 올바르지 않습니다." });
       }
 
       req.session.userId = user.id;
@@ -138,7 +152,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const ip = req.ip || req.socket.remoteAddress;
       const ua = req.headers["user-agent"];
       await storage.createLoginLog(user.id, ip, ua);
-      await storage.createAuditLog(user.id, "LOGIN", "user", user.id, { email: user.email });
+      await storage.createAuditLog(user.id, "LOGIN", "user", user.id, { username: user.username });
 
       const { passwordHash: _, ...safeUser } = user;
       res.json({ user: safeUser });
@@ -151,14 +165,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/auth/setup-password (최초 비밀번호 설정 / 초기화 후 재설정)
   app.post("/api/auth/setup-password", async (req, res) => {
     try {
-      const { email, newPassword } = req.body;
-      if (!email || !newPassword) {
-        return res.status(400).json({ message: "이메일과 새 비밀번호를 입력해주세요." });
+      const { username, newPassword } = req.body;
+      if (!username || !newPassword) {
+        return res.status(400).json({ message: "아이디와 새 비밀번호를 입력해주세요." });
       }
       if (newPassword.length < 8) {
         return res.status(400).json({ message: "비밀번호는 8자 이상이어야 합니다." });
       }
-      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      const user = await storage.getUserByUsername(username.trim().toLowerCase());
       if (!user) {
         return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
       }
@@ -182,7 +196,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const ip = req.ip || req.socket.remoteAddress;
       const ua = req.headers["user-agent"];
       await storage.createLoginLog(user.id, ip, ua);
-      await storage.createAuditLog(user.id, "SET_PASSWORD", "user", user.id, { email: user.email });
+      await storage.createAuditLog(user.id, "SET_PASSWORD", "user", user.id, { username: user.username });
 
       const updatedUser = await storage.getUserById(user.id);
       const { passwordHash: _, ...safeUser } = updatedUser!;
@@ -369,26 +383,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/users
   app.post("/api/users", requireMaster, async (req, res) => {
     try {
-      const { displayName, email, positionName, departmentName, role, headquartersId, teamId, enabled } = req.body;
-      if (!displayName || !email) {
-        return res.status(400).json({ message: "이름과 이메일은 필수입니다." });
+      const { displayName, username: rawUsername, positionName, departmentName, role, headquartersId, teamId, enabled } = req.body;
+      if (!displayName || !rawUsername) {
+        return res.status(400).json({ message: "이름과 아이디(ID)는 필수입니다." });
       }
-      const dupEmail = await storage.getUserByEmail(email.trim().toLowerCase());
-      if (dupEmail) return res.status(409).json({ message: "이미 사용 중인 이메일입니다." });
-
-      // username 자동 생성 (이메일 앞부분, 중복 시 숫자 추가)
-      const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase();
-      let username = baseUsername;
-      let suffix = 1;
-      while (await storage.getUserByUsername(username)) {
-        username = `${baseUsername}${suffix++}`;
+      const username = rawUsername.trim().toLowerCase().replace(/[^a-zA-Z0-9._-]/g, "");
+      if (!username) {
+        return res.status(400).json({ message: "아이디(ID)는 영문/숫자/점/하이픈만 사용할 수 있습니다." });
       }
+      const dupUser = await storage.getUserByUsername(username);
+      if (dupUser) return res.status(409).json({ message: "이미 사용 중인 아이디입니다." });
 
       const user = await storage.createUser({
         username,
         passwordHash: null,
         displayName,
-        email: email.trim().toLowerCase(),
+        email: null,
         positionName,
         departmentName,
         role: role || "HQ_USER",
@@ -397,7 +407,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         enabled: enabled !== false,
         mustChangePassword: true,
       });
-      await storage.createAuditLog(req.session.userId!, "CREATE", "user", user.id, { username, email, role });
+      await storage.createAuditLog(req.session.userId!, "CREATE", "user", user.id, { username, role });
       const { passwordHash: _, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (e) {
@@ -462,11 +472,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ["display_name(선택)", "email", "position_name", "headquarters_code", "team_code", "role", "enabled"];
+      const headers = ["id", "display_name(선택)", "position_name", "headquarters_code", "team_code", "role", "enabled"];
       const sampleData = [
-        ["홍길동", "hong@example.com", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
-        ["", "kim@example.com", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
-        ["이영희", "lee@example.com", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
+        ["honggildong", "홍길동", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
+        ["kimcheolsu", "", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
+        ["leeyounghee", "이영희", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
       XLSX.utils.book_append_sheet(wb, ws, "사용자_업로드");
@@ -490,7 +500,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-      const requiredCols = ["email", "headquarters_code", "team_code", "role", "enabled"];
+      const requiredCols = ["id", "headquarters_code", "team_code", "role", "enabled"];
       if (rows.length === 0) return res.status(400).json({ message: "데이터가 없습니다." });
 
       const firstRow = rows[0];
@@ -500,24 +510,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const results: { row: number; status: "success" | "fail"; reason?: string }[] = [];
-      const emailsInFile = new Set<string>();
+      const idsInFile = new Set<string>();
       let successCount = 0;
       let failCount = 0;
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
+        const userId = String(row.id || "").trim().toLowerCase().replace(/[^a-zA-Z0-9._-]/g, "");
         const displayName = String(row["display_name(선택)"] || row.display_name || "").trim();
-        const email = String(row.email || "").trim().toLowerCase();
         const positionName = String(row.position_name || "").trim();
         const hqCode = String(row.headquarters_code || "").trim();
         const teamCode = String(row.team_code || "").trim();
         const role = String(row.role || "HQ_USER").trim();
         const enabled = String(row.enabled || "TRUE").toUpperCase() !== "FALSE";
 
-        // 빈 행 건너뜀 (이메일 기준)
-        if (!email) {
-          results.push({ row: rowNum, status: "fail", reason: "빈 행 또는 email 누락" });
+        // 빈 행 건너뜀 (id 기준)
+        if (!userId) {
+          results.push({ row: rowNum, status: "fail", reason: "빈 행 또는 id 누락" });
           failCount++;
           continue;
         }
@@ -525,12 +535,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         // 유효성 검사
         if (!["MASTER", "HQ_USER"].includes(role)) { results.push({ row: rowNum, status: "fail", reason: `role 값 오류: ${role}` }); failCount++; continue; }
 
-        // 파일 내 이메일 중복
-        if (emailsInFile.has(email)) { results.push({ row: rowNum, status: "fail", reason: "파일 내 email 중복" }); failCount++; continue; }
+        // 파일 내 id 중복
+        if (idsInFile.has(userId)) { results.push({ row: rowNum, status: "fail", reason: "파일 내 id 중복" }); failCount++; continue; }
 
-        // DB 이메일 중복
-        const dupEmail = await storage.getUserByEmail(email);
-        if (dupEmail) { results.push({ row: rowNum, status: "fail", reason: "email 이미 사용 중" }); failCount++; continue; }
+        // DB username 중복
+        const dupUser = await storage.getUserByUsername(userId);
+        if (dupUser) { results.push({ row: rowNum, status: "fail", reason: "id 이미 사용 중" }); failCount++; continue; }
 
         // 본부 코드 확인
         const hq = await storage.getHeadquartersByCode(hqCode);
@@ -541,20 +551,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!team) { results.push({ row: rowNum, status: "fail", reason: `팀 코드 없음: ${teamCode}` }); failCount++; continue; }
         if (team.headquartersId !== hq.id) { results.push({ row: rowNum, status: "fail", reason: "팀이 해당 본부에 속하지 않음" }); failCount++; continue; }
 
-        // username 자동 생성 (이메일 앞부분)
-        const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase();
-        let username = baseUsername;
-        let suffix = 1;
-        while (await storage.getUserByUsername(username)) {
-          username = `${baseUsername}${suffix++}`;
-        }
-
         // 비밀번호 미설정 (최초 로그인 시 본인이 설정)
         await storage.createUser({
-          username,
+          username: userId,
           passwordHash: null,
-          displayName: displayName || username,
-          email,
+          displayName: displayName || userId,
+          email: null,
           positionName,
           role,
           headquartersId: hq.id,
@@ -562,7 +564,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           enabled,
           mustChangePassword: true,
         });
-        emailsInFile.add(email);
+        idsInFile.add(userId);
         results.push({ row: rowNum, status: "success" });
         successCount++;
       }
@@ -1029,11 +1031,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // GET /api/dashboard/regional-averages — 시/도별 평균 유가
-  app.get("/api/dashboard/regional-averages", requireAuth, async (_req, res) => {
+  app.get("/api/dashboard/regional-averages", requireAuth, async (req, res) => {
     try {
       const dates = await storage.getOilAvailableDates();
       if (dates.length === 0) return res.json([]);
-      const data = await storage.getOilRegionalAverages(dates[0]);
+      let sidoFilter: string[] | undefined;
+      if (req.session.role !== "MASTER") {
+        const permitted = await storage.getUserPermittedRegions(req.session.userId!);
+        if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+      }
+      const data = await storage.getOilRegionalAverages(dates[0], sidoFilter);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/dashboard/regional-price-history — 본부 지역 시계열 (지역별 추이 탭용)
+  app.get("/api/dashboard/regional-price-history", requireAuth, async (req, res) => {
+    try {
+      let sidoFilter: string[] | undefined;
+      if (req.session.role !== "MASTER") {
+        const permitted = await storage.getUserPermittedRegions(req.session.userId!);
+        if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+      }
+      const data = await storage.getOilRegionalHistory(sidoFilter);
       res.json(data);
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });

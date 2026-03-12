@@ -38,7 +38,7 @@ export const users = pgTable("users", {
   // passwordHash는 nullable: 최초 생성/초기화 시 null, 비밀번호 설정 후 해시값 저장
   passwordHash: text("password_hash"),
   displayName: text("display_name").notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
+  email: varchar("email", { length: 255 }).unique(),
   positionName: text("position_name"),
   departmentName: text("department_name"),
   role: varchar("role", { length: 20 }).notNull().default("HQ_USER"),
