@@ -608,7 +608,7 @@ export default function DashboardPage() {
                     : oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
                 </h2>
                 <div className="flex gap-1 flex-shrink-0">
-                  {([['global', isMobile ? '국제' : '국제-국내 연동'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
+                  {([['global', isMobile ? '국제' : '국제-국내 유가'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
                     <button
                       key={key}
                       onClick={() => setOilAnalysisTab(key)}
