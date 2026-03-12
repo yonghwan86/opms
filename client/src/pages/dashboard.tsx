@@ -530,32 +530,32 @@ export default function DashboardPage() {
         {/* ── 유가 분석 카드 (탭: 국제-국내 연동 / 지역별 추이) ── */}
         <Card className="border border-border bg-card">
           <div className="px-5 pt-3 pb-0">
-            <div className="flex items-start justify-between gap-2 pb-2 border-b border-border">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">
+            <div className="flex flex-col gap-2 pb-2 border-b border-border">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-sm md:text-base font-semibold text-foreground leading-snug">
                   {oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
                 </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {oilAnalysisTab === 'global'
-                    ? 'WTI 국제 유가 vs 국내 평균 유가'
-                    : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유·등유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
-                </p>
+                <div className="flex gap-1 flex-shrink-0">
+                  {([['global', isMobile ? '국제' : '국제-국내 연동'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setOilAnalysisTab(key)}
+                      data-testid={`tab-oil-${key}`}
+                      className={cn(
+                        "text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap",
+                        oilAnalysisTab === key
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted"
+                      )}
+                    >{label}</button>
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-1 flex-shrink-0">
-                {([['global', '국제-국내 연동'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => setOilAnalysisTab(key)}
-                    data-testid={`tab-oil-${key}`}
-                    className={cn(
-                      "text-xs px-3 py-1.5 rounded-md font-medium transition-colors",
-                      oilAnalysisTab === key
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted"
-                    )}
-                  >{label}</button>
-                ))}
-              </div>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                {oilAnalysisTab === 'global'
+                  ? 'WTI 국제 유가 vs 국내 평균 유가'
+                  : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유·등유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
+              </p>
             </div>
             {oilAnalysisTab === 'global' && (
               <p className="text-xs text-muted-foreground mt-2 mb-1 leading-relaxed">
@@ -570,10 +570,10 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 12, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
+                    tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
                     tickLine={false}
                     axisLine={{ stroke: "#e5e7eb" }}
-                    interval={Math.max(0, Math.floor(displayChartData.length / 6) - 1)}
+                    interval={isMobile ? 1 : Math.max(0, Math.floor(displayChartData.length / 6) - 1)}
                     height={36}
                     padding={{ left: 24, right: 24 }}
                     tickMargin={10}
@@ -602,13 +602,13 @@ export default function DashboardPage() {
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Legend
-                    wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
+                    wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }}
                     iconType="circle"
                     iconSize={10}
                     formatter={(val) => {
-                      if (val === "wti") return "WTI (국제)";
-                      if (val === "gasoline") return "휘발유 주유평균";
-                      if (val === "diesel") return "경유 주유평균";
+                      if (val === "wti") return isMobile ? "WTI" : "WTI (국제)";
+                      if (val === "gasoline") return isMobile ? "휘발유" : "휘발유 주유평균";
+                      if (val === "diesel") return isMobile ? "경유" : "경유 주유평균";
                       return val;
                     }}
                   />
@@ -631,7 +631,7 @@ export default function DashboardPage() {
                       tick={{ fontSize: 12, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
-                      interval={Math.max(0, Math.floor(displayRegionalChartData.length / 8) - 1)}
+                      interval={isMobile ? 1 : Math.max(0, Math.floor(displayRegionalChartData.length / 8) - 1)}
                       height={36}
                       padding={{ left: 24, right: 24 }}
                       tickMargin={10}
