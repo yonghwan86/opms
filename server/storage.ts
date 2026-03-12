@@ -145,8 +145,8 @@ export interface IStorage {
     gasolineChange: number; dieselChange: number; keroseneChange: number;
   }>;
   getOilPriceSpread(date: string): Promise<{
-    spread: number; maxPrice: number; maxStation: string; maxRegion: string;
-    minPrice: number; minStation: string; minRegion: string;
+    gasoline: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
+    diesel: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
   }>;
   getOilRegionalAverages(date: string): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
   getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
@@ -707,28 +707,34 @@ export class PostgresStorage implements IStorage {
   }
 
   async getOilPriceSpread(date: string) {
-    const spreadRes = await db.execute(sql`
-      SELECT
-        MAX(gasoline) AS max_price,
-        MIN(CASE WHEN gasoline > 0 THEN gasoline END) AS min_price,
-        MAX(gasoline) - MIN(CASE WHEN gasoline > 0 THEN gasoline END) AS spread
-      FROM oil_price_raw WHERE date = ${date} AND gasoline > 0`);
-    const s = spreadRes.rows[0] as any;
-    const maxPrice = Number(s?.max_price) || 0;
-    const minPrice = Number(s?.min_price) || 0;
-    const [maxRow, minRow] = await Promise.all([
-      db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND gasoline = ${maxPrice} LIMIT 1`),
-      db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND gasoline = ${minPrice} LIMIT 1`),
-    ]);
-    return {
-      spread: Number(s?.spread) || 0,
-      maxPrice,
-      maxStation: (maxRow.rows[0] as any)?.station_name as string || '',
-      maxRegion: (maxRow.rows[0] as any)?.region as string || '',
-      minPrice,
-      minStation: (minRow.rows[0] as any)?.station_name as string || '',
-      minRegion: (minRow.rows[0] as any)?.region as string || '',
-    };
+    async function spreadFor(fuel: 'gasoline' | 'diesel') {
+      const col = fuel === 'gasoline' ? sql`gasoline` : sql`diesel`;
+      const spreadRes = await db.execute(sql`
+        SELECT
+          MAX(${col}) AS max_price,
+          MIN(CASE WHEN ${col} > 0 THEN ${col} END) AS min_price,
+          MAX(${col}) - MIN(CASE WHEN ${col} > 0 THEN ${col} END) AS spread
+        FROM oil_price_raw WHERE date = ${date} AND ${col} > 0`);
+      const s = spreadRes.rows[0] as any;
+      const maxPrice = Number(s?.max_price) || 0;
+      const minPrice = Number(s?.min_price) || 0;
+      if (!maxPrice || !minPrice) return null;
+      const [maxRow, minRow] = await Promise.all([
+        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${maxPrice} LIMIT 1`),
+        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${minPrice} LIMIT 1`),
+      ]);
+      return {
+        spread: Number(s?.spread) || 0,
+        maxPrice,
+        maxStation: (maxRow.rows[0] as any)?.station_name as string || '',
+        maxRegion: (maxRow.rows[0] as any)?.region as string || '',
+        minPrice,
+        minStation: (minRow.rows[0] as any)?.station_name as string || '',
+        minRegion: (minRow.rows[0] as any)?.region as string || '',
+      };
+    }
+    const [gasoline, diesel] = await Promise.all([spreadFor('gasoline'), spreadFor('diesel')]);
+    return { gasoline, diesel };
   }
 
   async getOilRegionalAverages(date: string) {

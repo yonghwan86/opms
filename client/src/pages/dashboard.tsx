@@ -122,10 +122,14 @@ interface WtiResponse {
 interface ExchangeRate {
   rate: number; change: number; changePercent: number;
 }
+interface SpreadData {
+  spread: number; maxPrice: number; maxStation: string; maxRegion: string;
+  minPrice: number; minStation: string; minRegion: string;
+}
 interface FuelStats {
   date: string;
   averages: { gasoline: number; diesel: number; kerosene: number; gasolineChange: number; dieselChange: number; keroseneChange: number } | null;
-  spread: { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string } | null;
+  spread: { gasoline: SpreadData | null; diesel: SpreadData | null } | null;
 }
 interface RegionalAvg { sido: string; avgPrice: number; avgDiesel: number | null; }
 interface DomesticHistory { date: string; gasoline: number; diesel: number; }
@@ -277,6 +281,8 @@ export default function DashboardPage() {
 
   // 지역별 순위 탭
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
+  // 편차 카드 탭
+  const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
 
   // 차트 데이터 병합 (WTI + 국내)
   const chartData = useMemo(() => {
@@ -384,30 +390,75 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 전국 편차 */}
-          <MetricCard title="전국 휘발유 가격 편차" subtitle="최고가 − 최저가 격차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading} source="오피넷">
-            {spread ? (
-              <>
-                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(spread.spread)}원</p>
-                <div className="space-y-1 mt-2">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-red-500 font-semibold text-xs flex-shrink-0">최고</span>
-                    <span className="text-foreground truncate flex-1 mx-1 text-xs">
-                      {spread.maxStation.length > 9 ? spread.maxStation.slice(0, 9) + "…" : spread.maxStation}
-                    </span>
-                    <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(spread.maxPrice)}</span>
+          <MetricCard
+            title={`전국 ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
+            subtitle={`최고가 − 최저가 격차 ${shortDateLabel}`}
+            icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading} source="오피넷"
+          >
+            {(() => {
+              const sp = spread?.[spreadTab] ?? null;
+              return sp ? (
+                <>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {(['gasoline', 'diesel'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setSpreadTab(tab)}
+                        className={cn(
+                          "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
+                          spreadTab === tab
+                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                        data-testid={`tab-spread-${tab}`}
+                      >
+                        {tab === 'gasoline' ? '휘발유' : '경유'}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-blue-500 font-semibold text-xs flex-shrink-0">최저</span>
-                    <span className="text-foreground truncate flex-1 mx-1 text-xs">
-                      {spread.minStation.length > 9 ? spread.minStation.slice(0, 9) + "…" : spread.minStation}
-                    </span>
-                    <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(spread.minPrice)}</span>
+                  <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(sp.spread)}원</p>
+                  <div className="space-y-1.5 mt-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-red-500 font-semibold text-xs flex-shrink-0">최고</span>
+                      <div className="flex flex-col min-w-0 flex-1 mx-1">
+                        <span className="text-foreground text-xs truncate">{sp.maxStation}</span>
+                        <span className="text-[10px] text-muted-foreground">{regionShort(sp.maxRegion)}</span>
+                      </div>
+                      <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(sp.maxPrice)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-blue-500 font-semibold text-xs flex-shrink-0">최저</span>
+                      <div className="flex flex-col min-w-0 flex-1 mx-1">
+                        <span className="text-foreground text-xs truncate">{sp.minStation}</span>
+                        <span className="text-[10px] text-muted-foreground">{regionShort(sp.minRegion)}</span>
+                      </div>
+                      <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(sp.minPrice)}</span>
+                    </div>
                   </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">데이터 없음</p>
-            )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {(['gasoline', 'diesel'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setSpreadTab(tab)}
+                        className={cn(
+                          "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
+                          spreadTab === tab
+                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                        data-testid={`tab-spread-${tab}`}
+                      >
+                        {tab === 'gasoline' ? '휘발유' : '경유'}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">데이터 없음</p>
+                </>
+              );
+            })()}
           </MetricCard>
         </div>
 
