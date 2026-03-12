@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const regionShort = (r: string) => r.includes(" ") ? r.split(" ").slice(1).join(" ") : r;
 
@@ -424,24 +425,29 @@ export default function DashboardPage() {
               return sp ? (
                 <>
                   <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(sp.spread)}원</p>
-                  <div className="space-y-1.5 mt-2">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-red-500 font-semibold text-xs flex-shrink-0">최고</span>
-                      <div className="flex flex-col min-w-0 flex-1 mx-1">
-                        <span className="text-foreground text-xs truncate">{sp.maxStation.length > 8 ? sp.maxStation.slice(0, 8) + "…" : sp.maxStation}</span>
-                        <span className="text-[10px] text-muted-foreground">{regionShort(sp.maxRegion)}</span>
-                      </div>
-                      <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(sp.maxPrice)}</span>
+                  <TooltipProvider delayDuration={200}>
+                    <div className="space-y-1.5 mt-2">
+                      {[
+                        { label: "최고", labelColor: "text-red-500", station: sp.maxStation, region: sp.maxRegion, price: sp.maxPrice },
+                        { label: "최저", labelColor: "text-blue-500", station: sp.minStation, region: sp.minRegion, price: sp.minPrice },
+                      ].map(row => (
+                        <div key={row.label} className="flex items-center justify-between gap-1">
+                          <span className={cn("font-semibold text-xs flex-shrink-0", row.labelColor)}>{row.label}</span>
+                          <UITooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-foreground text-xs truncate flex-1 mx-1 cursor-default underline decoration-dotted underline-offset-2">{row.station}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs space-y-0.5">
+                              <p className="font-semibold">{row.station}</p>
+                              <p className="text-muted-foreground">{row.region}</p>
+                              <p className="font-bold">{fmtPrice(row.price)}</p>
+                            </TooltipContent>
+                          </UITooltip>
+                          <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(row.price)}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-blue-500 font-semibold text-xs flex-shrink-0">최저</span>
-                      <div className="flex flex-col min-w-0 flex-1 mx-1">
-                        <span className="text-foreground text-xs truncate">{sp.minStation.length > 8 ? sp.minStation.slice(0, 8) + "…" : sp.minStation}</span>
-                        <span className="text-[10px] text-muted-foreground">{regionShort(sp.minRegion)}</span>
-                      </div>
-                      <span className="font-bold text-foreground text-sm flex-shrink-0">{fmtPrice(sp.minPrice)}</span>
-                    </div>
-                  </div>
+                  </TooltipProvider>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">데이터 없음</p>
