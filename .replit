@@ -45,3 +45,7 @@ waitForPort = 5000
 VAPID_PUBLIC_KEY = "BCK96gAWhZm4WTo-b479RTiczvRS3oRl2ZV1O3q6lW8xpPVdmAVL_4TGv6USAhqcImXzrZ6-wWGWQiDKZ-qQ0dI"
 VAPID_PRIVATE_KEY = "-ahHYzgrOmrFaGt9SvbaMwBQ3C5Cto02hhhoHNjPfB4"
 VAPID_EMAIL = "mailto:admin@kpetro.or.kr"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
