@@ -383,9 +383,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/users
   app.post("/api/users", requireMaster, async (req, res) => {
     try {
-      const { displayName, username: rawUsername, positionName, departmentName, role, headquartersId, teamId, enabled } = req.body;
-      if (!displayName || !rawUsername) {
-        return res.status(400).json({ message: "이름과 아이디(ID)는 필수입니다." });
+      const { username: rawUsername, email: rawEmail, positionName, departmentName, role, headquartersId, teamId, enabled } = req.body;
+      if (!rawUsername) {
+        return res.status(400).json({ message: "아이디(ID)는 필수입니다." });
       }
       const username = rawUsername.trim().toLowerCase().replace(/[^a-zA-Z0-9._-]/g, "");
       if (!username) {
@@ -394,11 +394,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const dupUser = await storage.getUserByUsername(username);
       if (dupUser) return res.status(409).json({ message: "이미 사용 중인 아이디입니다." });
 
+      const emailVal = rawEmail ? String(rawEmail).trim().toLowerCase() || null : null;
       const user = await storage.createUser({
         username,
         passwordHash: null,
-        displayName,
-        email: null,
+        displayName: username,
+        email: emailVal,
         positionName,
         departmentName,
         role: role || "HQ_USER",
@@ -472,11 +473,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ["id", "display_name(선택)", "position_name", "headquarters_code", "team_code", "role", "enabled"];
+      const headers = ["id", "email(선택)", "position_name", "headquarters_code", "team_code", "role", "enabled"];
       const sampleData = [
-        ["honggildong", "홍길동", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
+        ["honggildong", "hong@company.com", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
         ["kimcheolsu", "", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
-        ["leeyounghee", "이영희", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
+        ["leeyounghee", "lee@company.com", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
       XLSX.utils.book_append_sheet(wb, ws, "사용자_업로드");
@@ -518,7 +519,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const row = rows[i];
         const rowNum = i + 2;
         const userId = String(row.id || "").trim().toLowerCase().replace(/[^a-zA-Z0-9._-]/g, "");
-        const displayName = String(row["display_name(선택)"] || row.display_name || "").trim();
+        const emailRaw = String(row["email(선택)"] || row.email || "").trim().toLowerCase();
+        const emailVal = emailRaw || null;
         const positionName = String(row.position_name || "").trim();
         const hqCode = String(row.headquarters_code || "").trim();
         const teamCode = String(row.team_code || "").trim();
@@ -555,8 +557,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         await storage.createUser({
           username: userId,
           passwordHash: null,
-          displayName: displayName || userId,
-          email: null,
+          displayName: userId,
+          email: emailVal,
           positionName,
           role,
           headquartersId: hq.id,
