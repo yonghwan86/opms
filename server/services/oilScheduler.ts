@@ -25,31 +25,36 @@ function getKSTHour(): number {
   return getKSTNow().getUTCHours();
 }
 
-let lastUserPushDate = "";
+// 오전/오후 수집 각각 중복 푸시 방지 (당일 기준)
+let lastMorningPushDate = "";
+let lastAfternoonPushDate = "";
 
-async function sendUserPush(todayStr: string): Promise<void> {
-  if (lastUserPushDate === todayStr) {
-    console.log("[PushScheduler] 오늘 사용자 푸시 이미 발송됨, 건너뜀");
+async function sendUserPush(dateKey: string, message: string, slot: "morning" | "afternoon"): Promise<void> {
+  const guard = slot === "morning" ? lastMorningPushDate : lastAfternoonPushDate;
+  if (guard === dateKey) {
+    console.log(`[PushScheduler] ${slot === "morning" ? "오전" : "오후"} 푸시 이미 발송됨(${dateKey}), 건너뜀`);
     return;
   }
   try {
     const subs = await storage.getAllPushSubscriptions();
     if (subs.length === 0) {
       console.log("[PushScheduler] 구독자 없음, 건너뜀");
-      lastUserPushDate = todayStr;
+      if (slot === "morning") lastMorningPushDate = dateKey;
+      else lastAfternoonPushDate = dateKey;
       return;
     }
     const payload = {
       title: "유가 모니터링",
-      body: "오늘의 유가 데이터가 업데이트되었습니다.",
+      body: message,
       icon: "/icon-192.png",
       url: "/oil-prices",
     };
     const { sent, failed } = await sendPushToAll(subs, payload);
-    lastUserPushDate = todayStr;
-    console.log(`[PushScheduler] 사용자 푸시 발송 완료: 성공 ${sent}건, 실패 ${failed}건`);
+    if (slot === "morning") lastMorningPushDate = dateKey;
+    else lastAfternoonPushDate = dateKey;
+    console.log(`[PushScheduler] ${slot === "morning" ? "오전" : "오후"} 푸시 발송 완료: 성공 ${sent}건, 실패 ${failed}건`);
   } catch (err) {
-    console.error("[PushScheduler] 사용자 푸시 발송 오류:", err);
+    console.error("[PushScheduler] 푸시 발송 오류:", err);
   }
 }
 
@@ -113,12 +118,20 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
   }
 }
 
-async function runWithRetryAndNotify(source: string, notifyMasterOnSuccess = false): Promise<void> {
+interface RunJobOptions {
+  source: string;
+  slot: "morning" | "afternoon";
+  pushMessage: string;
+  notifyMasterOnSuccess?: boolean;
+}
+
+async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
+  const { source, slot, pushMessage, notifyMasterOnSuccess = false } = opts;
   const result = await runOilPriceJob();
   console.log(`[OilScheduler] ${source} 수집 결과:`, result);
 
   if (result.success && result.analysisCount > 0) {
-    await sendUserPush(result.today);
+    await sendUserPush(result.today, pushMessage, slot);
     if (notifyMasterOnSuccess) {
       await sendMasterPush(`${source} 수집 성공`, `수집 완료: 원본 ${result.rawCount}건, 분석 ${result.analysisCount}건`);
     }
@@ -137,7 +150,7 @@ async function runWithRetryAndNotify(source: string, notifyMasterOnSuccess = fal
     console.log(`[OilScheduler] ${source} 재시도 결과:`, retry);
 
     if (retry.success && retry.analysisCount > 0) {
-      await sendUserPush(retry.today);
+      await sendUserPush(retry.today, pushMessage, slot);
       if (notifyMasterOnSuccess) {
         await sendMasterPush(`${source} 재시도 성공`, `재시도 수집 완료: 원본 ${retry.rawCount}건, 분석 ${retry.analysisCount}건`);
       }
@@ -155,30 +168,68 @@ async function checkAndRecoverOnStartup(): Promise<void> {
     const kstNow = getKSTNow();
     const kstHour = kstNow.getUTCHours();
     const kstMinute = kstNow.getUTCMinutes();
+
+    // 오전 9:10 이전 → 9:15에 재확인
     if (kstHour < 9 || (kstHour === 9 && kstMinute < 10)) {
       const targetKST = new Date(kstNow);
       targetKST.setUTCHours(9, 15, 0, 0);
       const delayMs = targetKST.getTime() - kstNow.getTime();
-      console.log(`[OilScheduler] 시작 복구: 현재 KST ${kstHour}:${String(kstMinute).padStart(2, "0")} (9:10 이전), ${Math.round(delayMs / 60000)}분 후 재확인 예약`);
+      console.log(`[OilScheduler] 시작 복구: KST ${kstHour}:${String(kstMinute).padStart(2, "0")} (9:10 이전), ${Math.round(delayMs / 60000)}분 후 재확인`);
       setTimeout(() => checkAndRecoverOnStartup(), delayMs);
       return;
     }
 
-    // 오피넷은 항상 전날 데이터만 제공 → 어제 날짜 기준으로 최신 여부 확인
     const kstYesterday = new Date(kstNow);
     kstYesterday.setUTCDate(kstYesterday.getUTCDate() - 1);
+    const todayStr = getDateStr(kstNow);
     const yesterdayStr = getDateStr(kstYesterday);
 
-    const availableDates = await storage.getOilAvailableDates();
-    const latestAvailable = availableDates[0];
+    // 오후 16:00 이후 → 당일 잠정값도 확인
+    if (kstHour >= 16) {
+      const availableDates = await storage.getOilAvailableDates();
+      const latestAvailable = availableDates[0];
 
-    if (latestAvailable && latestAvailable >= yesterdayStr) {
-      console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 어제(${yesterdayStr}), 수집 불필요`);
+      if (latestAvailable && latestAvailable >= todayStr) {
+        console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 오늘(${todayStr}), 수집 불필요`);
+        return;
+      }
+
+      if (latestAvailable && latestAvailable >= yesterdayStr) {
+        // 어제 확정값은 있지만 오늘 잠정값이 없음 → 오후 잠정 수집
+        console.log(`[OilScheduler] 시작 복구(오후): 오늘(${todayStr}) 데이터 없음, 잠정값 수집 시작`);
+        await runWithRetryAndNotify({
+          source: "시작 복구(오후 잠정)",
+          slot: "afternoon",
+          pushMessage: "오늘 유가 데이터(잠정)가 업데이트되었습니다.",
+          notifyMasterOnSuccess: true,
+        });
+      } else {
+        // 어제 확정값도 없음 → 둘 다 수집
+        console.log(`[OilScheduler] 시작 복구(오후): 어제(${yesterdayStr}) 데이터도 없음, 전체 수집 시작`);
+        await runWithRetryAndNotify({
+          source: "시작 복구(오전 확정)",
+          slot: "morning",
+          pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
+          notifyMasterOnSuccess: true,
+        });
+        await runWithRetryAndNotify({
+          source: "시작 복구(오후 잠정)",
+          slot: "afternoon",
+          pushMessage: "오늘 유가 데이터(잠정)가 업데이트되었습니다.",
+          notifyMasterOnSuccess: false,
+        });
+      }
       return;
     }
 
-    console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable ?? '없음'}) < 어제(${yesterdayStr}), 자동 수집 시작`);
-    await runWithRetryAndNotify("시작 복구", true);
+    // 9:10 ~ 16:00 → 오전 확정값 무조건 수집 (잠정값이 이미 있어도 덮어씌움)
+    console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 전날 확정값 수집 시작`);
+    await runWithRetryAndNotify({
+      source: "시작 복구(오전 확정)",
+      slot: "morning",
+      pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
+      notifyMasterOnSuccess: true,
+    });
   } catch (err) {
     console.error("[OilScheduler] 시작 복구 확인 오류:", err);
   }
@@ -195,9 +246,34 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
 }
 
 export function startOilScheduler(): void {
+  // 오전 9:10 — 전날 확정값 수집 (무조건 실행, 잠정값 덮어씌움)
   cron.schedule("10 9 * * *", async () => {
-    console.log("[OilScheduler] 정기 수집 시작 (매일 오전 9시 10분)");
-    await runWithRetryAndNotify("정기 수집");
+    console.log("[OilScheduler] 오전 수집 시작 (전날 확정값, 매일 09:10 KST)");
+    await runWithRetryAndNotify({
+      source: "오전 정기 수집",
+      slot: "morning",
+      pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
+    });
+  }, { timezone: "Asia/Seoul" });
+
+  // 오후 16:10 — 당일 잠정값 수집 (오늘 데이터 없을 때만)
+  cron.schedule("10 16 * * *", async () => {
+    console.log("[OilScheduler] 오후 수집 확인 (당일 잠정값, 매일 16:10 KST)");
+    const todayStr = getKSTDateStr();
+    const availableDates = await storage.getOilAvailableDates();
+    const latestAvailable = availableDates[0];
+
+    if (latestAvailable && latestAvailable >= todayStr) {
+      console.log(`[OilScheduler] 오후 수집 건너뜀: 오늘(${todayStr}) 데이터 이미 존재`);
+      return;
+    }
+
+    console.log(`[OilScheduler] 오후 수집 시작: 오늘(${todayStr}) 데이터 없음`);
+    await runWithRetryAndNotify({
+      source: "오후 정기 수집",
+      slot: "afternoon",
+      pushMessage: "오늘 유가 데이터(잠정)가 업데이트되었습니다.",
+    });
   }, { timezone: "Asia/Seoul" });
 
   cron.schedule("0 1,2,9,12,16,19 * * *", async () => {
@@ -205,7 +281,7 @@ export function startOilScheduler(): void {
     await fetchOpinetFuelAverages();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (CSV 수집: 오전 9시 10분 KST / 유류 평균: 1,2,9,12,16,19시 KST)");
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:10 / 오후 잠정 16:10 / 유류 평균 1,2,9,12,16,19시 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 
