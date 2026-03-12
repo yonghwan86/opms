@@ -165,9 +165,9 @@ function ChangeChip({ val, unit = "원", percent, decimals = 0 }: { val: number;
 
 // ─── 메트릭 카드 ─────────────────────────────────────────────────────────────
 function MetricCard({
-  title, subtitle, source, live, icon: Icon, iconBg, loading, children,
+  title, subtitle, source, live, headerRight, icon: Icon, iconBg, loading, children,
 }: {
-  title: string; subtitle?: string; source?: string; live?: boolean; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
+  title: string; subtitle?: string; source?: string; live?: boolean; headerRight?: React.ReactNode; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
 }) {
   return (
     <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card flex flex-col">
@@ -181,12 +181,12 @@ function MetricCard({
             {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
           </div>
         </div>
-        {live && !loading && (
+        {live && !loading ? (
           <span className="flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded px-1.5 py-0.5 flex-shrink-0 mt-0.5" data-testid="badge-live">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             실시간
           </span>
-        )}
+        ) : headerRight ?? null}
       </div>
       {loading ? (
         <div className="space-y-2 mt-3">
@@ -394,28 +394,30 @@ export default function DashboardPage() {
             title={`전국 ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
             subtitle={`최고가 − 최저가 격차 ${shortDateLabel}`}
             icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading} source="오피넷"
+            headerRight={
+              <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                {(['gasoline', 'diesel'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setSpreadTab(tab)}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
+                      spreadTab === tab
+                        ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                    data-testid={`tab-spread-${tab}`}
+                  >
+                    {tab === 'gasoline' ? '휘발유' : '경유'}
+                  </button>
+                ))}
+              </div>
+            }
           >
             {(() => {
               const sp = spread?.[spreadTab] ?? null;
               return sp ? (
                 <>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    {(['gasoline', 'diesel'] as const).map(tab => (
-                      <button
-                        key={tab}
-                        onClick={() => setSpreadTab(tab)}
-                        className={cn(
-                          "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
-                          spreadTab === tab
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
-                            : "text-muted-foreground hover:bg-muted"
-                        )}
-                        data-testid={`tab-spread-${tab}`}
-                      >
-                        {tab === 'gasoline' ? '휘발유' : '경유'}
-                      </button>
-                    ))}
-                  </div>
                   <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(sp.spread)}원</p>
                   <div className="space-y-1.5 mt-2">
                     <div className="flex items-center justify-between gap-1">
@@ -437,26 +439,7 @@ export default function DashboardPage() {
                   </div>
                 </>
               ) : (
-                <>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    {(['gasoline', 'diesel'] as const).map(tab => (
-                      <button
-                        key={tab}
-                        onClick={() => setSpreadTab(tab)}
-                        className={cn(
-                          "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
-                          spreadTab === tab
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
-                            : "text-muted-foreground hover:bg-muted"
-                        )}
-                        data-testid={`tab-spread-${tab}`}
-                      >
-                        {tab === 'gasoline' ? '휘발유' : '경유'}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">데이터 없음</p>
-                </>
+                <p className="text-sm text-muted-foreground">데이터 없음</p>
               );
             })()}
           </MetricCard>
