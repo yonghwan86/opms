@@ -161,12 +161,12 @@ function ChangeChip({ val, unit = "원", percent, decimals = 0 }: { val: number;
 
 // ─── 메트릭 카드 ─────────────────────────────────────────────────────────────
 function MetricCard({
-  title, subtitle, icon: Icon, iconBg, loading, children,
+  title, subtitle, source, icon: Icon, iconBg, loading, children,
 }: {
-  title: string; subtitle?: string; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
+  title: string; subtitle?: string; source?: string; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
 }) {
   return (
-    <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card">
+    <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card flex flex-col">
       <div className="flex items-center gap-2 md:gap-3 mb-1">
         <div className={cn("w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
           <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
@@ -181,7 +181,8 @@ function MetricCard({
           <Skeleton className="h-9 w-36" />
           <Skeleton className="h-5 w-28" />
         </div>
-      ) : <div className="mt-3">{children}</div>}
+      ) : <div className="mt-3 flex-1">{children}</div>}
+      {source && <p className="text-[10px] text-muted-foreground/50 mt-2 text-right">출처: {source}</p>}
     </Card>
   );
 }
@@ -326,7 +327,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
 
           {/* WTI 국제 유가 */}
-          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading}>
+          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-blue-500" loading={wtiLoading} source="Yahoo Finance">
             {wti ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
@@ -340,7 +341,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* KRW-USD 환율 */}
-          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading}>
+          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-emerald-500" loading={fxLoading} source="Yahoo Finance">
             {fx ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
@@ -354,7 +355,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 국내 유류 평균 */}
-          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading}>
+          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading} source="오피넷">
             {avg ? (
               <div className="space-y-2">
                 {[
@@ -375,7 +376,7 @@ export default function DashboardPage() {
           </MetricCard>
 
           {/* 전국 편차 */}
-          <MetricCard title="전국 휘발유 가격 편차" subtitle="최고가 − 최저가 격차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading}>
+          <MetricCard title="전국 휘발유 가격 편차" subtitle="최고가 − 최저가 격차" icon={BarChart2} iconBg="bg-purple-500" loading={fuelLoading} source="오피넷">
             {spread ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(spread.spread)}원</p>
