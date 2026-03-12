@@ -528,8 +528,8 @@ export default function DashboardPage() {
 
         {/* ── 유가 분석 카드 (탭: 국제-국내 연동 / 지역별 추이) ── */}
         <Card className="border border-border bg-card">
-          <div className="px-5 pt-4 pb-0">
-            <div className="flex items-start justify-between gap-2 pb-3 border-b border-border">
+          <div className="px-5 pt-3 pb-0">
+            <div className="flex items-start justify-between gap-2 pb-2 border-b border-border">
               <div>
                 <h2 className="text-base font-semibold text-foreground">
                   {oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : '관할 지역 유가 추이'}
@@ -562,23 +562,23 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          <div className="px-2 pb-4 pt-2">
+          <div className="px-2 pb-2 pt-1">
             {oilAnalysisTab === 'global' ? (
-              <ResponsiveContainer width="100%" height={380}>
-                <ComposedChart data={displayChartData} margin={{ top: 14, right: 8, left: 10, bottom: 16 }}>
+              <ResponsiveContainer width="100%" height={340}>
+                <ComposedChart data={displayChartData} margin={{ top: 10, right: 8, left: 10, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "middle" }}
+                    tick={{ fontSize: 12, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
                     tickLine={false}
                     axisLine={{ stroke: "#e5e7eb" }}
                     interval={Math.max(0, Math.floor(displayChartData.length / 6) - 1)}
-                    height={28}
+                    height={26}
                   />
                   <YAxis
                     yAxisId="wti"
                     orientation="left"
-                    tick={{ fontSize: 12, fill: "#64748b" }}
+                    tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
                     tickFormatter={v => `$${v}`}
                     domain={["auto", "auto"]}
                     tickCount={6}
@@ -589,7 +589,7 @@ export default function DashboardPage() {
                   <YAxis
                     yAxisId="domestic"
                     orientation="right"
-                    tick={{ fontSize: 12, fill: "#6b7280" }}
+                    tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
                     tickFormatter={v => `${fmt(v)}원`}
                     domain={["auto", "auto"]}
                     tickCount={6}
@@ -599,7 +599,7 @@ export default function DashboardPage() {
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Legend
-                    wrapperStyle={{ fontSize: 13, paddingTop: 14 }}
+                    wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
                     iconType="circle"
                     iconSize={10}
                     formatter={(val) => {
@@ -616,24 +616,24 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               displayRegionalChartData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[380px]">
+                <div className="flex flex-col items-center justify-center h-[340px]">
                   <p className="text-sm text-muted-foreground">데이터 없음</p>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={380}>
-                  <ComposedChart data={displayRegionalChartData} margin={{ top: 14, right: 8, left: 10, bottom: 16 }}>
+                <ResponsiveContainer width="100%" height={340}>
+                  <ComposedChart data={displayRegionalChartData} margin={{ top: 10, right: 8, left: 10, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 11, fill: "#6b7280", textAnchor: "middle" }}
+                      tick={{ fontSize: 12, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
                       interval={Math.max(0, Math.floor(displayRegionalChartData.length / 8) - 1)}
-                      height={28}
+                      height={26}
                     />
                     <YAxis
                       orientation="left"
-                      tick={{ fontSize: 12, fill: "#6b7280" }}
+                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
                       tickFormatter={v => `${fmt(v)}원`}
                       domain={["auto", "auto"]}
                       tickCount={6}
@@ -643,7 +643,7 @@ export default function DashboardPage() {
                     />
                     <Tooltip content={<ChartTooltip />} />
                     <Legend
-                      wrapperStyle={{ fontSize: 13, paddingTop: 14 }}
+                      wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
                       iconType="circle"
                       iconSize={10}
                       formatter={(val) => {
