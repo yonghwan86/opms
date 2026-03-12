@@ -533,7 +533,9 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2 pb-2 border-b border-border">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="text-sm md:text-base font-semibold text-foreground leading-snug">
-                  {oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
+                  {isMobile
+                    ? '유가 연동 분석'
+                    : oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
                 </h2>
                 <div className="flex gap-1 flex-shrink-0">
                   {([['global', isMobile ? '국제' : '국제-국내 연동'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
@@ -607,8 +609,8 @@ export default function DashboardPage() {
                     iconSize={10}
                     formatter={(val) => {
                       if (val === "wti") return isMobile ? "WTI" : "WTI (국제)";
-                      if (val === "gasoline") return isMobile ? "휘발유" : "휘발유 주유평균";
-                      if (val === "diesel") return isMobile ? "경유" : "경유 주유평균";
+                      if (val === "gasoline") return isMobile ? "휘 평균" : "휘발유 주유평균";
+                      if (val === "diesel") return isMobile ? "경 평균" : "경유 주유평균";
                       return val;
                     }}
                   />
