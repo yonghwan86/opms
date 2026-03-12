@@ -130,11 +130,6 @@ async function runWithRetryAndNotify(source: string, notifyMasterOnSuccess = fal
     console.log(`[OilScheduler] ${source} 실패, 10분 후 재시도 예정`);
   }
 
-  await sendMasterPush(
-    "유가 수집 실패 (재시도 예정)",
-    `${source}: ${result.error ?? `분석 데이터 ${result.analysisCount}건`}\n10분 후 자동 재시도합니다.`,
-  );
-
   setTimeout(async () => {
     console.log(`[OilScheduler] ${source} 재시도 시작`);
     const retry = await runOilPriceJob();
@@ -154,10 +149,15 @@ async function runWithRetryAndNotify(source: string, notifyMasterOnSuccess = fal
 
 async function checkAndRecoverOnStartup(): Promise<void> {
   try {
-    const kstHour = getKSTHour();
-    if (kstHour < 9) {
-      // 오피넷은 당일 유가 데이터를 오전 9시경 제공; 이전에 수집하면 항상 analysisCount=0 → 불필요한 재시도 유발
-      console.log(`[OilScheduler] 시작 복구: 현재 KST ${kstHour}시 (9시 이전), 오늘 데이터 아직 미제공 — 복구 건너뜀`);
+    const kstNow = getKSTNow();
+    const kstHour = kstNow.getUTCHours();
+    const kstMinute = kstNow.getUTCMinutes();
+    if (kstHour < 9 || (kstHour === 9 && kstMinute < 10)) {
+      const targetKST = new Date(kstNow);
+      targetKST.setUTCHours(9, 15, 0, 0);
+      const delayMs = targetKST.getTime() - kstNow.getTime();
+      console.log(`[OilScheduler] 시작 복구: 현재 KST ${kstHour}:${String(kstMinute).padStart(2, "0")} (9:10 이전), ${Math.round(delayMs / 60000)}분 후 재확인 예약`);
+      setTimeout(() => checkAndRecoverOnStartup(), delayMs);
       return;
     }
 
