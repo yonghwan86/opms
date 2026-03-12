@@ -441,13 +441,13 @@ export default function DashboardPage() {
                               <p className="font-semibold">{row.station}</p>
                               <p className="text-muted-foreground">{row.region}</p>
                               <div className="flex items-center gap-1.5">
-                                <p className="font-bold">{fmtPrice(row.price)}</p>
                                 <span className={cn(
                                   "inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white",
                                   spreadTab === "gasoline" ? "bg-yellow-400" : "bg-emerald-500"
                                 )}>
                                   {spreadTab === "gasoline" ? "휘" : "경"}
                                 </span>
+                                <p className="font-bold">{fmtPrice(row.price)}</p>
                               </div>
                             </TooltipContent>
                           </UITooltip>
