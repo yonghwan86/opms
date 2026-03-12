@@ -351,7 +351,7 @@ export default function UsersPage() {
             </div>
             <div className="space-y-1.5">
               <Label>이메일</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="example@company.com (선택)" data-testid="input-user-email" />
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="kito86@kpetro.or.kr (선택)" data-testid="input-user-email" />
             </div>
             <div className="space-y-1.5">
               <Label>직책</Label>
