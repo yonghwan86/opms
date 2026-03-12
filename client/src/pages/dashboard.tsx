@@ -565,7 +565,7 @@ export default function DashboardPage() {
           <div className="px-2 pb-2 pt-1">
             {oilAnalysisTab === 'global' ? (
               <ResponsiveContainer width="100%" height={340}>
-                <ComposedChart data={displayChartData} margin={{ top: 10, right: 8, left: 10, bottom: 8 }}>
+                <ComposedChart data={displayChartData} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -573,7 +573,7 @@ export default function DashboardPage() {
                     tickLine={false}
                     axisLine={{ stroke: "#e5e7eb" }}
                     interval={Math.max(0, Math.floor(displayChartData.length / 6) - 1)}
-                    height={26}
+                    height={36}
                   />
                   <YAxis
                     yAxisId="wti"
@@ -621,7 +621,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={340}>
-                  <ComposedChart data={displayRegionalChartData} margin={{ top: 10, right: 8, left: 10, bottom: 8 }}>
+                  <ComposedChart data={displayRegionalChartData} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis
                       dataKey="label"
@@ -629,7 +629,7 @@ export default function DashboardPage() {
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
                       interval={Math.max(0, Math.floor(displayRegionalChartData.length / 8) - 1)}
-                      height={26}
+                      height={36}
                     />
                     <YAxis
                       orientation="left"
