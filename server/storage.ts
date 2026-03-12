@@ -731,22 +731,25 @@ export class PostgresStorage implements IStorage {
     };
   }
 
-  async getOilPriceSpread(date: string) {
-    async function spreadFor(fuel: 'gasoline' | 'diesel') {
+  async getOilPriceSpread(date: string, sidoFilter?: string[]) {
+    const sidoWhere = sidoFilter && sidoFilter.length > 0
+      ? sql`AND sido = ANY(ARRAY[${sql.raw(sidoFilter.map(s => `'${s.replace(/'/g, "''")}'`).join(','))}])`
+      : sql``;
+    const spreadFor = async (fuel: 'gasoline' | 'diesel') => {
       const col = fuel === 'gasoline' ? sql`gasoline` : sql`diesel`;
       const spreadRes = await db.execute(sql`
         SELECT
           MAX(${col}) AS max_price,
           MIN(CASE WHEN ${col} > 0 THEN ${col} END) AS min_price,
           MAX(${col}) - MIN(CASE WHEN ${col} > 0 THEN ${col} END) AS spread
-        FROM oil_price_raw WHERE date = ${date} AND ${col} > 0`);
+        FROM oil_price_raw WHERE date = ${date} AND ${col} > 0 ${sidoWhere}`);
       const s = spreadRes.rows[0] as any;
       const maxPrice = Number(s?.max_price) || 0;
       const minPrice = Number(s?.min_price) || 0;
       if (!maxPrice || !minPrice) return null;
       const [maxRow, minRow] = await Promise.all([
-        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${maxPrice} LIMIT 1`),
-        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${minPrice} LIMIT 1`),
+        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${maxPrice} ${sidoWhere} LIMIT 1`),
+        db.execute(sql`SELECT station_name, region FROM oil_price_raw WHERE date = ${date} AND ${col} = ${minPrice} ${sidoWhere} LIMIT 1`),
       ]);
       return {
         spread: Number(s?.spread) || 0,
@@ -757,7 +760,7 @@ export class PostgresStorage implements IStorage {
         minStation: (minRow.rows[0] as any)?.station_name as string || '',
         minRegion: (minRow.rows[0] as any)?.region as string || '',
       };
-    }
+    };
     const [gasoline, diesel] = await Promise.all([spreadFor('gasoline'), spreadFor('diesel')]);
     return { gasoline, diesel };
   }

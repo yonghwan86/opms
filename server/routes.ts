@@ -991,7 +991,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // GET /api/dashboard/fuel-stats — 국내 유류 평균 + 전국 편차
-  app.get("/api/dashboard/fuel-stats", requireAuth, async (_req, res) => {
+  app.get("/api/dashboard/fuel-stats", requireAuth, async (req, res) => {
     try {
       const { getCachedFuelAverages } = await import("./services/opinetApi");
       const cached = getCachedFuelAverages();
@@ -1023,7 +1023,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       let spread = null;
       if (dates.length > 0) {
-        spread = await storage.getOilPriceSpread(dates[0]);
+        let sidoFilter: string[] | undefined;
+        if (req.session.role !== "MASTER") {
+          const permitted = await storage.getUserPermittedRegions(req.session.userId!);
+          if (permitted.sidoList.length > 0) sidoFilter = permitted.sidoList;
+        }
+        spread = await storage.getOilPriceSpread(dates[0], sidoFilter);
       }
 
       res.json({ date: averagesDate, averages, spread });
