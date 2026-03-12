@@ -846,7 +846,7 @@ export default function DashboardPage() {
                   {/* 요약 박스 */}
                   <div className="rounded-lg bg-muted/60 border border-border p-3 mb-1">
                     <p className="text-sm font-semibold text-foreground">
-                      오늘 전국 <span className="text-primary">{allAlerts.length}개</span> 주유소 이상 감지
+                      오늘 {isMaster ? "전국" : "관할 지역"} <span className="text-primary">{allAlerts.length}개</span> 주유소 이상 감지
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       급등 <span className="text-red-500 font-semibold">{riseAlerts.length}곳</span>
