@@ -1,7 +1,7 @@
 {
-  "name": "유가모니터링 시스템",
-  "short_name": "유가모니터링",
-  "description": "실시간 유가 데이터 모니터링 플랫폼",
+  "name": "유가 이상징후 탐지 시스템",
+  "short_name": "유가탐지",
+  "description": "실시간 유가 이상징후 탐지 플랫폼",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

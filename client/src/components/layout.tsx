@@ -8,6 +8,7 @@ import {
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
   Bell, BellOff, Upload
 } from "lucide-react";
+import appIconSrc from "@assets/image_1773305506787.png";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -98,10 +99,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Menu className="w-5 h-5" />
         </Button>
         <div className="flex-1 flex items-center justify-center gap-2">
-          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center flex-shrink-0">
-            <Shield className="w-3.5 h-3.5 text-primary-foreground" />
-          </div>
-          <span className="text-sm font-semibold text-sidebar-foreground">유가모니터링 시스템</span>
+          <img src={appIconSrc} alt="앱 아이콘" className="w-6 h-6 rounded flex-shrink-0" />
+          <span className="text-sm font-semibold text-sidebar-foreground">유가 이상징후 탐지 시스템</span>
         </div>
         <div className="w-9" />
       </header>
@@ -126,17 +125,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
           {sidebarOpen ? (
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                <Shield className="w-4 h-4 text-primary-foreground" />
-              </div>
+              <img src={appIconSrc} alt="앱 아이콘" className="w-8 h-8 rounded-lg flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-sidebar-foreground truncate">유가모니터링 시스템</p>
+                <p className="text-xs font-semibold text-sidebar-foreground leading-tight">유가 이상징후<br />탐지 시스템</p>
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mx-auto">
-              <Shield className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img src={appIconSrc} alt="앱 아이콘" className="w-8 h-8 rounded-lg mx-auto" />
           )}
           <Button
             variant="ghost"
