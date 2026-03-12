@@ -361,16 +361,22 @@ export default function UsersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>본부</Label>
-                <Select value={form.headquartersId} onValueChange={v => setForm(f => ({ ...f, headquartersId: v, teamId: "" }))}>
-                  <SelectTrigger><SelectValue placeholder="본부 선택" /></SelectTrigger>
-                  <SelectContent>{hqList?.map(hq => <SelectItem key={hq.id} value={String(hq.id)}>{hq.name}</SelectItem>)}</SelectContent>
+                <Select value={form.headquartersId || "__none__"} onValueChange={v => setForm(f => ({ ...f, headquartersId: v === "__none__" ? "" : v, teamId: "" }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">미지정 (전국)</SelectItem>
+                    {hqList?.map(hq => <SelectItem key={hq.id} value={String(hq.id)}>{hq.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>팀</Label>
-                <Select value={form.teamId} onValueChange={v => setForm(f => ({ ...f, teamId: v }))} disabled={!form.headquartersId}>
-                  <SelectTrigger><SelectValue placeholder="팀 선택" /></SelectTrigger>
-                  <SelectContent>{dialogTeamList?.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                <Select value={form.teamId || "__none__"} onValueChange={v => setForm(f => ({ ...f, teamId: v === "__none__" ? "" : v }))} disabled={!form.headquartersId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">미지정</SelectItem>
+                    {dialogTeamList?.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
