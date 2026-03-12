@@ -739,7 +739,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* ── 하단 3섹션 ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 items-start lg:items-stretch">
 
           {/* 지역별 평균 유가 순위 */}
           {(() => {
@@ -751,8 +751,8 @@ export default function DashboardPage() {
             const domMin = vals.length ? Math.min(...vals) - 15 : 0;
             const domMax = vals.length ? Math.max(...vals) + 8 : 100;
             return (
-              <Card className="border border-border bg-card">
-                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <Card className="border border-border bg-card flex flex-col h-full">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
                     <p className="text-sm text-muted-foreground mt-0.5">{isDiesel ? "경유" : "휘발유"} {user?.teamId ? "시/군별" : "시/도별"} 평균 {shortDateLabel}</p>
@@ -821,15 +821,15 @@ export default function DashboardPage() {
             );
           })()}
 
-          {/* 가격 급변 주유소 TOP 5 — 캐러셀 (스와이프 가능) */}
+          {/* 가격 급변 주유소 TOP 10 — 캐러셀 (스와이프 가능) */}
           {(() => {
             const isDieselCarousel = carouselFuel === 'diesel';
             const fuelLabel = isDieselCarousel ? '경유' : '휘발유';
             const slides = [
-              { label: "가격 상승 TOP 5", desc: "전일 대비 최대 상승", stations: isDieselCarousel ? riseStationsDiesel : riseStations, arrow: "▲", priceColor: "text-red-500" },
-              { label: "가격 하락 TOP 5", desc: "전일 대비 최대 하락", stations: isDieselCarousel ? fallStationsDiesel : fallStations, arrow: "▼", priceColor: "text-blue-500" },
-              { label: "최고가 TOP 5", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최고가`, stations: isDieselCarousel ? highStationsDiesel : highStations, arrow: null, priceColor: "text-orange-500" },
-              { label: "최저가 TOP 5", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최저가`, stations: isDieselCarousel ? lowStationsDiesel : lowStations, arrow: null, priceColor: "text-emerald-600" },
+              { label: "가격 상승 TOP 10", desc: "전일 대비 최대 상승", stations: isDieselCarousel ? riseStationsDiesel : riseStations, arrow: "▲", priceColor: "text-red-500" },
+              { label: "가격 하락 TOP 10", desc: "전일 대비 최대 하락", stations: isDieselCarousel ? fallStationsDiesel : fallStations, arrow: "▼", priceColor: "text-blue-500" },
+              { label: "최고가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최고가`, stations: isDieselCarousel ? highStationsDiesel : highStations, arrow: null, priceColor: "text-orange-500" },
+              { label: "최저가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최저가`, stations: isDieselCarousel ? lowStationsDiesel : lowStations, arrow: null, priceColor: "text-emerald-600" },
             ];
             const slide = slides[carouselSlide];
             const handleTouchStart = (e: React.TouchEvent) => {
@@ -845,7 +845,7 @@ export default function DashboardPage() {
               }
             };
             return (
-              <Card className="border border-border bg-card flex flex-col" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+              <Card className="border border-border bg-card flex flex-col h-full" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 <div className="px-5 py-4 border-b border-border flex-shrink-0 flex items-start justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">{slide.label}</h2>
@@ -887,12 +887,12 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 flex flex-col divide-y divide-border">
+                <div className="flex-1 overflow-y-auto divide-y divide-border min-h-0">
                   {slide.stations.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
                   ) : (
-                    slide.stations.slice(0, 5).map((s, idx) => (
-                      <div key={s.stationId} className="px-5 flex items-center gap-3 flex-1 py-2" data-testid={`alert-station-${s.stationId}`}>
+                    slide.stations.slice(0, 10).map((s, idx) => (
+                      <div key={s.stationId} className="px-5 flex items-center gap-3 py-3" data-testid={`alert-station-${s.stationId}`}>
                         <span className="text-base font-bold text-muted-foreground/50 w-5 flex-shrink-0">{idx + 1}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -929,7 +929,7 @@ export default function DashboardPage() {
           })()}
 
           {/* 최근 AI 분석 리포트 */}
-          <Card className="border border-border bg-card flex flex-col max-h-[430px]">
+          <Card className="border border-border bg-card flex flex-col h-full">
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
               <h2 className="text-base font-semibold text-foreground">일일 AI 분석 리포트</h2>
               <div className="flex items-center gap-1.5 mt-0.5">
