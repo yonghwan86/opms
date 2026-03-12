@@ -8,12 +8,13 @@ import {
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
   Bell, BellOff, Upload
 } from "lucide-react";
-import appIconSrc from "@assets/image_1773305506787.png";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePush } from "@/hooks/use-push";
 import { apiRequest } from "@/lib/queryClient";
+
+const appIconSrc = "/icon-192.png";
 
 interface NavItem {
   label: string;
