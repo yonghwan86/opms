@@ -648,8 +648,8 @@ export default function DashboardPage() {
                     iconSize={10}
                     formatter={(val) => {
                       if (val === "wti") return isMobile ? "WTI" : "WTI (국제)";
-                      if (val === "gasoline") return isMobile ? "휘발유" : "휘발유 주유평균";
-                      if (val === "diesel") return isMobile ? "경유" : "경유 주유평균";
+                      if (val === "gasoline") return "휘발유";
+                      if (val === "diesel") return "경유";
                       return val;
                     }}
                   />
