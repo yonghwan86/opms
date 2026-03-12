@@ -40,6 +40,10 @@ Opinet 유가 정보 자동 수집·분석·DB 저장 기능 포함. 향후 웹 
   - CHANGE: 전일대비 가격 상승/하락 top 10
   - DIFF: 휘발유-경유 가격차 큰/작은 top 10
 - **스케줄:** `server/services/oilScheduler.ts` — 매일 오전 9시 10분 KST 자동 실행 (`"10 9 * * *"`)
+  - 시작 복구: 서버 기동 시 KST 9시 이후이면 오늘 분석 데이터 유무 확인 후 자동 수집
+  - 재시도: 수집 실패 또는 분석 0건이면 10분 후 자동 재시도 1회
+  - 사용자 푸시: 수집 성공(analysisCount > 0) 시 전체 구독자에게 하루 1회만 발송 (lastUserPushDate 메모리 변수)
+  - 마스터 푸시: 수집 실패/재시도 실패 시 MASTER 구독자에게만 알림 발송
 - **수동 실행:** `POST /api/oil-prices/refresh` (MASTER)
 
 ## 주요 API

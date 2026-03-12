@@ -155,6 +155,7 @@ export interface IStorage {
   savePushSubscription(userId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<void>;
   deletePushSubscription(endpoint: string): Promise<void>;
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
+  getMasterPushSubscriptions(): Promise<PushSubscription[]>;
   getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]>;
 }
 
@@ -777,6 +778,21 @@ export class PostgresStorage implements IStorage {
 
   async getAllPushSubscriptions(): Promise<PushSubscription[]> {
     return db.select().from(pushSubscriptions);
+  }
+
+  async getMasterPushSubscriptions(): Promise<PushSubscription[]> {
+    return db
+      .select({
+        id: pushSubscriptions.id,
+        userId: pushSubscriptions.userId,
+        endpoint: pushSubscriptions.endpoint,
+        p256dh: pushSubscriptions.p256dh,
+        auth: pushSubscriptions.auth,
+        createdAt: pushSubscriptions.createdAt,
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(eq(users.role, "MASTER"));
   }
 
   async getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]> {
