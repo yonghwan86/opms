@@ -13,6 +13,7 @@ import UsersUploadPage from "@/pages/users-upload";
 import RegionPermissionsPage from "@/pages/region-permissions";
 import LoginLogsPage from "@/pages/login-logs";
 import AuditLogsPage from "@/pages/audit-logs";
+import PageViewLogsPage from "@/pages/page-view-logs";
 import MyInfoPage from "@/pages/my-info";
 import OilPricesPage from "@/pages/oil-prices";
 import OilUploadPage from "@/pages/oil-upload";
@@ -83,6 +84,7 @@ function Router() {
       <Route path="/region-permissions" component={() => <ProtectedRoute component={RegionPermissionsPage} />} />
       <Route path="/logs/login" component={() => <ProtectedRoute component={LoginLogsPage} masterOnly />} />
       <Route path="/logs/audit" component={() => <ProtectedRoute component={AuditLogsPage} masterOnly />} />
+      <Route path="/logs/page-views" component={() => <ProtectedRoute component={PageViewLogsPage} masterOnly />} />
       <Route path="/my-info" component={() => <ProtectedRoute component={MyInfoPage} masterOnly />} />
       <Route path="/oil-prices" component={() => <ProtectedRoute component={OilPricesPage} />} />
       <Route path="/oil-prices/upload" component={() => <ProtectedRoute component={OilUploadPage} masterOnly />} />

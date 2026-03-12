@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
+import { ClipboardList, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 interface AuditLog {
   id: number;
@@ -57,7 +57,12 @@ export default function AuditLogsPage() {
 
   return (
     <Layout>
-      <PageHeader title="감사 로그" description="시스템 변경 이력 및 감사 로그를 조회합니다." />
+      <PageHeader title="감사 로그" description="시스템 변경 이력 및 감사 로그를 조회합니다.">
+        <Button variant="outline" size="sm" onClick={() => window.open("/api/logs/audit/csv", "_blank")} data-testid="button-csv-auditlog">
+          <Download className="w-4 h-4 mr-1.5" />
+          CSV 다운로드
+        </Button>
+      </PageHeader>
 
       <div className="p-3 md:p-6 space-y-4">
         <div className="flex gap-2">

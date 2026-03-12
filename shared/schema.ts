@@ -104,6 +104,17 @@ export const auditLogs = pgTable("audit_logs", {
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 
+// ─── 페이지 뷰 로그 (Page Views) ──────────────────────────────────────────────
+export const pageViews = pgTable("page_views", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  page: varchar("page", { length: 100 }).notNull(),
+  device: varchar("device", { length: 10 }).notNull().default("pc"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type PageView = typeof pageViews.$inferSelect;
+
 // ─── 유가 원본 데이터 (Oil Price Raw) ─────────────────────────────────────────
 export const oilPriceRaw = pgTable("oil_price_raw", {
   id: serial("id").primaryKey(),

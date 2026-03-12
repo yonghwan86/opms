@@ -786,6 +786,123 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── 페이지 뷰 로그 ─────────────────────────────────────────────────────
+
+  // POST /api/logs/page-view (로그인 사용자 전용 — 자동 기록)
+  app.post("/api/logs/page-view", requireAuth, async (req, res) => {
+    try {
+      const { page, device } = req.body;
+      if (!page || typeof page !== "string") return res.status(400).json({ message: "page is required" });
+      const safePage = page.slice(0, 50).replace(/[^\p{L}\p{N}\s/\-_()]/gu, "");
+      const safeDevice = device === "mobile" ? "mobile" : "pc";
+      await storage.createPageView(req.session.userId!, safePage, safeDevice);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/page-views (MASTER 전용 — 목록 조회)
+  app.get("/api/page-views", requireMaster, async (req, res) => {
+    try {
+      const { userId, pageFilter, device, page, pageSize } = req.query;
+      const result = await storage.getPageViews({
+        userId: userId ? Number(userId) : undefined,
+        page: pageFilter as string,
+        device: device as string,
+        page_num: page ? Number(page) : 1,
+        pageSize: pageSize ? Number(pageSize) : 20,
+      });
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // ── CSV 다운로드 (MASTER 전용) ─────────────────────────────────────────
+
+  function formatDateKr(d: Date | string | null): string {
+    if (!d) return "";
+    const dt = typeof d === "string" ? new Date(d) : d;
+    return dt.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+  }
+
+  function detectDevice(ua?: string | null): string {
+    if (!ua) return "알 수 없음";
+    if (/Mobile|Android|iPhone|iPad/i.test(ua)) return "모바일";
+    return "PC";
+  }
+
+  function csvSafe(val: string): string {
+    let s = String(val ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+
+  function csvRow(cells: string[]): string {
+    return cells.map(c => csvSafe(c)).join(",");
+  }
+
+  // GET /api/logs/login/csv
+  app.get("/api/logs/login/csv", requireMaster, async (_req, res) => {
+    try {
+      const rows = await storage.getAllLoginLogsForCsv();
+      const BOM = "\uFEFF";
+      const header = csvRow(["ID", "사용자ID", "아이디", "이름", "IP주소", "기기", "브라우저", "로그인시각"]);
+      const lines = rows.map(r => csvRow([
+        String(r.id), String(r.userId), r.username, r.displayName,
+        r.ipAddress || "", detectDevice(r.userAgent), r.userAgent?.slice(0, 200) || "",
+        formatDateKr(r.loginAt),
+      ]));
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=login_logs_${new Date().toISOString().slice(0,10)}.csv`);
+      res.send(BOM + [header, ...lines].join("\r\n"));
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/logs/audit/csv
+  app.get("/api/logs/audit/csv", requireMaster, async (_req, res) => {
+    try {
+      const rows = await storage.getAllAuditLogsForCsv();
+      const BOM = "\uFEFF";
+      const header = csvRow(["ID", "사용자", "액션", "대상유형", "대상ID", "상세", "발생시각"]);
+      const lines = rows.map(r => csvRow([
+        String(r.id), r.username || "시스템", r.actionType,
+        r.targetType || "", r.targetId ? String(r.targetId) : "", r.detailJson || "",
+        formatDateKr(r.createdAt),
+      ]));
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=audit_logs_${new Date().toISOString().slice(0,10)}.csv`);
+      res.send(BOM + [header, ...lines].join("\r\n"));
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/logs/page-view/csv
+  app.get("/api/logs/page-view/csv", requireMaster, async (_req, res) => {
+    try {
+      const rows = await storage.getAllPageViewsForCsv();
+      const BOM = "\uFEFF";
+      const header = csvRow(["ID", "사용자ID", "아이디", "이름", "페이지", "기기", "조회시각"]);
+      const lines = rows.map(r => csvRow([
+        String(r.id), String(r.userId), r.username, r.displayName,
+        r.page, r.device === "mobile" ? "모바일" : "PC",
+        formatDateKr(r.createdAt),
+      ]));
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=page_views_${new Date().toISOString().slice(0,10)}.csv`);
+      res.send(BOM + [header, ...lines].join("\r\n"));
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // ── 대시보드 ─────────────────────────────────────────────────────────────
 
   // GET /api/dashboard/stats

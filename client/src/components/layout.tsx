@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
-  Bell, BellOff, Upload
+  Bell, BellOff, Upload, Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +34,21 @@ const navItems: NavItem[] = [
   { label: "엑셀 업로드(사용자)", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
+  { label: "페이지 뷰 로그", href: "/logs/page-views", icon: Eye, masterOnly: true },
 ];
+
+const PAGE_LABELS: Record<string, string> = {
+  "/": "대시보드",
+  "/oil-prices": "유가 분석",
+  "/oil-prices/upload": "유가 CSV 업로드",
+  "/region-permissions": "본부 권한",
+  "/users": "사용자 관리",
+  "/users/upload": "엑셀 업로드(사용자)",
+  "/logs/login": "로그인 로그",
+  "/logs/audit": "감사 로그",
+  "/logs/page-views": "페이지 뷰 로그",
+  "/my-info": "내 정보",
+};
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(() =>
@@ -44,6 +59,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { state: pushState, subscribe, unsubscribe } = usePush();
+  const isMobile = useIsMobile();
+  const lastTrackedPage = useRef<string>("");
+
+  useEffect(() => {
+    if (!user || location === "/login") return;
+    const pageName = PAGE_LABELS[location] || location;
+    if (lastTrackedPage.current === location) return;
+    lastTrackedPage.current = location;
+    fetch("/api/logs/page-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ page: pageName, device: isMobile ? "mobile" : "pc" }),
+    }).catch(() => {});
+  }, [location, user, isMobile]);
 
   const visibleNav = navItems.filter(item => {
     if (item.masterOnly && !isMaster) return false;

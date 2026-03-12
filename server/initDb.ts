@@ -72,6 +72,14 @@ export async function initDb() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS page_views (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        page VARCHAR(100) NOT NULL,
+        device VARCHAR(10) NOT NULL DEFAULT 'pc',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS "session" (
         "sid" VARCHAR NOT NULL COLLATE "default",
         "sess" JSON NOT NULL,

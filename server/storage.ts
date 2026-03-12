@@ -2,14 +2,14 @@ import { db } from "./db";
 import { eq, and, ilike, or, desc, asc, count, sql, inArray } from "drizzle-orm";
 import {
   headquarters, teams, users, hqTeamRegionPermissions,
-  loginLogs, auditLogs,
+  loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis,
   pushSubscriptions,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
   type HqTeamRegionPermission, type InsertHqTeamRegionPermission,
-  type LoginLog, type AuditLog,
+  type LoginLog, type AuditLog, type PageView,
   type InsertOilPriceRaw, type OilPriceRaw,
   type InsertOilPriceAnalysis, type OilPriceAnalysis,
   type PushSubscription, type InsertPushSubscription,
@@ -103,6 +103,13 @@ export interface IStorage {
   // 감사 로그
   createAuditLog(userId: number | null, actionType: string, targetType?: string, targetId?: number, detail?: object): Promise<void>;
   getAuditLogs(params?: { userId?: number; actionType?: string; targetType?: string; search?: string; page?: number; pageSize?: number }): Promise<PaginatedResult<AuditLog & { username?: string }>>;
+
+  // 페이지 뷰 로그
+  createPageView(userId: number, page: string, device: string): Promise<void>;
+  getPageViews(params?: { userId?: number; page?: string; device?: string; page_num?: number; pageSize?: number }): Promise<PaginatedResult<PageView & { username: string; displayName: string }>>;
+  getAllLoginLogsForCsv(): Promise<(LoginLog & { username: string; displayName: string })[]>;
+  getAllAuditLogsForCsv(): Promise<(AuditLog & { username?: string })[]>;
+  getAllPageViewsForCsv(): Promise<(PageView & { username: string; displayName: string })[]>;
 
   // 대시보드 통계
   getDashboardStats(): Promise<{
@@ -314,6 +321,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteUser(id: number): Promise<void> {
+    await db.delete(pageViews).where(eq(pageViews.userId, id));
     await db.delete(loginLogs).where(eq(loginLogs.userId, id));
     await db.update(auditLogs).set({ userId: null }).where(eq(auditLogs.userId, id));
     await db.delete(users).where(eq(users.id, id));
@@ -429,6 +437,85 @@ export class PostgresStorage implements IStorage {
       db.select({ total: count() }).from(auditLogs).where(where),
     ]);
     return { data: rows as any, total: Number(total), page, pageSize, totalPages: Math.ceil(Number(total) / pageSize) };
+  }
+
+  // ── 페이지 뷰 로그 ──────────────────────────────────────────────────────────
+  async createPageView(userId: number, page: string, device: string): Promise<void> {
+    await db.insert(pageViews).values({ userId, page, device });
+  }
+
+  async getPageViews(params: { userId?: number; page?: string; device?: string; page_num?: number; pageSize?: number } = {}): Promise<PaginatedResult<PageView & { username: string; displayName: string }>> {
+    const { userId, page: pageFilter, device, page_num = 1, pageSize = 20 } = params;
+    const offset = (page_num - 1) * pageSize;
+    const conditions = [];
+    if (userId) conditions.push(eq(pageViews.userId, userId));
+    if (pageFilter) conditions.push(eq(pageViews.page, pageFilter));
+    if (device) conditions.push(eq(pageViews.device, device));
+    const where = conditions.length ? and(...conditions) : undefined;
+
+    const [rows, [{ total }]] = await Promise.all([
+      db.select({
+        id: pageViews.id,
+        userId: pageViews.userId,
+        page: pageViews.page,
+        device: pageViews.device,
+        createdAt: pageViews.createdAt,
+        username: users.username,
+        displayName: users.displayName,
+      }).from(pageViews)
+        .leftJoin(users, eq(pageViews.userId, users.id))
+        .where(where)
+        .orderBy(desc(pageViews.createdAt))
+        .limit(pageSize).offset(offset),
+      db.select({ total: count() }).from(pageViews).where(where),
+    ]);
+    return { data: rows as any, total: Number(total), page: page_num, pageSize, totalPages: Math.ceil(Number(total) / pageSize) };
+  }
+
+  async getAllLoginLogsForCsv(): Promise<(LoginLog & { username: string; displayName: string })[]> {
+    const rows = await db.select({
+      id: loginLogs.id,
+      userId: loginLogs.userId,
+      loginAt: loginLogs.loginAt,
+      ipAddress: loginLogs.ipAddress,
+      userAgent: loginLogs.userAgent,
+      username: users.username,
+      displayName: users.displayName,
+    }).from(loginLogs)
+      .leftJoin(users, eq(loginLogs.userId, users.id))
+      .orderBy(desc(loginLogs.loginAt));
+    return rows as any;
+  }
+
+  async getAllAuditLogsForCsv(): Promise<(AuditLog & { username?: string })[]> {
+    const rows = await db.select({
+      id: auditLogs.id,
+      userId: auditLogs.userId,
+      actionType: auditLogs.actionType,
+      targetType: auditLogs.targetType,
+      targetId: auditLogs.targetId,
+      detailJson: auditLogs.detailJson,
+      createdAt: auditLogs.createdAt,
+      username: users.username,
+    }).from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
+      .orderBy(desc(auditLogs.createdAt));
+    return rows as any;
+  }
+
+  async getAllPageViewsForCsv(): Promise<(PageView & { username: string; displayName: string })[]> {
+    const rows = await db.select({
+      id: pageViews.id,
+      userId: pageViews.userId,
+      page: pageViews.page,
+      device: pageViews.device,
+      createdAt: pageViews.createdAt,
+      username: users.username,
+      displayName: users.displayName,
+    }).from(pageViews)
+      .leftJoin(users, eq(pageViews.userId, users.id))
+      .orderBy(desc(pageViews.createdAt));
+    return rows as any;
   }
 
   // ── 유가 원본 데이터 ──────────────────────────────────────────────────────
