@@ -307,6 +307,22 @@ export default function DashboardPage() {
     enabled: !!highQueryKey,
     staleTime: 2 * 60 * 1000,
   });
+  const lowQueryKeyDiesel = latestDate
+    ? `/api/oil-prices/top-stations?type=LOW&fuel=diesel&date=${latestDate}`
+    : null;
+  const { data: lowStationsDiesel = [] } = useQuery<TopStation[]>({
+    queryKey: [lowQueryKeyDiesel],
+    enabled: !!lowQueryKeyDiesel,
+    staleTime: 2 * 60 * 1000,
+  });
+  const highQueryKeyDiesel = latestDate
+    ? `/api/oil-prices/top-stations?type=HIGH&fuel=diesel&date=${latestDate}`
+    : null;
+  const { data: highStationsDiesel = [] } = useQuery<TopStation[]>({
+    queryKey: [highQueryKeyDiesel],
+    enabled: !!highQueryKeyDiesel,
+    staleTime: 2 * 60 * 1000,
+  });
 
   const { data: regionalHistory = [] } = useQuery<RegionalHistory[]>({
     queryKey: ["/api/dashboard/regional-price-history"],
@@ -315,6 +331,7 @@ export default function DashboardPage() {
 
   // 캐러셀 슬라이드 (0=상승, 1=하락, 2=최고가, 3=최저가) — 자동 회전 없음
   const [carouselSlide, setCarouselSlide] = useState(0);
+  const [carouselFuel, setCarouselFuel] = useState<'gasoline' | 'diesel'>('gasoline');
   const carouselTouchRef = useRef({ startX: 0, startY: 0 });
   const TOTAL_SLIDES = 4;
 
@@ -775,11 +792,13 @@ export default function DashboardPage() {
 
           {/* 가격 급변 주유소 TOP 5 — 캐러셀 (스와이프 가능) */}
           {(() => {
+            const isDieselCarousel = carouselFuel === 'diesel';
+            const fuelLabel = isDieselCarousel ? '경유' : '휘발유';
             const slides = [
-              { label: "가격 상승 TOP 5", desc: "전일 대비 최대 상승", stations: riseStations, arrow: "▲", priceColor: "text-red-500" },
-              { label: "가격 하락 TOP 5", desc: "전일 대비 최대 하락", stations: fallStations, arrow: "▼", priceColor: "text-blue-500" },
-              { label: "최고가 TOP 5",   desc: `${isGlobal ? "전국" : "관할 지역"} 휘발유 최고가`,  stations: highStations, arrow: null, priceColor: "text-orange-500" },
-              { label: "최저가 TOP 5",   desc: `${isGlobal ? "전국" : "관할 지역"} 휘발유 최저가`,  stations: lowStations,  arrow: null, priceColor: "text-emerald-600" },
+              { label: "가격 상승 TOP 5", desc: "전일 대비 최대 상승", stations: isDieselCarousel ? riseStationsDiesel : riseStations, arrow: "▲", priceColor: "text-red-500" },
+              { label: "가격 하락 TOP 5", desc: "전일 대비 최대 하락", stations: isDieselCarousel ? fallStationsDiesel : fallStations, arrow: "▼", priceColor: "text-blue-500" },
+              { label: "최고가 TOP 5", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최고가`, stations: isDieselCarousel ? highStationsDiesel : highStations, arrow: null, priceColor: "text-orange-500" },
+              { label: "최저가 TOP 5", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최저가`, stations: isDieselCarousel ? lowStationsDiesel : lowStations, arrow: null, priceColor: "text-emerald-600" },
             ];
             const slide = slides[carouselSlide];
             const handleTouchStart = (e: React.TouchEvent) => {
@@ -801,21 +820,40 @@ export default function DashboardPage() {
                     <h2 className="text-base font-semibold text-foreground">{slide.label}</h2>
                     <p className="text-sm text-muted-foreground mt-0.5">{slide.desc} {shortDateLabel}</p>
                   </div>
-                  <div className="flex items-center gap-0.5 pt-0.5">
-                    {slides.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCarouselSlide(i)}
-                        data-testid={`dot-carousel-${i}`}
-                        style={{ minWidth: 20, minHeight: 44 }}
-                        className="flex items-center justify-center"
-                      >
-                        <span className={cn(
-                          "block rounded-full transition-all",
-                          i === carouselSlide ? "w-2.5 h-2.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
-                        )} />
-                      </button>
-                    ))}
+                  <div className="flex flex-col items-end gap-2">
+                    {/* 휘발유/경유 탭 */}
+                    <div className="flex gap-1">
+                      {(['gasoline', 'diesel'] as const).map(fuel => (
+                        <button
+                          key={fuel}
+                          onClick={() => setCarouselFuel(fuel)}
+                          data-testid={`carousel-fuel-${fuel}`}
+                          className={cn(
+                            "text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
+                            carouselFuel === fuel
+                              ? fuel === 'gasoline' ? "bg-yellow-500 text-white" : "bg-green-600 text-white"
+                              : "text-muted-foreground hover:bg-muted"
+                          )}
+                        >{fuel === 'gasoline' ? '휘발유' : '경유'}</button>
+                      ))}
+                    </div>
+                    {/* 슬라이드 닷 */}
+                    <div className="flex items-center gap-0.5">
+                      {slides.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setCarouselSlide(i)}
+                          data-testid={`dot-carousel-${i}`}
+                          style={{ minWidth: 20, minHeight: 24 }}
+                          className="flex items-center justify-center"
+                        >
+                          <span className={cn(
+                            "block rounded-full transition-all",
+                            i === carouselSlide ? "w-2.5 h-2.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+                          )} />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <div className="flex-1 flex flex-col divide-y divide-border">
@@ -832,10 +870,16 @@ export default function DashboardPage() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">{s.brand}</Badge>
                             )}
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            <span className="md:hidden">{regionShort(s.region)}</span>
-                            <span className="hidden md:inline">{s.region}</span>
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={cn(
+                              "text-[10px] font-semibold px-1.5 py-0 rounded leading-4",
+                              isDieselCarousel ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                            )}>{fuelLabel}</span>
+                            <span className="text-xs text-muted-foreground">
+                              <span className="md:hidden">{regionShort(s.region)}</span>
+                              <span className="hidden md:inline">{s.region}</span>
+                            </span>
+                          </div>
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="text-sm font-bold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
