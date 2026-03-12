@@ -261,12 +261,12 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col lg:items-center lg:justify-center bg-white">
         {/* 모바일 전용 상단: KPetro CI + 아이콘(좌)+제목(우) */}
         <div className="lg:hidden px-8 pt-10 pb-0">
-          <div className="mb-12">
-            <img src={kpetroCiSrc} alt="한국석유관리원" className="h-9 object-contain" data-testid="img-kpetro-ci-login" />
+          <div className="mb-10">
+            <img src={kpetroCiSrc} alt="한국석유관리원" className="h-12 object-contain" data-testid="img-kpetro-ci-login" />
           </div>
-          <div className="flex items-center gap-4 mb-10">
-            <img src={loginIconSrc} alt="앱 아이콘" className="w-20 h-20 rounded-2xl flex-shrink-0" data-testid="img-app-icon-login" />
-            <h1 className="text-2xl font-bold text-foreground leading-snug">
+          <div className="flex items-center gap-3 mb-10">
+            <img src={loginIconSrc} alt="앱 아이콘" className="w-14 h-14 rounded-xl flex-shrink-0" data-testid="img-app-icon-login" />
+            <h1 className="text-xl font-bold text-foreground leading-snug whitespace-nowrap">
               유가 이상징후 탐지 시스템
             </h1>
           </div>
