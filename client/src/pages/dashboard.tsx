@@ -739,7 +739,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* ── 하단 3섹션 ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 items-start">
 
           {/* 지역별 평균 유가 순위 */}
           {(() => {
