@@ -2,19 +2,19 @@ import { useState, useRef } from "react";
 import { Layout, PageHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle, X } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle, X, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UploadResult {
   row: number;
-  status: "success" | "fail";
+  status: "success" | "updated" | "fail";
   reason?: string;
 }
 
 interface UploadResponse {
-  successCount: number;
+  insertedCount: number;
+  updatedCount: number;
   failCount: number;
   results: UploadResult[];
 }
@@ -56,7 +56,7 @@ export default function UsersUploadPage() {
         return;
       }
       setResponse(data);
-      toast({ title: `업로드 완료: 성공 ${data.successCount}건, 실패 ${data.failCount}건` });
+      toast({ title: `업로드 완료: 신규 ${data.insertedCount}건, 업데이트 ${data.updatedCount}건, 실패 ${data.failCount}건` });
     } catch {
       toast({ title: "업로드 중 오류가 발생했습니다.", variant: "destructive" });
     } finally {
@@ -85,10 +85,12 @@ export default function UsersUploadPage() {
               <p className="text-sm font-medium text-foreground">업로드 전 확인 사항</p>
               <ul className="text-sm text-muted-foreground space-y-0.5 list-disc list-inside">
                 <li>파일 형식은 반드시 <strong>.xlsx</strong>이어야 합니다.</li>
-                <li>필수 컬럼: <strong>id</strong>, display_name(선택), position_name, headquarters_code, team_code, role, enabled</li>
-                <li><strong>id</strong>는 로그인 시 사용할 아이디입니다 (영문/숫자/점/하이픈/언더스코어만 허용).</li>
-                <li>headquarters_code, team_code는 시스템에 등록된 코드와 정확히 일치해야 합니다.</li>
-                <li>role은 MASTER 또는 HQ_USER만 허용됩니다.</li>
+                <li>필수 컬럼: <strong>ID</strong>, <strong>부서</strong>, <strong>직위</strong></li>
+                <li>선택 컬럼: 이메일(선택), 역할(선택-값있으면마스터)</li>
+                <li><strong>ID</strong>는 로그인 시 사용할 아이디입니다 (영문·숫자·점·하이픈·언더스코어만 허용).</li>
+                <li><strong>부서</strong>: "수도권남부본부 검사1팀" 형식 또는 본사 부서명 (예: 기획처 기획예산팀)</li>
+                <li><strong>역할</strong>: 값이 있으면 마스터, 빈칸이면 일반 사용자로 등록됩니다.</li>
+                <li>이미 등록된 ID는 부서·직위·역할 정보가 <strong>업데이트</strong>됩니다 (비밀번호 유지).</li>
                 <li>비밀번호는 최초 로그인 시 사용자가 직접 설정합니다.</li>
               </ul>
             </div>
@@ -159,18 +161,25 @@ export default function UsersUploadPage() {
               <h3 className="font-semibold text-sm">업로드 결과</h3>
             </div>
             <div className="p-5">
-              <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="grid grid-cols-3 gap-4 mb-5">
                 <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-800">
-                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                  <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0" />
                   <div>
-                    <p className="text-2xl font-bold text-green-600">{response.successCount}</p>
-                    <p className="text-sm text-muted-foreground">성공</p>
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-inserted-count">{response.insertedCount}</p>
+                    <p className="text-sm text-muted-foreground">신규 등록</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
+                  <RefreshCw className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-2xl font-bold text-blue-600" data-testid="text-updated-count">{response.updatedCount}</p>
+                    <p className="text-sm text-muted-foreground">정보 업데이트</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-                  <XCircle className="w-8 h-8 text-red-500" />
+                  <XCircle className="w-8 h-8 text-red-500 flex-shrink-0" />
                   <div>
-                    <p className="text-2xl font-bold text-red-500">{response.failCount}</p>
+                    <p className="text-2xl font-bold text-red-500" data-testid="text-fail-count">{response.failCount}</p>
                     <p className="text-sm text-muted-foreground">실패</p>
                   </div>
                 </div>

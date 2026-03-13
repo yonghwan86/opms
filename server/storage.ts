@@ -66,6 +66,7 @@ export interface IStorage {
   getHeadquartersAll(): Promise<Headquarters[]>;
   getHeadquartersById(id: number): Promise<Headquarters | undefined>;
   getHeadquartersByCode(code: string): Promise<Headquarters | undefined>;
+  getHeadquartersByName(name: string): Promise<Headquarters | undefined>;
   createHeadquarters(data: InsertHeadquarters): Promise<Headquarters>;
   updateHeadquarters(id: number, data: Partial<InsertHeadquarters>): Promise<Headquarters>;
   deleteHeadquarters(id: number): Promise<void>;
@@ -75,6 +76,7 @@ export interface IStorage {
   getTeamsAll(headquartersId?: number): Promise<Team[]>;
   getTeamById(id: number): Promise<Team | undefined>;
   getTeamByCode(code: string): Promise<Team | undefined>;
+  getTeamByName(name: string, headquartersId: number): Promise<Team | undefined>;
   createTeam(data: InsertTeam): Promise<Team>;
   updateTeam(id: number, data: Partial<InsertTeam>): Promise<Team>;
   deleteTeam(id: number): Promise<void>;
@@ -214,6 +216,11 @@ export class PostgresStorage implements IStorage {
     return row;
   }
 
+  async getHeadquartersByName(name: string): Promise<Headquarters | undefined> {
+    const [row] = await db.select().from(headquarters).where(eq(headquarters.name, name));
+    return row;
+  }
+
   async createHeadquarters(data: InsertHeadquarters): Promise<Headquarters> {
     const [row] = await db.insert(headquarters).values(data).returning();
     return row;
@@ -258,6 +265,11 @@ export class PostgresStorage implements IStorage {
 
   async getTeamByCode(code: string): Promise<Team | undefined> {
     const [row] = await db.select().from(teams).where(eq(teams.code, code));
+    return row;
+  }
+
+  async getTeamByName(name: string, headquartersId: number): Promise<Team | undefined> {
+    const [row] = await db.select().from(teams).where(and(eq(teams.name, name), eq(teams.headquartersId, headquartersId)));
     return row;
   }
 

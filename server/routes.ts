@@ -473,13 +473,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/users/upload-template", requireMaster, async (req, res) => {
     try {
       const wb = XLSX.utils.book_new();
-      const headers = ["id", "email(선택)", "position_name", "headquarters_code", "team_code", "role", "enabled"];
+      const headers = ["ID", "이메일(선택)", "부서", "직위", "역할(선택-값있으면마스터)"];
       const sampleData = [
-        ["honggildong", "hong@company.com", "사원", "HQ_SUDNAM", "SUDNAM_T1", "HQ_USER", "TRUE"],
-        ["kimcheolsu", "", "주임", "HQ_BUSAN", "BUSAN_T1", "HQ_USER", "TRUE"],
-        ["leeyounghee", "lee@company.com", "대리", "HQ_DAEGU", "DAEGU_T1", "HQ_USER", "TRUE"],
+        ["honggildong", "", "수도권남부본부 검사1팀", "사원", ""],
+        ["kimcheolsu", "", "수도권북부본부 검사2팀", "팀장", ""],
+        ["leeyounghee", "lee@company.com", "기획처 기획예산팀", "처장", ""],
+        ["adminuser", "", "감사실", "실장", "마스터"],
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+      ws["!cols"] = [{ wch: 20 }, { wch: 25 }, { wch: 30 }, { wch: 12 }, { wch: 28 }];
       XLSX.utils.book_append_sheet(wb, ws, "사용자_업로드");
       const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
       res.setHeader("Content-Disposition", "attachment; filename=user_upload_template.xlsx");
@@ -490,7 +492,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/users/upload-excel (엑셀 업로드)
+  // POST /api/users/upload-excel (엑셀 업로드 - 새 양식: ID/이메일/부서/직위/역할)
   app.post("/api/users/upload-excel", requireMaster, handleUpload(upload.single("file")), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "파일을 선택해주세요." });
@@ -501,78 +503,114 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-      const requiredCols = ["id", "headquarters_code", "team_code", "role", "enabled"];
       if (rows.length === 0) return res.status(400).json({ message: "데이터가 없습니다." });
 
       const firstRow = rows[0];
-      const missingCols = requiredCols.filter(c => !(c in firstRow));
+      const missingCols = ["ID", "부서", "직위"].filter(c => !(c in firstRow));
       if (missingCols.length > 0) {
-        return res.status(400).json({ message: `필수 컬럼이 없습니다: ${missingCols.join(", ")}` });
+        return res.status(400).json({ message: `필수 컬럼이 없습니다: ${missingCols.join(", ")} (필요: ID, 부서, 직위)` });
       }
 
-      const results: { row: number; status: "success" | "fail"; reason?: string }[] = [];
+      const results: { row: number; status: "success" | "updated" | "fail"; reason?: string }[] = [];
       const idsInFile = new Set<string>();
-      let successCount = 0;
+      let insertedCount = 0;
+      let updatedCount = 0;
       let failCount = 0;
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
-        const userId = String(row.id || "").trim().toLowerCase().replace(/[^a-zA-Z0-9._-]/g, "");
-        const emailRaw = String(row["email(선택)"] || row.email || "").trim().toLowerCase();
-        const emailVal = emailRaw || null;
-        const positionName = String(row.position_name || "").trim();
-        const hqCode = String(row.headquarters_code || "").trim();
-        const teamCode = String(row.team_code || "").trim();
-        const role = String(row.role || "HQ_USER").trim();
-        const enabled = String(row.enabled || "TRUE").toUpperCase() !== "FALSE";
 
-        // 빈 행 건너뜀 (id 기준)
+        const userId = String(row["ID"] || "").trim().toLowerCase().replace(/[^a-zA-Z0-9._-]/g, "");
+        const emailRaw = String(row["이메일(선택)"] || row["이메일"] || row["email"] || "").trim().toLowerCase();
+        const emailVal = emailRaw || null;
+        const deptRaw = String(row["부서"] || "").trim();
+        const positionName = String(row["직위"] || "").trim();
+        const roleRaw = String(row["역할(선택-값있으면마스터)"] || row["역할"] || "").trim();
+        const role = roleRaw ? "MASTER" : "HQ_USER";
+
+        // 빈 행 건너뜀
         if (!userId) {
-          results.push({ row: rowNum, status: "fail", reason: "빈 행 또는 id 누락" });
+          results.push({ row: rowNum, status: "fail", reason: "빈 행 또는 ID 누락" });
+          failCount++;
+          continue;
+        }
+        if (!deptRaw) {
+          results.push({ row: rowNum, status: "fail", reason: "부서 누락" });
           failCount++;
           continue;
         }
 
-        // 유효성 검사
-        if (!["MASTER", "HQ_USER"].includes(role)) { results.push({ row: rowNum, status: "fail", reason: `role 값 오류: ${role}` }); failCount++; continue; }
-
-        // 파일 내 id 중복
-        if (idsInFile.has(userId)) { results.push({ row: rowNum, status: "fail", reason: "파일 내 id 중복" }); failCount++; continue; }
-
-        // DB username 중복
-        const dupUser = await storage.getUserByUsername(userId);
-        if (dupUser) { results.push({ row: rowNum, status: "fail", reason: "id 이미 사용 중" }); failCount++; continue; }
-
-        // 본부 코드 확인
-        const hq = await storage.getHeadquartersByCode(hqCode);
-        if (!hq) { results.push({ row: rowNum, status: "fail", reason: `본부 코드 없음: ${hqCode}` }); failCount++; continue; }
-
-        // 팀 코드 확인
-        const team = await storage.getTeamByCode(teamCode);
-        if (!team) { results.push({ row: rowNum, status: "fail", reason: `팀 코드 없음: ${teamCode}` }); failCount++; continue; }
-        if (team.headquartersId !== hq.id) { results.push({ row: rowNum, status: "fail", reason: "팀이 해당 본부에 속하지 않음" }); failCount++; continue; }
-
-        // 비밀번호 미설정 (최초 로그인 시 본인이 설정)
-        await storage.createUser({
-          username: userId,
-          passwordHash: null,
-          displayName: userId,
-          email: emailVal,
-          positionName,
-          role,
-          headquartersId: hq.id,
-          teamId: team.id,
-          enabled,
-          mustChangePassword: true,
-        });
+        // 파일 내 ID 중복
+        if (idsInFile.has(userId)) {
+          results.push({ row: rowNum, status: "fail", reason: "파일 내 ID 중복" });
+          failCount++;
+          continue;
+        }
         idsInFile.add(userId);
-        results.push({ row: rowNum, status: "success" });
-        successCount++;
+
+        // 부서 파싱: 본부 포함 여부
+        let hqId: number | null = null;
+        let teamId: number | null = null;
+        let departmentName: string = deptRaw;
+
+        if (deptRaw.includes("본부")) {
+          const spaceIdx = deptRaw.indexOf(" ");
+          const hqName = spaceIdx > -1 ? deptRaw.slice(0, spaceIdx) : deptRaw;
+          const teamName = spaceIdx > -1 ? deptRaw.slice(spaceIdx + 1) : "";
+
+          const hq = await storage.getHeadquartersByName(hqName);
+          if (!hq) {
+            results.push({ row: rowNum, status: "fail", reason: `본부 없음: ${hqName}` });
+            failCount++;
+            continue;
+          }
+          hqId = hq.id;
+
+          if (teamName) {
+            const team = await storage.getTeamByName(teamName, hq.id);
+            if (!team) {
+              results.push({ row: rowNum, status: "fail", reason: `팀 없음: ${teamName} (${hqName})` });
+              failCount++;
+              continue;
+            }
+            teamId = team.id;
+          }
+        }
+
+        // upsert: 기존 사용자 확인
+        const existing = await storage.getUserByUsername(userId);
+        if (existing) {
+          await storage.updateUser(existing.id, {
+            departmentName,
+            positionName,
+            headquartersId: hqId ?? undefined,
+            teamId: teamId ?? undefined,
+            role,
+          });
+          results.push({ row: rowNum, status: "updated" });
+          updatedCount++;
+        } else {
+          await storage.createUser({
+            username: userId,
+            passwordHash: null,
+            displayName: userId,
+            email: emailVal,
+            positionName,
+            departmentName,
+            role,
+            headquartersId: hqId ?? undefined,
+            teamId: teamId ?? undefined,
+            enabled: true,
+            mustChangePassword: true,
+          });
+          results.push({ row: rowNum, status: "success" });
+          insertedCount++;
+        }
       }
 
-      await storage.createAuditLog(req.session.userId!, "EXCEL_UPLOAD", "user", undefined, { successCount, failCount });
-      res.json({ successCount, failCount, results });
+      await storage.createAuditLog(req.session.userId!, "EXCEL_UPLOAD", "user", undefined, { insertedCount, updatedCount, failCount });
+      res.json({ insertedCount, updatedCount, failCount, results });
     } catch (e) {
       console.error(e);
       res.status(500).json({ message: "서버 오류" });
