@@ -1134,10 +1134,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // POST /api/admin/ceiling-prices — 석유 최고가격제 등록 (MASTER 전용)
-  app.post("/api/admin/ceiling-prices", requireAuth, async (req, res) => {
+  app.post("/api/admin/ceiling-prices", requireMaster, async (req, res) => {
     try {
-      const user = (req as any).user;
-      if (!user || user.role !== "MASTER") return res.status(403).json({ message: "권한 없음" });
       const { gasoline, diesel, kerosene, effectiveDate, note } = req.body;
       if (!effectiveDate) return res.status(400).json({ message: "적용일 필수" });
       const row = await storage.setCeilingPrices({
@@ -1146,7 +1144,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         kerosene: kerosene ? String(kerosene) : null,
         effectiveDate,
         note: note || null,
-        createdBy: user.id,
+        createdBy: req.session.userId!,
       });
       res.json(row);
     } catch (e) {
