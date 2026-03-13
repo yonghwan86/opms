@@ -1368,6 +1368,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
 
+      if (totalAnalysis > 0) {
+        try {
+          const subs = await storage.getAllPushSubscriptions();
+          if (subs.length > 0) {
+            const latestDate = [...processedDates].sort().pop() ?? "";
+            const isToday = latestDate === new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, "");
+            const pushBody = isToday
+              ? "오늘 유가 데이터(잠정)가 업데이트되었습니다."
+              : "전일 유가 확정값이 업데이트되었습니다.";
+            await sendPushToAll(subs, {
+              title: "유가 모니터링",
+              body: pushBody,
+              icon: "/icon-192.png",
+              url: "/oil-prices",
+            });
+            console.log(`[ManualUpload] 사용자 푸시 발송 완료: ${subs.length}명`);
+          }
+        } catch (pushErr) {
+          console.error("[ManualUpload] 푸시 발송 오류 (업로드는 성공):", pushErr);
+        }
+      }
+
       res.json({
         success: true,
         fileName: session.fileName,
