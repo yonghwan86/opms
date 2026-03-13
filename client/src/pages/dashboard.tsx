@@ -186,12 +186,13 @@ function MetricCard({
   return (
     <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card flex flex-col">
       <div className="flex items-start justify-between gap-1 mb-1">
-        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
           <div className={cn("w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
             <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
+            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 text-center">{subtitle}</p>}
           </div>
         </div>
         {live && !loading ? (
@@ -201,7 +202,6 @@ function MetricCard({
           </span>
         ) : headerRight ?? null}
       </div>
-      {subtitle && <p className="text-xs text-muted-foreground/70 text-center -mt-0.5 mb-0.5">{subtitle}</p>}
       {loading ? (
         <div className="space-y-2 mt-3">
           <Skeleton className="h-9 w-36" />
