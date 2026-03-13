@@ -545,8 +545,8 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
                   {fx && (
-                    <div className="flex flex-col items-end border border-border rounded-md px-2 py-1.5 bg-muted/40 min-w-0">
-                      <span className="text-sm md:text-lg font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
+                    <div className="flex flex-col items-end shrink-0 border border-border rounded-lg px-2.5 py-1.5 bg-muted/70 dark:bg-muted/50">
+                      <span className="text-sm md:text-base font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
                       <ChangeChip val={fx.change} unit="원" percent={isMobile ? undefined : fx.changePercent} />
                     </div>
                   )}
