@@ -313,20 +313,22 @@ export default function OilPricesPage() {
         {/* 탭 */}
         <div className="w-fit max-w-full">
         <Tabs value={activeTab} onValueChange={v => handleTabChange(v as AnalysisType)}>
-          <TabsList className="flex w-full gap-0.5 md:gap-1 h-auto p-1 bg-muted">
-            {TABS.map(tab => (
-              <TabsTrigger
-                key={tab.type}
-                value={tab.type}
-                className="flex-1 text-xs md:text-sm px-1.5 md:px-3 py-1.5"
-                data-testid={`tab-${tab.type.toLowerCase()}`}
-              >
-                <span className="md:hidden">{tab.emoji}</span>
-                <span className="hidden md:inline">{tab.emoji} </span>
-                <span>{tab.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            <TabsList className="flex w-max gap-0.5 md:gap-1 h-auto p-1 bg-muted">
+              {TABS.map(tab => (
+                <TabsTrigger
+                  key={tab.type}
+                  value={tab.type}
+                  className="text-xs md:text-sm px-2.5 md:px-3 py-1.5 whitespace-nowrap"
+                  data-testid={`tab-${tab.type.toLowerCase()}`}
+                >
+                  <span className="md:hidden">{tab.emoji}</span>
+                  <span className="hidden md:inline">{tab.emoji} </span>
+                  <span>{tab.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           {TABS.map(tab => (
             <TabsContent key={tab.type} value={tab.type} className="mt-4">
