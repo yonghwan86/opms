@@ -437,8 +437,14 @@ export default function OilPricesPage() {
                     <p className="text-muted-foreground text-xs mt-1">관리자가 데이터를 수집하면 표시됩니다.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <StationTable type={tab.type} stations={stations} fuelType={selectedFuel} />
+                  <div className="relative">
+                    <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                      <StationTable type={tab.type} stations={stations} fuelType={selectedFuel} />
+                    </div>
+                    <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
+                      <div className="w-8 h-full bg-gradient-to-l from-card to-transparent" />
+                      <ChevronRight className="absolute right-0.5 w-4 h-4 text-muted-foreground animate-pulse" />
+                    </div>
                   </div>
                 )}
               </div>
