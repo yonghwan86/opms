@@ -1,0 +1,91 @@
+import { chromium } from "playwright";
+import fs from "fs/promises"; // 비동기 FS 사용 권장
+import { existsSync, mkdirSync } from "fs";
+import path from "path";
+
+const CHROMIUM_PATH = "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium";
+const DOWNLOAD_PAGE = "https://www.opinet.co.kr/user/opdown/opDownload.do";
+const DOWNLOAD_DIR = "/tmp/opinet_downloads";
+
+export async function downloadOilPriceCSV(
+  startDate: string,
+  endDate: string
+): Promise<Buffer | null> {
+  let browser;
+
+  try {
+    // 1. 임시 폴더 생성 (동기식 유지해도 무방)
+    if (!existsSync(DOWNLOAD_DIR)) {
+      mkdirSync(DOWNLOAD_DIR, { recursive: true });
+    }
+
+    browser = await chromium.launch({
+      executablePath: CHROMIUM_PATH,
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-setuid-sandbox",
+        "--disable-software-rasterizer", // 리눅스 서버 안정성 추가
+        "--no-zygote",
+      ],
+    });
+
+    const context = await browser.newContext({
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      locale: "ko-KR",
+      acceptDownloads: true, // 네이티브 다운로드 허용 핵심
+    });
+
+    const page = await context.newPage();
+
+    // 2. [이미지 대응] 다이얼로그 자동 수락
+    page.on("dialog", async (dialog) => {
+      await dialog.accept();
+    });
+
+    // 3. 페이지 이동 및 스크립트 로드 대기 (NetFunnel 대응)
+    await page.goto(DOWNLOAD_PAGE, { waitUntil: "networkidle", timeout: 120000 });
+    
+    // fn_Download 함수가 존재할 때까지 대기
+    await page.waitForFunction(
+      () => typeof (window as any).fn_Download === "function",
+      { timeout: 300000 }
+    );
+
+    // 4. 날짜 주입
+    await page.evaluate(({ start, end }) => {
+      const form = document.forms.namedItem("form1") as any;
+      if (form) {
+        form.elements.namedItem("START_DT").value = start;
+        form.elements.namedItem("END_DT").value = end;
+      }
+    }, { start: startDate, end: endDate });
+
+    // 5. [핵심] 다운로드 이벤트와 클릭 동시 실행
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 600000 }), // 10분 타임아웃
+      page.evaluate(() => { (window as any).fn_Download(6); }),
+    ]);
+
+    // 6. 저장 및 버퍼 변환
+    const savePath = path.join(DOWNLOAD_DIR, download.suggestedFilename());
+    await download.saveAs(savePath);
+
+    const csvBuffer = await fs.readFile(savePath);
+    
+    // 7. 정리 (파일 삭제)
+    await fs.unlink(savePath).catch(() => {}); 
+
+    return csvBuffer;
+
+  } catch (err) {
+    console.error("[OilScraper] Critical Error:", err);
+    return null;
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+}

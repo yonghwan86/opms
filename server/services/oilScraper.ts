@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
-import fs from "fs";
+import { existsSync, mkdirSync } from "fs";
+import { readFile, unlink } from "fs/promises";
 import path from "path";
 
 const CHROMIUM_PATH =
@@ -15,8 +16,8 @@ export async function downloadOilPriceCSV(
   let browser;
 
   try {
-    if (!fs.existsSync(DOWNLOAD_DIR)) {
-      fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+    if (!existsSync(DOWNLOAD_DIR)) {
+      mkdirSync(DOWNLOAD_DIR, { recursive: true });
     }
 
     console.log(`[OilScraper] 브라우저 시작 (${startDate} ~ ${endDate})`);
@@ -27,6 +28,7 @@ export async function downloadOilPriceCSV(
         "--no-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
+        "--disable-software-rasterizer",
         "--disable-setuid-sandbox",
         "--no-first-run",
         "--no-zygote",
@@ -118,10 +120,10 @@ export async function downloadOilPriceCSV(
     await download.saveAs(savePath);
     console.log(`[OilScraper] 파일 저장 완료: ${savePath}`);
 
-    const csvBuffer = fs.readFileSync(savePath);
+    const csvBuffer = await readFile(savePath);
     console.log(`[OilScraper] 다운로드 완료: ${csvBuffer.byteLength} bytes`);
 
-    try { fs.unlinkSync(savePath); } catch {}
+    await unlink(savePath).catch(() => {});
 
     return csvBuffer;
   } catch (err: unknown) {
