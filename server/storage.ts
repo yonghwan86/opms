@@ -147,6 +147,7 @@ export interface IStorage {
     sido?: string;
   }): Promise<OilTopStation[]>;
   getOilAvailableDates(): Promise<string[]>;
+  getLastAnalysisTime(date: string): Promise<Date | null>;
   getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }>;
   getOilSubregions(date: string, permitted: { sidoList: string[]; regionList: string[] }): Promise<string[]>;
 
@@ -746,6 +747,14 @@ export class PostgresStorage implements IStorage {
       .orderBy(desc(oilPriceRaw.date))
       .limit(60);
     return result.map(r => r.date);
+  }
+
+  async getLastAnalysisTime(date: string): Promise<Date | null> {
+    const result = await db.execute(
+      sql`SELECT MAX(created_at) AS last_time FROM oil_price_analysis WHERE analysis_date = ${date}`
+    );
+    const val = (result.rows[0] as any)?.last_time;
+    return val ? new Date(val) : null;
   }
 
   async getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }> {

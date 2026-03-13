@@ -239,20 +239,24 @@ async function checkAndRecoverOnStartup(): Promise<void> {
       return;
     }
 
-    // 9:10 ~ 16:00 → 어제 확정값이 이미 있으면 건너뜀 (재배포 시 중복 수집 방지)
-    const availableDates = await storage.getOilAvailableDates();
-    const latestAvailable = availableDates[0];
-    if (latestAvailable && latestAvailable >= yesterdayStr) {
-      console.log(`[OilScheduler] 시작 복구(오전): 어제(${yesterdayStr}) 데이터 이미 존재(최신: ${latestAvailable}), 수집 건너뜀`);
+    // 9:10 ~ 16:00 → 오늘 오전(09:10 KST 이후) 수집이 이미 성공했으면 건너뜀
+    // (재배포 시 중복 수집 방지. 단, 오전 수집이 없었으면 무조건 실행)
+    const morningDates = getMorningDates();
+    const lastAnalysisTime = await storage.getLastAnalysisTime(morningDates.today);
+    // 09:10 KST = 00:10 UTC
+    const todayMorningUTC = new Date(kstNow);
+    todayMorningUTC.setUTCHours(0, 10, 0, 0);
+    if (lastAnalysisTime && lastAnalysisTime >= todayMorningUTC) {
+      console.log(`[OilScheduler] 시작 복구(오전): 오늘 오전 ${morningDates.today} 분석 이미 완료(${lastAnalysisTime.toISOString()}), 건너뜀`);
       return;
     }
-    console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 어제(${yesterdayStr}) 데이터 없음 → 수집 시작`);
+    console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 오늘 오전 수집 미완료 → 수집 시작`);
     await runWithRetryAndNotify({
       source: "시작 복구(오전 확정)",
       slot: "morning",
       pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
       notifyMasterOnSuccess: true,
-      jobDates: getMorningDates(),
+      jobDates: morningDates,
     });
   } catch (err) {
     console.error("[OilScheduler] 시작 복구 확인 오류:", err);
