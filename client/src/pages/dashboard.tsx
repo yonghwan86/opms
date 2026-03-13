@@ -950,7 +950,7 @@ export default function DashboardPage() {
             const isDieselCarousel = carouselFuel === 'diesel';
             const fuelLabel = isDieselCarousel ? '경유' : '휘발유';
             const slides = [
-              { label: "최고가격제 근접 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 상한가 기준`, stations: isDieselCarousel ? ceilingStationsDiesel : ceilingStations, arrow: null, priceColor: "text-red-500", isCeiling: true },
+              { label: "최고가격제 차이 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 상한가 기준`, stations: isDieselCarousel ? ceilingStationsDiesel : ceilingStations, arrow: null, priceColor: "text-red-500", isCeiling: true },
               { label: "가격 상승 TOP 10", desc: "전일 대비 최대 상승", stations: isDieselCarousel ? riseStationsDiesel : riseStations, arrow: "▲", priceColor: "text-red-500", isCeiling: false },
               { label: "가격 하락 TOP 10", desc: "전일 대비 최대 하락", stations: isDieselCarousel ? fallStationsDiesel : fallStations, arrow: "▼", priceColor: "text-blue-500", isCeiling: false },
               { label: "최고가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최고가`, stations: isDieselCarousel ? highStationsDiesel : highStations, arrow: null, priceColor: "text-orange-500", isCeiling: false },
