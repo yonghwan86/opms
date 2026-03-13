@@ -43,6 +43,7 @@ export interface OilTopStation {
   price?: number;
   prevPrice?: number;
   changeAmount?: number;
+  ceilingPrice?: number;
   gasoline?: number;
   diesel?: number;
   kerosene?: number;
@@ -136,7 +137,7 @@ export interface IStorage {
 
   // 유가 실시간 분석 (top-stations)
   getOilTopStations(params: {
-    type: 'HIGH' | 'LOW' | 'RISE' | 'FALL' | 'WIDE';
+    type: 'HIGH' | 'LOW' | 'RISE' | 'FALL' | 'WIDE' | 'CEILING';
     fuelType: 'gasoline' | 'diesel' | 'kerosene';
     date: string;
     prevDate?: string;
@@ -598,7 +599,7 @@ export class PostgresStorage implements IStorage {
 
   // ── 유가 실시간 분석 ──────────────────────────────────────────────────────
   async getOilTopStations(params: {
-    type: 'HIGH' | 'LOW' | 'RISE' | 'FALL' | 'WIDE';
+    type: 'HIGH' | 'LOW' | 'RISE' | 'FALL' | 'WIDE' | 'CEILING';
     fuelType: 'gasoline' | 'diesel' | 'kerosene';
     date: string;
     prevDate?: string;
@@ -668,6 +669,20 @@ export class PostgresStorage implements IStorage {
       );
       rawRows = result.rows as any[];
 
+    } else if (type === 'CEILING') {
+      // 석유 최고가격제 — 최신 상한가와 비교, 가격 내림차순 TOP 10
+      const result = await db.execute(
+        sql`SELECT r.station_id, r.station_name, r.region, r.sido, r.brand, r.is_self,
+                   r.${fuelCol} AS price,
+                   c.${fuelCol} AS ceiling_price,
+                   (r.${fuelCol} - c.${fuelCol}) AS change_amount
+            FROM oil_price_raw r
+            LEFT JOIN (SELECT gasoline, diesel, kerosene FROM oil_ceiling_prices ORDER BY effective_date DESC LIMIT 1) c ON TRUE
+            WHERE r.date = ${date} AND r.${fuelCol} > 0${sidoCond}${regionCond}
+            ORDER BY r.${fuelCol} DESC LIMIT 10`
+      );
+      rawRows = result.rows as any[];
+
     } else {
       // WIDE: fuelType에 따라 분기
       if (fuelType === 'diesel') {
@@ -704,6 +719,7 @@ export class PostgresStorage implements IStorage {
       price: row.price != null ? Number(row.price) : undefined,
       prevPrice: row.prev_price != null ? Number(row.prev_price) : undefined,
       changeAmount: row.change_amount != null ? Number(row.change_amount) : undefined,
+      ceilingPrice: row.ceiling_price != null ? Number(row.ceiling_price) : undefined,
       gasoline: row.gasoline != null ? Number(row.gasoline) : undefined,
       diesel: row.diesel != null ? Number(row.diesel) : undefined,
       kerosene: row.kerosene != null ? Number(row.kerosene) : undefined,

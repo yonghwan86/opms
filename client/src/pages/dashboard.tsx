@@ -145,7 +145,7 @@ interface DomesticHistory { date: string; gasoline: number; diesel: number; }
 interface RegionalHistory { date: string; gasoline: number | null; diesel: number | null; kerosene: number | null; }
 interface TopStation {
   rank: number; stationId: string; stationName: string; region: string;
-  brand: string | null; isSelf: boolean; price?: number; prevPrice?: number; changeAmount?: number;
+  brand: string | null; isSelf: boolean; price?: number; prevPrice?: number; changeAmount?: number; ceilingPrice?: number;
 }
 interface CeilingPrice {
   id: number; gasoline: string | null; diesel: string | null; kerosene: string | null;
@@ -334,17 +334,33 @@ export default function DashboardPage() {
     enabled: !!highQueryKeyDiesel,
     staleTime: 2 * 60 * 1000,
   });
+  const ceilingQueryKey = latestDate
+    ? `/api/oil-prices/top-stations?type=CEILING&fuel=gasoline&date=${latestDate}`
+    : null;
+  const { data: ceilingStations = [] } = useQuery<TopStation[]>({
+    queryKey: [ceilingQueryKey],
+    enabled: !!ceilingQueryKey,
+    staleTime: 2 * 60 * 1000,
+  });
+  const ceilingQueryKeyDiesel = latestDate
+    ? `/api/oil-prices/top-stations?type=CEILING&fuel=diesel&date=${latestDate}`
+    : null;
+  const { data: ceilingStationsDiesel = [] } = useQuery<TopStation[]>({
+    queryKey: [ceilingQueryKeyDiesel],
+    enabled: !!ceilingQueryKeyDiesel,
+    staleTime: 2 * 60 * 1000,
+  });
 
   const { data: regionalHistory = [] } = useQuery<RegionalHistory[]>({
     queryKey: ["/api/dashboard/regional-price-history"],
     staleTime: 5 * 60 * 1000,
   });
 
-  // 캐러셀 슬라이드 (0=상승, 1=하락, 2=최고가, 3=최저가) — 자동 회전 없음
+  // 캐러셀 슬라이드 (0=최고가격제, 1=상승, 2=하락, 3=최고가, 4=최저가) — 자동 회전 없음
   const [carouselSlide, setCarouselSlide] = useState(0);
   const [carouselFuel, setCarouselFuel] = useState<'gasoline' | 'diesel'>('gasoline');
   const carouselTouchRef = useRef({ startX: 0, startY: 0 });
-  const TOTAL_SLIDES = 4;
+  const TOTAL_SLIDES = 5;
 
   // 유가 분석 카드 탭 (MASTER=국제-국내 연동, HQ_USER=지역별 추이)
   const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'regional'>(isMaster ? 'global' : 'regional');
@@ -438,6 +454,10 @@ export default function DashboardPage() {
     ...riseAlerts.map(s => ({ ...s, dir: 'rise' as const })),
     ...fallAlerts.map(s => ({ ...s, dir: 'fall' as const })),
   ].sort((a, b) => Math.abs(b.changeAmount ?? 0) - Math.abs(a.changeAmount ?? 0));
+  const ceilingAlerts = [
+    ...ceilingStations.filter(s => (s.changeAmount ?? 0) > 0).map(s => ({ ...s, fuelType: 'gasoline' as const })),
+    ...ceilingStationsDiesel.filter(s => (s.changeAmount ?? 0) > 0).map(s => ({ ...s, fuelType: 'diesel' as const })),
+  ].sort((a, b) => (b.changeAmount ?? 0) - (a.changeAmount ?? 0));
   const topRegion = (() => {
     const counts: Record<string, number> = {};
     allAlerts.forEach(s => { const r = regionShort(s.region); counts[r] = (counts[r] || 0) + 1; });
@@ -930,10 +950,11 @@ export default function DashboardPage() {
             const isDieselCarousel = carouselFuel === 'diesel';
             const fuelLabel = isDieselCarousel ? '경유' : '휘발유';
             const slides = [
-              { label: "가격 상승 TOP 10", desc: "전일 대비 최대 상승", stations: isDieselCarousel ? riseStationsDiesel : riseStations, arrow: "▲", priceColor: "text-red-500" },
-              { label: "가격 하락 TOP 10", desc: "전일 대비 최대 하락", stations: isDieselCarousel ? fallStationsDiesel : fallStations, arrow: "▼", priceColor: "text-blue-500" },
-              { label: "최고가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최고가`, stations: isDieselCarousel ? highStationsDiesel : highStations, arrow: null, priceColor: "text-orange-500" },
-              { label: "최저가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최저가`, stations: isDieselCarousel ? lowStationsDiesel : lowStations, arrow: null, priceColor: "text-emerald-600" },
+              { label: "최고가격제 근접 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 상한가 기준`, stations: isDieselCarousel ? ceilingStationsDiesel : ceilingStations, arrow: null, priceColor: "text-red-500", isCeiling: true },
+              { label: "가격 상승 TOP 10", desc: "전일 대비 최대 상승", stations: isDieselCarousel ? riseStationsDiesel : riseStations, arrow: "▲", priceColor: "text-red-500", isCeiling: false },
+              { label: "가격 하락 TOP 10", desc: "전일 대비 최대 하락", stations: isDieselCarousel ? fallStationsDiesel : fallStations, arrow: "▼", priceColor: "text-blue-500", isCeiling: false },
+              { label: "최고가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최고가`, stations: isDieselCarousel ? highStationsDiesel : highStations, arrow: null, priceColor: "text-orange-500", isCeiling: false },
+              { label: "최저가 TOP 10", desc: `${isGlobal ? "전국" : "관할 지역"} ${fuelLabel} 최저가`, stations: isDieselCarousel ? lowStationsDiesel : lowStations, arrow: null, priceColor: "text-emerald-600", isCeiling: false },
             ];
             const slide = slides[carouselSlide];
             const handleTouchStart = (e: React.TouchEvent) => {
@@ -1018,10 +1039,18 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="text-sm font-bold text-foreground">{s.price != null ? fmtPrice(s.price) : "—"}</p>
-                          {slide.arrow && s.changeAmount != null && (
-                            <p className={cn("text-xs font-semibold", slide.priceColor)}>
-                              {slide.arrow} {fmt(Math.abs(s.changeAmount))}원
-                            </p>
+                          {slide.isCeiling ? (
+                            s.changeAmount != null && s.changeAmount > 0 ? (
+                              <p className="text-xs font-semibold text-red-500">
+                                초과 +{fmt(s.changeAmount)}원
+                              </p>
+                            ) : null
+                          ) : (
+                            slide.arrow && s.changeAmount != null && (
+                              <p className={cn("text-xs font-semibold", slide.priceColor)}>
+                                {slide.arrow} {fmt(Math.abs(s.changeAmount))}원
+                              </p>
+                            )
                           )}
                         </div>
                       </div>
@@ -1054,23 +1083,29 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="p-4 space-y-2.5 overflow-y-auto flex-1 min-h-0">
-              {allAlerts.length === 0 ? (
+              {allAlerts.length === 0 && ceilingAlerts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <AlertCircle className="w-8 h-8 text-muted-foreground/30 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">감지된 이상 징후 없음</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 주유소 없음</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 및 상한가 초과 주유소 없음</p>
                 </div>
               ) : (
                 <>
                   {/* 요약 박스 */}
                   <div className="rounded-lg bg-muted/60 border border-border p-3 mb-1">
                     <p className="text-sm font-semibold text-foreground">
-                      오늘 {isGlobal ? "전국" : "관할 지역"} <span className="text-primary">{allAlerts.length}개</span> 주유소 이상 감지
+                      오늘 {isGlobal ? "전국" : "관할 지역"} <span className="text-primary">{allAlerts.length + ceilingAlerts.length}개</span> 주유소 이상 감지
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       급등 <span className="text-red-500 font-semibold">{riseAlerts.length}곳</span>
                       <span className="mx-1.5 text-border">|</span>
                       급락 <span className="text-blue-500 font-semibold">{fallAlerts.length}곳</span>
+                      {ceilingAlerts.length > 0 && (
+                        <>
+                          <span className="mx-1.5 text-border">|</span>
+                          상한가 초과 <span className="text-orange-500 font-semibold">{ceilingAlerts.length}곳</span>
+                        </>
+                      )}
                     </p>
                     {topRegion && (
                       <p className="text-xs text-muted-foreground mt-1">
@@ -1081,7 +1116,7 @@ export default function DashboardPage() {
                       </p>
                     )}
                   </div>
-                  {/* 개별 목록 */}
+                  {/* 급등·급락 목록 */}
                   {allAlerts.map((s) => (
                     <div key={s.stationId + s.fuelType + s.dir} className={cn("flex gap-3 p-3 rounded-lg border", s.dir === 'rise' ? "bg-red-50 border-red-100" : "bg-blue-50 border-blue-100")}>
                       <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", s.dir === 'rise' ? "bg-red-500" : "bg-blue-500")} />
@@ -1099,6 +1134,28 @@ export default function DashboardPage() {
                             {s.fuelType === 'diesel' ? '경유' : '휘발유'}
                           </span>
                           {s.dir === 'rise' ? '가격 급등' : '가격 급락'} {s.dir === 'rise' ? '+' : '-'}{fmt(Math.abs(s.changeAmount ?? 0))}원
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {/* 상한가 초과 목록 */}
+                  {ceilingAlerts.map((s) => (
+                    <div key={s.stationId + s.fuelType + 'ceiling'} className="flex gap-3 p-3 rounded-lg border bg-orange-50 border-orange-100">
+                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0 bg-orange-500" />
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground leading-snug">
+                          <span className="font-semibold">
+                            <span className="md:hidden">{regionShort(s.region)}</span>
+                            <span className="hidden md:inline">{s.region}</span>
+                          </span>
+                          {" · "}
+                          <span className="text-primary font-medium">{s.stationName}</span>
+                        </p>
+                        <p className="text-sm font-bold mt-0.5 flex items-center gap-1.5 text-orange-600">
+                          <span className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", s.fuelType === 'diesel' ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700")}>
+                            {s.fuelType === 'diesel' ? '경유' : '휘발유'}
+                          </span>
+                          상한가 초과 +{fmt(s.changeAmount ?? 0)}원
                         </p>
                       </div>
                     </div>

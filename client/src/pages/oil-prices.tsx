@@ -28,17 +28,19 @@ interface OilTopStation {
   price?: number;
   prevPrice?: number;
   changeAmount?: number;
+  ceilingPrice?: number;
   gasoline?: number;
   diesel?: number;
   kerosene?: number;
   diff?: number;
 }
 
-type AnalysisType = "HIGH" | "LOW" | "RISE" | "FALL" | "WIDE";
+type AnalysisType = "CEILING" | "HIGH" | "LOW" | "RISE" | "FALL" | "WIDE";
 type FuelType = "gasoline" | "diesel" | "kerosene";
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 const TABS: { type: AnalysisType; label: string; emoji: string }[] = [
+  { type: "CEILING", label: "최고가격제", emoji: "⚠️" },
   { type: "HIGH", label: "최고가", emoji: "🔴" },
   { type: "LOW", label: "최저가", emoji: "🔵" },
   { type: "RISE", label: "가격상승", emoji: "📈" },
@@ -189,7 +191,7 @@ export default function OilPricesPage() {
   const { isMaster } = useAuth();
   const isMobile = useIsMobile();
 
-  const [activeTab, setActiveTab] = useState<AnalysisType>("HIGH");
+  const [activeTab, setActiveTab] = useState<AnalysisType>("CEILING");
   const [selectedFuel, setSelectedFuel] = useState<FuelType>("gasoline");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedRegion, setSelectedRegion] = useState<string>("ALL");
@@ -272,7 +274,7 @@ export default function OilPricesPage() {
   // 탭 전환 시 fuel 초기화
   const handleTabChange = (tab: AnalysisType) => {
     setActiveTab(tab);
-    if (tab === "WIDE" && selectedFuel === "kerosene") {
+    if ((tab === "WIDE" || tab === "CEILING") && selectedFuel === "kerosene") {
       setSelectedFuel("gasoline");
     }
   };
@@ -361,6 +363,21 @@ export default function OilPricesPage() {
                         </Button>
                       ))}
                     </div>
+                  ) : tab.type === "CEILING" ? (
+                    <div className="flex gap-1" data-testid="fuel-selector-ceiling">
+                      {FUELS.filter(f => f.type !== "kerosene").map(f => (
+                        <Button
+                          key={f.type}
+                          variant={selectedFuel === f.type ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSelectedFuel(f.type)}
+                          data-testid={`btn-fuel-${f.type}`}
+                          className="text-xs"
+                        >
+                          {f.label}
+                        </Button>
+                      ))}
+                    </div>
                   ) : (
                     <div className="flex gap-1" data-testid="fuel-selector">
                       {FUELS.map(f => (
@@ -385,7 +402,7 @@ export default function OilPricesPage() {
                     날짜를 선택해 주세요.
                   </div>
                 ) : isLoading ? (
-                  <TableSkeleton cols={tab.type === "WIDE" ? 8 : tab.type === "RISE" || tab.type === "FALL" ? 8 : 6} />
+                  <TableSkeleton cols={tab.type === "WIDE" ? 8 : tab.type === "RISE" || tab.type === "FALL" ? 8 : tab.type === "CEILING" ? 7 : 6} />
                 ) : stations.length === 0 ? (
                   <div className="py-16 text-center">
                     <p className="text-muted-foreground text-sm">아직 수집된 데이터가 없습니다.</p>
@@ -434,6 +451,64 @@ function BrandIcon({ brand }: { brand: string | null }) {
 
 // ─── 테이블 컴포넌트 ─────────────────────────────────────────────────────────
 function StationTable({ type, stations, fuelType }: { type: AnalysisType; stations: OilTopStation[]; fuelType?: FuelType }) {
+  if (type === "CEILING") {
+    return (
+      <table className="w-full md:w-auto text-sm">
+        <thead>
+          <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
+            <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">상호</th>
+            <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10">상표</th>
+            <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
+            <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
+            <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">현재가</th>
+            <th className="hidden md:table-cell text-right py-2.5 px-3 font-medium w-24">상한가</th>
+            <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">초과</th>
+          </tr>
+        </thead>
+        <tbody>
+          {stations.map((s) => {
+            const isOver = s.changeAmount != null && s.changeAmount > 0;
+            return (
+              <tr key={s.stationId} className="border-t border-border hover:bg-muted/30 transition-colors" data-testid={`row-station-${s.stationId}`}>
+                <td className="py-3 px-1.5 md:px-3 text-center">
+                  <RankBadge rank={s.rank} type={type} />
+                </td>
+                <td className="py-3 px-1.5 md:px-3 font-medium text-foreground whitespace-nowrap">
+                  <span className="md:hidden">{s.stationName.replace(/주유소/g, '')}</span>
+                  <span className="hidden md:inline">{s.stationName}</span>
+                </td>
+                <td className="py-3 px-1 md:px-3 text-center"><BrandIcon brand={s.brand} /></td>
+                <td className="hidden md:table-cell py-3 px-3 text-center">
+                  <span className={s.isSelf ? "text-primary font-medium" : "text-muted-foreground"}>
+                    {s.isSelf ? "✓" : "—"}
+                  </span>
+                </td>
+                <td className="py-3 px-1.5 md:px-3 whitespace-nowrap">
+                  <span className="md:hidden text-xs text-foreground">{regionShort(s.region)}</span>
+                  <span className="hidden md:inline text-sm text-foreground/65 font-medium tracking-tight">{s.region}</span>
+                </td>
+                <td className="py-3 px-1.5 md:px-3 text-right font-semibold text-foreground whitespace-nowrap">
+                  {s.price != null ? formatPrice(s.price) : "—"}
+                </td>
+                <td className="hidden md:table-cell py-3 px-3 text-right text-muted-foreground whitespace-nowrap">
+                  {s.ceilingPrice != null ? formatPrice(s.ceilingPrice) : "—"}
+                </td>
+                <td className="py-3 px-1.5 md:px-3 text-right font-semibold whitespace-nowrap">
+                  {s.changeAmount != null ? (
+                    <span className={isOver ? "text-red-500" : "text-muted-foreground"}>
+                      {isOver ? `+${Math.abs(s.changeAmount).toLocaleString("ko-KR")}원` : `${s.changeAmount.toLocaleString("ko-KR")}원`}
+                    </span>
+                  ) : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+
   if (type === "HIGH" || type === "LOW") {
     return (
       <table className="w-full md:w-auto text-sm">
