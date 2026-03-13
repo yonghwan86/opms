@@ -118,16 +118,26 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
   }
 }
 
+function getMorningDates(): { today: string; yesterday: string } {
+  const kstNow = getKSTNow();
+  const kstYesterday = new Date(kstNow);
+  kstYesterday.setUTCDate(kstYesterday.getUTCDate() - 1);
+  const kstDayBefore = new Date(kstYesterday);
+  kstDayBefore.setUTCDate(kstDayBefore.getUTCDate() - 1);
+  return { today: getDateStr(kstYesterday), yesterday: getDateStr(kstDayBefore) };
+}
+
 interface RunJobOptions {
   source: string;
   slot: "morning" | "afternoon";
   pushMessage: string;
   notifyMasterOnSuccess?: boolean;
+  jobDates?: { today: string; yesterday: string };
 }
 
 async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
-  const { source, slot, pushMessage, notifyMasterOnSuccess = false } = opts;
-  const result = await runOilPriceJob();
+  const { source, slot, pushMessage, notifyMasterOnSuccess = false, jobDates } = opts;
+  const result = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
   console.log(`[OilScheduler] ${source} 수집 결과:`, result);
 
   if (result.success && result.analysisCount > 0) {
@@ -146,7 +156,7 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
 
   setTimeout(async () => {
     console.log(`[OilScheduler] ${source} 재시도 시작`);
-    const retry = await runOilPriceJob();
+    const retry = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
     console.log(`[OilScheduler] ${source} 재시도 결과:`, retry);
 
     if (retry.success && retry.analysisCount > 0) {
@@ -211,6 +221,7 @@ async function checkAndRecoverOnStartup(): Promise<void> {
           slot: "morning",
           pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
           notifyMasterOnSuccess: true,
+          jobDates: getMorningDates(),
         });
         await runWithRetryAndNotify({
           source: "시작 복구(오후 잠정)",
@@ -229,6 +240,7 @@ async function checkAndRecoverOnStartup(): Promise<void> {
       slot: "morning",
       pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
       notifyMasterOnSuccess: true,
+      jobDates: getMorningDates(),
     });
   } catch (err) {
     console.error("[OilScheduler] 시작 복구 확인 오류:", err);
@@ -253,6 +265,7 @@ export function startOilScheduler(): void {
       source: "오전 정기 수집",
       slot: "morning",
       pushMessage: "전일 유가 확정값이 업데이트되었습니다.",
+      jobDates: getMorningDates(),
     });
   }, { timezone: "Asia/Seoul" });
 
