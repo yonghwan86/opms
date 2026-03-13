@@ -651,14 +651,14 @@ export default function DashboardPage() {
             subtitle="최고가 − 최저가 격차"
             icon={BarChart2} iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"} loading={fuelLoading} source="오피넷"
             headerRight={!isMobile ? (
-              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                <div className="flex items-center gap-0.5">
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1">
                   {(['gasoline', 'diesel'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setSpreadTab(tab)}
                       className={cn(
-                        "w-6 h-5 flex items-center justify-center rounded text-[11px] font-semibold transition-colors",
+                        "w-8 h-6 flex items-center justify-center rounded text-xs font-semibold transition-colors",
                         spreadTab === tab
                           ? tab === 'gasoline'
                             ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300"
@@ -672,7 +672,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
                 {shortDateLabel && (
-                  <span className="text-[10px] text-muted-foreground/70 leading-none">{shortDateLabel}</span>
+                  <span className="text-xs text-muted-foreground leading-none">{shortDateLabel}</span>
                 )}
               </div>
             ) : undefined}
