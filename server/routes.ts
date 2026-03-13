@@ -1123,6 +1123,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/dashboard/ceiling-prices — 석유 최고가격제 (최신 2개)
+  app.get("/api/dashboard/ceiling-prices", requireAuth, async (_req, res) => {
+    try {
+      const rows = await storage.getCeilingPrices();
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "석유 최고가격제 조회 실패" });
+    }
+  });
+
+  // POST /api/admin/ceiling-prices — 석유 최고가격제 등록 (MASTER 전용)
+  app.post("/api/admin/ceiling-prices", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user || user.role !== "MASTER") return res.status(403).json({ message: "권한 없음" });
+      const { gasoline, diesel, kerosene, effectiveDate, note } = req.body;
+      if (!effectiveDate) return res.status(400).json({ message: "적용일 필수" });
+      const row = await storage.setCeilingPrices({
+        gasoline: gasoline ? String(gasoline) : null,
+        diesel: diesel ? String(diesel) : null,
+        kerosene: kerosene ? String(kerosene) : null,
+        effectiveDate,
+        note: note || null,
+        createdBy: user.id,
+      });
+      res.json(row);
+    } catch (e) {
+      res.status(500).json({ message: "석유 최고가격제 저장 실패" });
+    }
+  });
+
   // GET /api/dashboard/fuel-stats — 국내 유류 평균 + 전국 편차
   app.get("/api/dashboard/fuel-stats", requireAuth, async (req, res) => {
     try {

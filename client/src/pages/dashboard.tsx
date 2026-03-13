@@ -1,19 +1,26 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ComposedChart, Line, Bar, BarChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2, HelpCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2, HelpCircle, Pencil, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const regionShort = (r: string) => r.includes(" ") ? r.split(" ").slice(1).join(" ") : r;
 
@@ -140,6 +147,10 @@ interface TopStation {
   rank: number; stationId: string; stationName: string; region: string;
   brand: string | null; isSelf: boolean; price?: number; prevPrice?: number; changeAmount?: number;
 }
+interface CeilingPrice {
+  id: number; gasoline: string | null; diesel: string | null; kerosene: string | null;
+  effectiveDate: string; note: string | null; createdBy: number | null; createdAt: string;
+}
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString("ko-KR");
@@ -235,7 +246,7 @@ export default function DashboardPage() {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
-  const { data: fx, isLoading: fxLoading } = useQuery<ExchangeRate>({
+  const { data: fx } = useQuery<ExchangeRate>({
     queryKey: ["/api/dashboard/exchange-rate"],
     staleTime: 5 * 60 * 1000,
     retry: 1,
@@ -342,6 +353,24 @@ export default function DashboardPage() {
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
   // 편차 카드 탭
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
+
+  // 석유 최고가격제
+  const { toast } = useToast();
+  const { data: ceilingData = [], isLoading: ceilingLoading } = useQuery<CeilingPrice[]>({
+    queryKey: ["/api/dashboard/ceiling-prices"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const [ceilingOpen, setCeilingOpen] = useState(false);
+  const [ceilingForm, setCeilingForm] = useState({ gasoline: "", diesel: "", kerosene: "", effectiveDate: "", note: "" });
+  const ceilingMutation = useMutation({
+    mutationFn: (body: object) => apiRequest("POST", "/api/admin/ceiling-prices", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/ceiling-prices"] });
+      setCeilingOpen(false);
+      toast({ title: "저장 완료", description: "석유 최고가격제가 업데이트되었습니다." });
+    },
+    onError: () => toast({ title: "저장 실패", variant: "destructive" }),
+  });
 
   // PC 여부 감지 (lg = 1024px 이상)
   const [isLg, setIsLg] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
@@ -494,6 +523,9 @@ export default function DashboardPage() {
             {wti ? (
               <>
                 <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
+                {fx && (
+                  <p className="text-xs text-muted-foreground mt-0.5">({fmt(Math.round(fx.rate))}원/달러)</p>
+                )}
                 <div className="mt-1.5">
                   <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} decimals={2} />
                 </div>
@@ -503,17 +535,67 @@ export default function DashboardPage() {
             )}
           </MetricCard>
 
-          {/* KRW-USD 환율 */}
-          <MetricCard title="KRW-USD 환율" icon={DollarSign} iconBg="bg-blue-700" loading={fxLoading} source="Yahoo Finance" live>
-            {fx ? (
-              <>
-                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(Math.round(fx.rate))}원</p>
-                <div className="mt-1.5">
-                  <ChangeChip val={fx.change} percent={fx.changePercent} />
+          {/* 석유 최고가격제 */}
+          <MetricCard
+            title="석유 최고가격제"
+            icon={ShieldCheck}
+            iconBg="bg-indigo-600"
+            loading={ceilingLoading}
+            source="한국석유관리원"
+            headerRight={
+              isMaster ? (
+                <button
+                  onClick={() => {
+                    const cur = ceilingData[0];
+                    setCeilingForm({
+                      gasoline: cur?.gasoline ?? "",
+                      diesel: cur?.diesel ?? "",
+                      kerosene: cur?.kerosene ?? "",
+                      effectiveDate: cur?.effectiveDate ?? new Date().toISOString().slice(0, 10),
+                      note: "",
+                    });
+                    setCeilingOpen(true);
+                  }}
+                  className="p-1 rounded hover:bg-muted transition-colors"
+                  data-testid="button-ceiling-edit"
+                  title="최고가격 수정"
+                >
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </button>
+              ) : undefined
+            }
+          >
+            {ceilingData.length > 0 ? (() => {
+              const cur = ceilingData[0];
+              const prev = ceilingData[1];
+              const rows = [
+                { label: "휘발유", cur: cur.gasoline, prev: prev?.gasoline },
+                { label: "경유", cur: cur.diesel, prev: prev?.diesel },
+                { label: "등유", cur: cur.kerosene, prev: prev?.kerosene },
+              ];
+              return (
+                <div className="space-y-2">
+                  {rows.map(row => {
+                    const curVal = row.cur ? Number(row.cur) : null;
+                    const prevVal = row.prev ? Number(row.prev) : null;
+                    const diff = curVal !== null && prevVal !== null ? curVal - prevVal : null;
+                    return (
+                      <div key={row.label} className="flex items-center justify-between gap-1">
+                        <span className="text-xs md:text-sm text-muted-foreground w-8 md:w-10 flex-shrink-0">{row.label}</span>
+                        <span className="text-sm md:text-base font-bold text-foreground whitespace-nowrap flex-shrink-0">
+                          {curVal !== null ? fmtPrice(curVal) : "—"}
+                        </span>
+                        <span className="flex-shrink-0">
+                          {diff !== null ? <ChangeChip val={diff} /> : <span className="text-xs text-muted-foreground">—</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">적용일: {cur.effectiveDate}</p>
                 </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">데이터 없음</p>
+              );
+            })() : (
+              <p className="text-sm text-muted-foreground">{isMaster ? "우상단 연필 버튼으로 입력하세요" : "데이터 없음"}</p>
             )}
           </MetricCard>
 
@@ -1022,6 +1104,71 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+      {/* 석유 최고가격제 편집 Dialog (MASTER 전용) */}
+      <Dialog open={ceilingOpen} onOpenChange={setCeilingOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>석유 최고가격제 수정</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              ceilingMutation.mutate({
+                gasoline: ceilingForm.gasoline ? Number(ceilingForm.gasoline) : null,
+                diesel: ceilingForm.diesel ? Number(ceilingForm.diesel) : null,
+                kerosene: ceilingForm.kerosene ? Number(ceilingForm.kerosene) : null,
+                effectiveDate: ceilingForm.effectiveDate,
+                note: ceilingForm.note || null,
+              });
+            }}
+            className="space-y-4 mt-2"
+          >
+            {[
+              { key: "gasoline" as const, label: "휘발유 (원/L)" },
+              { key: "diesel" as const, label: "경유 (원/L)" },
+              { key: "kerosene" as const, label: "등유 (원/L)" },
+            ].map(({ key, label }) => (
+              <div key={key} className="space-y-1.5">
+                <Label htmlFor={`ceiling-${key}`}>{label}</Label>
+                <Input
+                  id={`ceiling-${key}`}
+                  type="number"
+                  step="0.01"
+                  placeholder="가격 입력"
+                  value={ceilingForm[key]}
+                  onChange={(e) => setCeilingForm(f => ({ ...f, [key]: e.target.value }))}
+                  data-testid={`input-ceiling-${key}`}
+                />
+              </div>
+            ))}
+            <div className="space-y-1.5">
+              <Label htmlFor="ceiling-date">적용일</Label>
+              <Input
+                id="ceiling-date"
+                type="date"
+                required
+                value={ceilingForm.effectiveDate}
+                onChange={(e) => setCeilingForm(f => ({ ...f, effectiveDate: e.target.value }))}
+                data-testid="input-ceiling-date"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ceiling-note">비고 (선택)</Label>
+              <Textarea
+                id="ceiling-note"
+                placeholder="변경 사유 등"
+                value={ceilingForm.note}
+                onChange={(e) => setCeilingForm(f => ({ ...f, note: e.target.value }))}
+                data-testid="input-ceiling-note"
+                rows={2}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={ceilingMutation.isPending} data-testid="button-ceiling-save">
+              {ceilingMutation.isPending ? "저장 중..." : "저장"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

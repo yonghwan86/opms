@@ -4,7 +4,7 @@ import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis,
-  pushSubscriptions,
+  pushSubscriptions, oilCeilingPrices,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -13,6 +13,7 @@ import {
   type InsertOilPriceRaw, type OilPriceRaw,
   type InsertOilPriceAnalysis, type OilPriceAnalysis,
   type PushSubscription, type InsertPushSubscription,
+  type OilCeilingPrices, type InsertOilCeilingPrices,
 } from "@shared/schema";
 
 // ─── 시/도 전체명 → 오피넷 축약명 매핑 ────────────────────────────────────────
@@ -168,6 +169,10 @@ export interface IStorage {
   incrementBadgeCount(userId: number): Promise<number>;
   resetBadgeCount(userId: number): Promise<void>;
   getBadgeCount(userId: number): Promise<number>;
+
+  // 석유 최고가격제
+  getCeilingPrices(): Promise<OilCeilingPrices[]>;
+  setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -1056,6 +1061,15 @@ export class PostgresStorage implements IStorage {
       .where(eq(users.id, userId))
       .limit(1);
     return result.length > 0 ? (result[0].badgeCount ?? 0) : 0;
+  }
+
+  // ── 석유 최고가격제 ───────────────────────────────────────────────────────
+  async getCeilingPrices(): Promise<OilCeilingPrices[]> {
+    return db.select().from(oilCeilingPrices).orderBy(desc(oilCeilingPrices.createdAt)).limit(2);
+  }
+  async setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices> {
+    const [row] = await db.insert(oilCeilingPrices).values(data).returning();
+    return row;
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────

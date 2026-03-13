@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, boolean, timestamp, integer, serial, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, timestamp, integer, serial, uniqueIndex, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -164,6 +164,22 @@ export const oilPriceAnalysis = pgTable("oil_price_analysis", {
 export const insertOilPriceAnalysisSchema = createInsertSchema(oilPriceAnalysis).omit({ id: true, createdAt: true });
 export type InsertOilPriceAnalysis = z.infer<typeof insertOilPriceAnalysisSchema>;
 export type OilPriceAnalysis = typeof oilPriceAnalysis.$inferSelect;
+
+// ─── 석유 최고가격제 (Oil Ceiling Prices) ────────────────────────────────────
+export const oilCeilingPrices = pgTable("oil_ceiling_prices", {
+  id: serial("id").primaryKey(),
+  gasoline: numeric("gasoline", { precision: 10, scale: 2 }),
+  diesel: numeric("diesel", { precision: 10, scale: 2 }),
+  kerosene: numeric("kerosene", { precision: 10, scale: 2 }),
+  effectiveDate: text("effective_date").notNull(),
+  note: text("note"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOilCeilingPricesSchema = createInsertSchema(oilCeilingPrices).omit({ id: true, createdAt: true });
+export type InsertOilCeilingPrices = z.infer<typeof insertOilCeilingPricesSchema>;
+export type OilCeilingPrices = typeof oilCeilingPrices.$inferSelect;
 
 // ─── 푸시 구독 (Push Subscriptions) ─────────────────────────────────────────
 export const pushSubscriptions = pgTable("push_subscriptions", {
