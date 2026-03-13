@@ -580,8 +580,8 @@ export default function DashboardPage() {
               ];
               return (
                 <div className="space-y-2">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    적용일 <span className="font-bold text-foreground">{cur.effectiveDate}</span>
+                  <p className="text-xs md:text-sm font-semibold text-foreground">
+                    적용일 <span className="font-bold">{cur.effectiveDate}</span>
                   </p>
                   {rows.map(row => {
                     const curVal = row.cur ? Number(row.cur) : null;
