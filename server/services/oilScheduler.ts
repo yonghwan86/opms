@@ -100,7 +100,13 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
     await storage.saveOilPriceRaw(insertRows);
     console.log(`[OilScheduler] 원본 저장 완료: ${insertRows.length}건`);
 
-    const analysisResults = runAnalysis(rows, todayStr, yesterdayStr);
+    // CSV에 실제로 존재하는 날짜를 기준으로 분석 (오피넷 미게시 날짜 무시)
+    const csvDates = [...new Set(rows.map((r) => r.date))].sort();
+    const analysisToday = csvDates[csvDates.length - 1] ?? todayStr;
+    const analysisYesterday = csvDates[csvDates.length - 2] ?? yesterdayStr;
+    console.log(`[OilScheduler] 분석 기준일: ${analysisYesterday} → ${analysisToday} (CSV 내 날짜: ${csvDates.join(", ")})`);
+
+    const analysisResults = runAnalysis(rows, analysisToday, analysisYesterday);
     await storage.saveOilPriceAnalysis(analysisResults);
     console.log(`[OilScheduler] 분석 저장 완료: ${analysisResults.length}건`);
 
@@ -108,8 +114,8 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
       success: true,
       rawCount: insertRows.length,
       analysisCount: analysisResults.length,
-      today: todayStr,
-      yesterday: yesterdayStr,
+      today: analysisToday,
+      yesterday: analysisYesterday,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

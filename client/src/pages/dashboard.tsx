@@ -1083,7 +1083,7 @@ export default function DashboardPage() {
                   </div>
                   {/* 개별 목록 */}
                   {allAlerts.map((s) => (
-                    <div key={s.stationId + s.dir} className={cn("flex gap-3 p-3 rounded-lg border", s.dir === 'rise' ? "bg-red-50 border-red-100" : "bg-blue-50 border-blue-100")}>
+                    <div key={s.stationId + s.fuelType + s.dir} className={cn("flex gap-3 p-3 rounded-lg border", s.dir === 'rise' ? "bg-red-50 border-red-100" : "bg-blue-50 border-blue-100")}>
                       <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", s.dir === 'rise' ? "bg-red-500" : "bg-blue-500")} />
                       <div className="min-w-0">
                         <p className="text-sm text-foreground leading-snug">
