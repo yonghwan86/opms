@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown, User } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kpetroCiSrc from "@assets/kpetro-ci.png";
 import loginIconSrc from "@assets/file_1773328850418_1773332426820.jpeg";
@@ -49,8 +49,8 @@ function MiniLineChart() {
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full">
       <defs>
         <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#00d4ff" stopOpacity="0" />
+          <stop offset="0%" stopColor="#4ade80" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#4ade80" stopOpacity="0" />
         </linearGradient>
       </defs>
       {[0.25, 0.5, 0.75].map(t => (
@@ -58,11 +58,11 @@ function MiniLineChart() {
           stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
       ))}
       <polygon points={area} fill="url(#chartGrad)" />
-      <polyline points={polyline} fill="none" stroke="#00d4ff" strokeWidth="2"
+      <polyline points={polyline} fill="none" stroke="#4ade80" strokeWidth="2"
         strokeLinejoin="round" strokeLinecap="round"
-        style={{ filter: "drop-shadow(0 0 4px #00d4ff)" }} />
+        style={{ filter: "drop-shadow(0 0 4px #4ade80)" }} />
       <circle cx={toX(pts.length - 1)} cy={toY(pts[pts.length - 1])} r="3"
-        fill="#00d4ff" style={{ filter: "drop-shadow(0 0 6px #00d4ff)" }} />
+        fill="#4ade80" style={{ filter: "drop-shadow(0 0 6px #4ade80)" }} />
     </svg>
   );
 }
@@ -82,8 +82,8 @@ function KoreaMapDots() {
       {MAP_DOTS.map((dot, i) => (
         <div key={i} className="absolute" style={{ left: `${dot.x}%`, top: `${dot.y}%` }}>
           <div className="relative">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"
-              style={{ boxShadow: "0 0 6px #00d4ff, 0 0 12px #00d4ff40",
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400"
+              style={{ boxShadow: "0 0 6px #4ade80, 0 0 12px #4ade8040",
                 animation: `pulse ${1.5 + (i % 3) * 0.5}s ease-in-out infinite alternate` }} />
           </div>
         </div>
@@ -96,23 +96,19 @@ function KoreaMapDots() {
 function BrandPanel() {
   return (
     <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden"
-      style={{ background: "linear-gradient(145deg, #0a1628 0%, #0d2744 40%, #083344 70%, #051e2e 100%)" }}>
+      style={{ background: "linear-gradient(145deg, #141a14 0%, #1a2e1a 40%, #152515 70%, #0f1a0f 100%)" }}>
 
       {/* 배경 장식 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-96 h-96 rounded-full opacity-10"
-          style={{ background: "radial-gradient(circle, #00d4ff 0%, transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle, #22c55e 0%, transparent 70%)" }} />
         <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 rounded-full opacity-10"
-          style={{ background: "radial-gradient(circle, #0080ff 0%, transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle, #166534 0%, transparent 70%)" }} />
       </div>
 
       {/* 로고 */}
-      <div className="relative z-10 flex items-center gap-3 p-8 pb-0">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/20"
-          style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}>
-          <Shield className="w-4 h-4 text-cyan-300" />
-        </div>
-        <span className="text-base font-bold text-white">유가모니터링 시스템</span>
+      <div className="relative z-10 flex items-center p-8 pb-0">
+        <img src={kpetroCiSrc} alt="한국석유관리원" className="h-9 object-contain brightness-0 invert" />
       </div>
 
       {/* 대시보드 카드들 */}
@@ -123,7 +119,7 @@ function BrandPanel() {
           style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-white/75 font-medium">휘발유 가격 추이</p>
-            <span className="text-[10px] text-cyan-400 font-medium">▲ 32원</span>
+            <span className="text-[10px] text-green-400 font-medium">▲ 32원</span>
           </div>
           <div className="h-14">
             <MiniLineChart />
@@ -134,7 +130,7 @@ function BrandPanel() {
         <div className="flex gap-3 mb-4">
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
-            <CircleGauge value="1,640원" label="휘발유 /L" color="#00d4ff" percent={0.72} />
+            <CircleGauge value="1,640원" label="휘발유 /L" color="#4ade80" percent={0.72} />
           </div>
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
@@ -144,10 +140,10 @@ function BrandPanel() {
 
         {/* 배지 */}
         <div className="flex gap-2 mb-6">
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-cyan-400/50"
-            style={{ background: "rgba(0,212,255,0.15)" }}>
-            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-xs text-cyan-200 font-semibold">실시간 변동률</span>
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-green-400/50"
+            style={{ background: "rgba(74,222,128,0.15)" }}>
+            <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+            <span className="text-xs text-green-200 font-semibold">실시간 변동률</span>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-emerald-400/50"
             style={{ background: "rgba(74,222,128,0.15)" }}>

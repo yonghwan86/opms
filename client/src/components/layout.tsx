@@ -169,8 +169,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* 헤더 */}
         <div className="flex items-center h-16 px-3 border-b border-sidebar-border">
           {sidebarOpen ? (
-            <div className="flex items-center flex-1 min-w-0">
-              <img src={kpetroCiSrc} alt="한국석유관리원" className="h-8 object-contain flex-shrink-0" />
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <img src={appIconSrc} alt="앱 아이콘" className="w-8 h-8 rounded-lg flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-sidebar-foreground leading-tight">유가 이상징후<br />탐지 시스템</p>
+              </div>
             </div>
           ) : (
             <img src={appIconSrc} alt="앱 아이콘" className="w-8 h-8 rounded-lg mx-auto" />
