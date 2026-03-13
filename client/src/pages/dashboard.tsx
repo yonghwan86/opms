@@ -522,10 +522,15 @@ export default function DashboardPage() {
           <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance" live>
             {wti ? (
               <>
-                <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
-                {fx && (
-                  <p className="text-xs text-muted-foreground mt-0.5">({fmt(Math.round(fx.rate))}원/달러)</p>
-                )}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
+                  {fx && (
+                    <div className="flex flex-col items-end pt-0.5">
+                      <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">{fmt(Math.round(fx.rate))}원/달러</span>
+                      <ChangeChip val={fx.change} unit="원" percent={fx.changePercent} />
+                    </div>
+                  )}
+                </div>
                 <div className="mt-1.5">
                   <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} decimals={2} />
                 </div>
@@ -541,7 +546,7 @@ export default function DashboardPage() {
             icon={ShieldCheck}
             iconBg="bg-indigo-600"
             loading={ceilingLoading}
-            source="한국석유관리원"
+            source="산업통상자원부"
             headerRight={
               isMaster ? (
                 <button
