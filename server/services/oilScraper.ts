@@ -43,19 +43,16 @@ export async function downloadOilPriceCSV(
 
     const page = await context.newPage();
 
-    // confirm() 다이얼로그 자동 수락 — fn_Download() 내부 confirm에서 필요
+    // confirm() 다이얼로그 자동 수락
     page.on("dialog", async (dialog) => {
       console.log(`[OilScraper] 다이얼로그 수락: ${dialog.message().substring(0, 80)}`);
       await dialog.accept();
     });
 
-    // CSV 응답 버퍼를 직접 캡처 (download 이벤트 대신 HTTP 응답 가로채기)
+    // 다운로드 URL만 타겟으로 route 등록 (전체 경로 인터셉트 시 페이지 로딩 저하 방지)
+    // Opinet 실제 다운로드 URL: /user/main/main_download_csv_big.do
     let csvBuffer: Buffer | null = null;
-    let csvCaptured = false;
-
-    await page.route("**/*", async (route) => {
-      const request = route.request();
-
+    await page.route("**/*download*", async (route) => {
       try {
         const response = await route.fetch();
         const headers = response.headers();
@@ -69,12 +66,11 @@ export async function downloadOilPriceCSV(
           contentType.includes("application/force-download") ||
           contentDisposition.toLowerCase().includes("attachment");
 
-        if (isCsv && !csvCaptured) {
+        if (isCsv) {
           const body = await response.body();
           csvBuffer = Buffer.from(body);
-          csvCaptured = true;
           console.log(
-            `[OilScraper] CSV 응답 캡처: ${csvBuffer.byteLength} bytes, Content-Type: ${contentType}, URL: ${request.url().substring(0, 100)}`
+            `[OilScraper] CSV 응답 캡처: ${csvBuffer.byteLength} bytes, Content-Type: ${contentType}, URL: ${route.request().url().substring(0, 100)}`
           );
         }
 
@@ -90,11 +86,11 @@ export async function downloadOilPriceCSV(
       timeout: 60000,
     });
 
-    // NetFunnel(B1) 완료 대기 — fn_Download 함수가 로드될 때까지
+    // NetFunnel(B1) 완료 대기 — fn_Download 함수가 로드될 때까지 (최대 60초)
     await page
       .waitForFunction(
         () => typeof (window as any).fn_Download === "function",
-        { timeout: 30000 }
+        { timeout: 60000 }
       )
       .catch(() => {
         console.log("[OilScraper] fn_Download 함수 대기 타임아웃 — 계속 진행");
@@ -127,24 +123,23 @@ export async function downloadOilPriceCSV(
       if (rdo4) rdo4.checked = true;
     });
 
-    // fn_Download(6) 호출 후 최대 300초 동안 CSV 응답 대기
+    // fn_Download(6) 호출 후 최대 300초 폴링으로 CSV 캡처 대기
     console.log("[OilScraper] fn_Download(6) 호출...");
     await page.evaluate(() => {
       (window as any).fn_Download(6);
     });
 
-    // CSV 캡처될 때까지 폴링 (300초 / 1초 간격)
     const deadline = Date.now() + 300_000;
-    while (!csvCaptured && Date.now() < deadline) {
+    while (!csvBuffer && Date.now() < deadline) {
       await page.waitForTimeout(1000);
     }
 
-    if (!csvCaptured || !csvBuffer) {
+    if (!csvBuffer) {
       console.error("[OilScraper] CSV 응답 미수신 (300초 초과)");
       return null;
     }
 
-    console.log(`[OilScraper] 다운로드 완료: ${csvBuffer.byteLength} bytes`);
+    console.log(`[OilScraper] 다운로드 완료: ${(csvBuffer as Buffer).byteLength} bytes`);
     return csvBuffer;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
