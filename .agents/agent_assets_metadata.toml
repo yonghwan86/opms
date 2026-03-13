@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "IJx1BfxpEupzS-FvUCIFC"
+uri = "file://유가_이상징후_탐지_시스템_기술보고서.txt"
+type = "text"
+title = "유가 이상징후 탐지 시스템 기술 도입 보고서"
