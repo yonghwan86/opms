@@ -11,16 +11,16 @@ export function MobileLoginCenter() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-[390px] min-h-[844px] bg-white overflow-hidden rounded-[40px] shadow-2xl border border-gray-200 flex flex-col relative">
 
-        {/* 상단 초록 배경 헤더 — 가운데 정렬 */}
-        <div className="bg-[#f0f7f0] px-6 pt-16 pb-10 flex flex-col items-center gap-8">
-          {/* KPetro CI */}
+        {/* 상단 초록 배경 헤더 */}
+        <div className="bg-[#f0f7f0] px-6 pt-16 pb-10 flex flex-col gap-8">
+          {/* KPetro CI — 왼쪽 정렬 */}
           <img
             src="/__mockup/images/kpetro-ci.png"
             alt="한국석유관리원"
-            className="h-14 object-contain"
+            className="h-14 object-contain object-left"
           />
 
-          {/* 앱 아이콘 + 제목 */}
+          {/* 앱 아이콘 + 제목 — 가운데 정렬 */}
           <div className="flex flex-col items-center gap-3 text-center">
             <img
               src="/__mockup/images/app-icon.jpeg"
