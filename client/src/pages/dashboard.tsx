@@ -192,7 +192,7 @@ function MetricCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
-            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 pr-4 text-center whitespace-nowrap">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 leading-tight">{subtitle}</p>}
           </div>
         </div>
         {live && !loading ? (
@@ -650,6 +650,32 @@ export default function DashboardPage() {
             title={`${isGlobal ? "전국" : "관할 지역"} 유가 가격 편차`}
             subtitle="최고가 − 최저가 격차"
             icon={BarChart2} iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"} loading={fuelLoading} source="오피넷"
+            headerRight={!isMobile ? (
+              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                <div className="flex items-center gap-0.5">
+                  {(['gasoline', 'diesel'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setSpreadTab(tab)}
+                      className={cn(
+                        "w-6 h-5 flex items-center justify-center rounded text-[11px] font-semibold transition-colors",
+                        spreadTab === tab
+                          ? tab === 'gasoline'
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300"
+                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                          : "text-muted-foreground hover:bg-muted"
+                      )}
+                      data-testid={`tab-spread-${tab}`}
+                    >
+                      {tab === 'gasoline' ? '휘' : '경'}
+                    </button>
+                  ))}
+                </div>
+                {shortDateLabel && (
+                  <span className="text-[10px] text-muted-foreground/70 leading-none">{shortDateLabel}</span>
+                )}
+              </div>
+            ) : undefined}
           >
             {(() => {
               const sp = spread?.[spreadTab] ?? null;
@@ -657,30 +683,32 @@ export default function DashboardPage() {
                 <>
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmt(sp.spread)}원</p>
-                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                      <div className="flex items-center gap-0.5">
-                        {(['gasoline', 'diesel'] as const).map(tab => (
-                          <button
-                            key={tab}
-                            onClick={() => setSpreadTab(tab)}
-                            className={cn(
-                              "w-6 h-5 flex items-center justify-center rounded text-[11px] font-semibold transition-colors",
-                              spreadTab === tab
-                                ? tab === 'gasoline'
-                                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300"
-                                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                                : "text-muted-foreground hover:bg-muted"
-                            )}
-                            data-testid={`tab-spread-${tab}`}
-                          >
-                            {tab === 'gasoline' ? '휘' : '경'}
-                          </button>
-                        ))}
+                    {isMobile && (
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                        <div className="flex items-center gap-0.5">
+                          {(['gasoline', 'diesel'] as const).map(tab => (
+                            <button
+                              key={tab}
+                              onClick={() => setSpreadTab(tab)}
+                              className={cn(
+                                "w-6 h-5 flex items-center justify-center rounded text-[11px] font-semibold transition-colors",
+                                spreadTab === tab
+                                  ? tab === 'gasoline'
+                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300"
+                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                  : "text-muted-foreground hover:bg-muted"
+                              )}
+                              data-testid={`tab-spread-${tab}`}
+                            >
+                              {tab === 'gasoline' ? '휘' : '경'}
+                            </button>
+                          ))}
+                        </div>
+                        {shortDateLabel && (
+                          <span className="text-[10px] text-muted-foreground/70 leading-none">{shortDateLabel}</span>
+                        )}
                       </div>
-                      {shortDateLabel && (
-                        <span className="text-[10px] text-muted-foreground/70 leading-none">{shortDateLabel}</span>
-                      )}
-                    </div>
+                    )}
                   </div>
                   <div className="space-y-1.5 mt-2">
                     {[
