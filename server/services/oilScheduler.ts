@@ -239,8 +239,14 @@ async function checkAndRecoverOnStartup(): Promise<void> {
       return;
     }
 
-    // 9:10 ~ 16:00 → 오전 확정값 무조건 수집 (잠정값이 이미 있어도 덮어씌움)
-    console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 전날 확정값 수집 시작`);
+    // 9:10 ~ 16:00 → 어제 확정값이 이미 있으면 건너뜀 (재배포 시 중복 수집 방지)
+    const availableDates = await storage.getOilAvailableDates();
+    const latestAvailable = availableDates[0];
+    if (latestAvailable && latestAvailable >= yesterdayStr) {
+      console.log(`[OilScheduler] 시작 복구(오전): 어제(${yesterdayStr}) 데이터 이미 존재(최신: ${latestAvailable}), 수집 건너뜀`);
+      return;
+    }
+    console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 어제(${yesterdayStr}) 데이터 없음 → 수집 시작`);
     await runWithRetryAndNotify({
       source: "시작 복구(오전 확정)",
       slot: "morning",
