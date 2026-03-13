@@ -96,19 +96,20 @@ function KoreaMapDots() {
 function BrandPanel() {
   return (
     <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden"
-      style={{ background: "linear-gradient(145deg, #141a14 0%, #1a2e1a 40%, #152515 70%, #0f1a0f 100%)" }}>
+      style={{ background: "linear-gradient(145deg, #1e2d1e 0%, #253d25 40%, #1e3020 70%, #192619 100%)" }}>
 
       {/* 배경 장식 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-96 h-96 rounded-full opacity-10"
+        <div className="absolute top-[-20%] right-[-10%] w-96 h-96 rounded-full opacity-20"
           style={{ background: "radial-gradient(circle, #22c55e 0%, transparent 70%)" }} />
-        <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 rounded-full opacity-10"
-          style={{ background: "radial-gradient(circle, #166534 0%, transparent 70%)" }} />
+        <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 rounded-full opacity-15"
+          style={{ background: "radial-gradient(circle, #4ade80 0%, transparent 70%)" }} />
       </div>
 
       {/* 로고 */}
       <div className="relative z-10 flex items-center p-8 pb-0">
-        <img src={kpetroCiSrc} alt="한국석유관리원" className="h-9 object-contain brightness-0 invert" />
+        <img src={kpetroCiSrc} alt="한국석유관리원" className="h-14 object-contain"
+          style={{ filter: "brightness(1.1) drop-shadow(0 0 8px rgba(74,222,128,0.3))" }} />
       </div>
 
       {/* 대시보드 카드들 */}
@@ -130,7 +131,7 @@ function BrandPanel() {
         <div className="flex gap-3 mb-4">
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
-            <CircleGauge value="1,640원" label="휘발유 /L" color="#4ade80" percent={0.72} />
+            <CircleGauge value="1,640원" label="휘발유 /L" color="#facc15" percent={0.72} />
           </div>
           <div className="flex-1 rounded-xl p-3 border border-white/10 flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)" }}>
