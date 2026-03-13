@@ -522,10 +522,10 @@ export default function DashboardPage() {
           <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance" live>
             {wti ? (
               <>
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
                   {fx && (
-                    <div className="flex flex-col items-end pt-0.5">
+                    <div className="flex flex-col items-end border border-border rounded-md px-2 py-1 bg-muted/40">
                       <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">{fmt(Math.round(fx.rate))}원/달러</span>
                       <ChangeChip val={fx.change} unit="원" percent={fx.changePercent} />
                     </div>
