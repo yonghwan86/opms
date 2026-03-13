@@ -545,9 +545,9 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
                   {fx && (
-                    <div className="flex flex-col items-end border border-border rounded-md px-2 py-1.5 bg-muted/40">
+                    <div className="flex flex-col items-end border border-border rounded-md px-2 py-1.5 bg-muted/40 min-w-0">
                       <span className="text-sm md:text-lg font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
-                      <ChangeChip val={fx.change} unit="원" percent={fx.changePercent} />
+                      <ChangeChip val={fx.change} unit="원" percent={isMobile ? undefined : fx.changePercent} />
                     </div>
                   )}
                 </div>
@@ -563,7 +563,7 @@ export default function DashboardPage() {
           {/* 석유 최고가격제 */}
           <MetricCard
             title="석유 최고가격제"
-            subtitle={ceilingData[0] ? `적용일 ${ceilingData[0].effectiveDate}` : undefined}
+            subtitle={ceilingData[0] ? (isMobile ? ceilingData[0].effectiveDate : `적용일 ${ceilingData[0].effectiveDate}`) : undefined}
             icon={ShieldCheck}
             iconBg="bg-indigo-600"
             loading={ceilingLoading}
