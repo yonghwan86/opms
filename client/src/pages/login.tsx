@@ -258,155 +258,235 @@ export default function LoginPage() {
       <BrandPanel />
 
       {/* 오른쪽 로그인 패널 */}
-      <div className="flex-1 flex flex-col lg:items-center lg:justify-center bg-white">
-        {/* 모바일 전용 상단: KPetro CI + 아이콘(좌)+제목(우) */}
-        <div className="lg:hidden px-8 pt-10 pb-0">
-          <div className="mb-10">
-            <img src={kpetroCiSrc} alt="한국석유관리원" className="h-12 object-contain" data-testid="img-kpetro-ci-login" />
+      <div className="flex-1 flex flex-col bg-white">
+
+        {/* ── 모바일 전용: 초록 헤더 + 흰 카드 ── */}
+        <div className="lg:hidden flex flex-col min-h-screen">
+          {/* 초록 배경 헤더 */}
+          <div className="bg-[#f0f7f0] px-6 pt-16 pb-10 flex flex-col gap-8">
+            <img src={kpetroCiSrc} alt="한국석유관리원" className="h-14 object-contain object-left" data-testid="img-kpetro-ci-login" />
+            <div className="flex flex-col items-center gap-3 text-center">
+              <img src={loginIconSrc} alt="앱 아이콘" className="w-16 h-16 rounded-xl shadow-sm" data-testid="img-app-icon-login" />
+              <h1 className="text-xl font-bold text-foreground leading-snug">유가 이상징후 탐지 시스템</h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3 mb-10">
-            <img src={loginIconSrc} alt="앱 아이콘" className="w-14 h-14 rounded-xl flex-shrink-0" data-testid="img-app-icon-login" />
-            <h1 className="text-xl font-bold text-foreground leading-snug whitespace-nowrap">
-              유가 이상징후 탐지 시스템
-            </h1>
+
+          {/* 흰색 카드 */}
+          <div className="flex-1 bg-white rounded-t-3xl -mt-4 px-6 pt-8 pb-8 flex flex-col">
+
+            {step === "username" && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-foreground">로그인</h2>
+                  <p className="text-muted-foreground mt-1.5 text-sm">아이디(ID)를 입력하세요</p>
+                </div>
+                <form onSubmit={handleUsernameSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="m-username" className="text-sm font-medium">아이디(ID)</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <Input id="m-username" type="text" placeholder="아이디(ID)" value={username}
+                        onChange={(e) => setUsername(e.target.value)} required autoFocus autoComplete="username"
+                        data-testid="input-username"
+                        className="h-11 pl-10 rounded-md border-green-600 focus-visible:ring-green-600" />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next">
+                    {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}다음
+                  </Button>
+                </form>
+              </>
+            )}
+
+            {step === "password" && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-foreground">비밀번호 입력</h2>
+                  <p className="text-sm text-green-600 font-medium mt-1.5">{username}</p>
+                </div>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="m-password" className="text-sm font-medium">비밀번호</Label>
+                    <div className="relative">
+                      <Input id="m-password" type={showPw ? "text" : "password"} placeholder="비밀번호를 입력하세요"
+                        value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus autoComplete="current-password"
+                        data-testid="input-password"
+                        className="h-11 pr-10 rounded-md border-green-600 focus-visible:ring-green-600" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                        {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 hover:!bg-green-700 !text-white" disabled={loginPending} data-testid="button-login">
+                    {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}로그인
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
+                  </Button>
+                </form>
+              </>
+            )}
+
+            {step === "setup-password" && (
+              <>
+                <div className="mb-6">
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                    <KeyRound className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-foreground">비밀번호 설정</h2>
+                  <p className="text-muted-foreground mt-1.5 text-sm">처음 로그인하셨습니다. 사용할 비밀번호를 직접 설정해주세요.</p>
+                  <p className="text-xs text-green-600 font-medium mt-2">{username}</p>
+                </div>
+                <form onSubmit={handleSetupPassword} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="m-newPassword" className="text-sm font-medium">새 비밀번호</Label>
+                    <div className="relative">
+                      <Input id="m-newPassword" type={showNewPw ? "text" : "password"} placeholder="8자 이상 입력하세요"
+                        value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required autoFocus minLength={8}
+                        data-testid="input-new-password" className="h-11 pr-10 rounded-md border-green-600 focus-visible:ring-green-600" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowNewPw(!showNewPw)} tabIndex={-1}>
+                        {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="m-confirmPassword" className="text-sm font-medium">비밀번호 확인</Label>
+                    <div className="relative">
+                      <Input id="m-confirmPassword" type={showConfirmPw ? "text" : "password"} placeholder="비밀번호를 다시 입력하세요"
+                        value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
+                        data-testid="input-confirm-password" className="h-11 pr-10 rounded-md border-green-600 focus-visible:ring-green-600" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowConfirmPw(!showConfirmPw)} tabIndex={-1}>
+                        {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    {confirmPassword && newPassword !== confirmPassword && (
+                      <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 hover:!bg-green-700 !text-white"
+                    disabled={setupPasswordPending || newPassword !== confirmPassword || newPassword.length < 8}
+                    data-testid="button-set-password">
+                    {setupPasswordPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}비밀번호 설정 완료
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
+                  </Button>
+                </form>
+              </>
+            )}
+
+            {/* 모바일 하단 크레딧 */}
+            <div className="mt-auto pt-8 text-center">
+              <p className="text-xs text-muted-foreground">dev.kito86</p>
+            </div>
           </div>
         </div>
 
-        <div className="w-full lg:max-w-sm px-8 lg:px-0 pb-10 lg:pb-0">
+        {/* ── PC 전용: 기존 레이아웃 유지 ── */}
+        <div className="hidden lg:flex lg:flex-col lg:items-center lg:justify-center flex-1">
+          <div className="w-full max-w-sm">
 
-          {/* Step 1: 아이디 입력 */}
-          {step === "username" && (
-            <>
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-foreground">로그인</h2>
-                <p className="text-muted-foreground mt-1.5 text-sm">아이디(ID)를 입력하세요</p>
-              </div>
-              <form onSubmit={handleUsernameSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-sm font-medium">아이디(ID)</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder="아이디(ID)"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      autoFocus
-                      autoComplete="username"
-                      data-testid="input-username"
-                      className="h-11 pl-10"
-                    />
-                  </div>
+            {step === "username" && (
+              <>
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-foreground">로그인</h2>
+                  <p className="text-muted-foreground mt-1.5 text-sm">아이디(ID)를 입력하세요</p>
                 </div>
-                <Button type="submit" className="w-full h-12 font-semibold rounded-full !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next">
-                  {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  다음
-                </Button>
-              </form>
-            </>
-          )}
+                <form onSubmit={handleUsernameSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="username" className="text-sm font-medium">아이디(ID)</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <Input id="username" type="text" placeholder="아이디(ID)" value={username}
+                        onChange={(e) => setUsername(e.target.value)} required autoFocus autoComplete="username"
+                        data-testid="input-username-pc" className="h-11 pl-10" />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-12 font-semibold !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next-pc">
+                    {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}다음
+                  </Button>
+                </form>
+              </>
+            )}
 
-          {/* Step 2-A: 비밀번호 입력 */}
-          {step === "password" && (
-            <>
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-foreground">비밀번호 입력</h2>
-                <p className="text-sm text-primary font-medium mt-1.5">{username}</p>
-              </div>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-sm font-medium">비밀번호</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPw ? "text" : "password"}
-                      placeholder="비밀번호를 입력하세요"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      autoFocus
-                      autoComplete="current-password"
-                      data-testid="input-password"
-                      className="h-11 pr-10"
-                    />
-                    <Button type="button" variant="ghost" size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
-                      onClick={() => setShowPw(!showPw)} tabIndex={-1}>
-                      {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
+            {step === "password" && (
+              <>
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-foreground">비밀번호 입력</h2>
+                  <p className="text-sm text-primary font-medium mt-1.5">{username}</p>
                 </div>
-                <Button type="submit" className="w-full h-11 font-medium" disabled={loginPending} data-testid="button-login">
-                  {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  로그인
-                </Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
-                  <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
-                </Button>
-              </form>
-            </>
-          )}
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-sm font-medium">비밀번호</Label>
+                    <div className="relative">
+                      <Input id="password" type={showPw ? "text" : "password"} placeholder="비밀번호를 입력하세요"
+                        value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus autoComplete="current-password"
+                        data-testid="input-password-pc" className="h-11 pr-10" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                        {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-11 font-medium" disabled={loginPending} data-testid="button-login-pc">
+                    {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}로그인
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username-pc">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
+                  </Button>
+                </form>
+              </>
+            )}
 
-          {/* Step 2-B: 비밀번호 설정 */}
-          {step === "setup-password" && (
-            <>
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <KeyRound className="w-6 h-6 text-primary" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground">비밀번호 설정</h2>
-                <p className="text-muted-foreground mt-1.5 text-sm">
-                  처음 로그인하셨습니다. 사용할 비밀번호를 직접 설정해주세요.
-                </p>
-                <p className="text-xs text-primary font-medium mt-2">{username}</p>
-              </div>
-              <form onSubmit={handleSetupPassword} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className="text-sm font-medium">새 비밀번호</Label>
-                  <div className="relative">
-                    <Input id="newPassword" type={showNewPw ? "text" : "password"}
-                      placeholder="8자 이상 입력하세요" value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required autoFocus minLength={8} data-testid="input-new-password" className="h-11 pr-10" />
-                    <Button type="button" variant="ghost" size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
-                      onClick={() => setShowNewPw(!showNewPw)} tabIndex={-1}>
-                      {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
+            {step === "setup-password" && (
+              <>
+                <div className="mb-8">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <KeyRound className="w-6 h-6 text-primary" />
                   </div>
+                  <h2 className="text-2xl font-bold text-foreground">비밀번호 설정</h2>
+                  <p className="text-muted-foreground mt-1.5 text-sm">처음 로그인하셨습니다. 사용할 비밀번호를 직접 설정해주세요.</p>
+                  <p className="text-xs text-primary font-medium mt-2">{username}</p>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword" className="text-sm font-medium">비밀번호 확인</Label>
-                  <div className="relative">
-                    <Input id="confirmPassword" type={showConfirmPw ? "text" : "password"}
-                      placeholder="비밀번호를 다시 입력하세요" value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required data-testid="input-confirm-password" className="h-11 pr-10" />
-                    <Button type="button" variant="ghost" size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
-                      onClick={() => setShowConfirmPw(!showConfirmPw)} tabIndex={-1}>
-                      {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
+                <form onSubmit={handleSetupPassword} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="newPassword" className="text-sm font-medium">새 비밀번호</Label>
+                    <div className="relative">
+                      <Input id="newPassword" type={showNewPw ? "text" : "password"} placeholder="8자 이상 입력하세요"
+                        value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required autoFocus minLength={8}
+                        data-testid="input-new-password-pc" className="h-11 pr-10" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowNewPw(!showNewPw)} tabIndex={-1}>
+                        {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </div>
-                  {confirmPassword && newPassword !== confirmPassword && (
-                    <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full h-11 font-medium"
-                  disabled={setupPasswordPending || newPassword !== confirmPassword || newPassword.length < 8}
-                  data-testid="button-set-password">
-                  {setupPasswordPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  비밀번호 설정 완료
-                </Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
-                  <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
-                </Button>
-              </form>
-            </>
-          )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium">비밀번호 확인</Label>
+                    <div className="relative">
+                      <Input id="confirmPassword" type={showConfirmPw ? "text" : "password"} placeholder="비밀번호를 다시 입력하세요"
+                        value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
+                        data-testid="input-confirm-password-pc" className="h-11 pr-10" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowConfirmPw(!showConfirmPw)} tabIndex={-1}>
+                        {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    {confirmPassword && newPassword !== confirmPassword && (
+                      <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full h-11 font-medium"
+                    disabled={setupPasswordPending || newPassword !== confirmPassword || newPassword.length < 8}
+                    data-testid="button-set-password-pc">
+                    {setupPasswordPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}비밀번호 설정 완료
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username-pc">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> 아이디 변경
+                  </Button>
+                </form>
+              </>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );
