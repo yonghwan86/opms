@@ -207,6 +207,8 @@ export default function OilPricesPage() {
 
   useEffect(() => {
     checkTabScroll();
+    window.addEventListener("resize", checkTabScroll);
+    return () => window.removeEventListener("resize", checkTabScroll);
   }, []);
 
   // 가용 날짜 조회
