@@ -192,7 +192,6 @@ function MetricCard({
           </div>
           <div className="min-w-0">
             <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
-            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
           </div>
         </div>
         {live && !loading ? (
@@ -202,6 +201,7 @@ function MetricCard({
           </span>
         ) : headerRight ?? null}
       </div>
+      {subtitle && <p className="text-xs text-muted-foreground/70 text-center -mt-0.5 mb-0.5">{subtitle}</p>}
       {loading ? (
         <div className="space-y-2 mt-3">
           <Skeleton className="h-9 w-36" />
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                     const diff = curVal !== null && prevVal !== null ? curVal - prevVal : null;
                     return (
                       <div key={row.label} className="flex items-center justify-between gap-1">
-                        <span className="text-xs md:text-sm text-muted-foreground w-8 md:w-10 flex-shrink-0">{row.label}</span>
+                        <span className="text-xs md:text-sm text-muted-foreground w-10 md:w-12 flex-shrink-0 whitespace-nowrap">{row.label}</span>
                         <span className="text-sm md:text-base font-bold text-foreground whitespace-nowrap flex-shrink-0">
                           {curVal !== null ? fmtPrice(curVal) : "—"}
                         </span>
@@ -634,7 +634,7 @@ export default function DashboardPage() {
                   { label: "등유", val: avg.kerosene, change: avg.keroseneChange },
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between gap-1">
-                    <span className="text-xs md:text-sm text-muted-foreground w-8 md:w-10 flex-shrink-0">{row.label}</span>
+                    <span className="text-xs md:text-sm text-muted-foreground w-10 md:w-12 flex-shrink-0 whitespace-nowrap">{row.label}</span>
                     <span className="text-sm md:text-base font-bold text-foreground whitespace-nowrap flex-shrink-0">{fmtPrice(row.val)}</span>
                     <span className="flex-shrink-0"><ChangeChip val={row.change} /></span>
                   </div>
