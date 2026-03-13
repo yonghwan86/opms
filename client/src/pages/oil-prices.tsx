@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -196,6 +196,19 @@ export default function OilPricesPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedRegion, setSelectedRegion] = useState<string>("ALL");
 
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const [showTabArrow, setShowTabArrow] = useState(true);
+
+  const checkTabScroll = () => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    setShowTabArrow(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    checkTabScroll();
+  }, []);
+
   // 가용 날짜 조회
   const { data: availableDates = [] } = useQuery<string[]>({
     queryKey: ["/api/oil-prices/available-dates"],
@@ -311,23 +324,35 @@ export default function OilPricesPage() {
         </div>
 
         {/* 탭 */}
-        <div className="w-fit max-w-full">
+        <div className="w-fit max-w-full md:w-full">
         <Tabs value={activeTab} onValueChange={v => handleTabChange(v as AnalysisType)}>
-          <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            <TabsList className="flex w-max gap-0.5 md:gap-1 h-auto p-1 bg-muted">
-              {TABS.map(tab => (
-                <TabsTrigger
-                  key={tab.type}
-                  value={tab.type}
-                  className="text-xs md:text-sm px-2.5 md:px-3 py-1.5 whitespace-nowrap"
-                  data-testid={`tab-${tab.type.toLowerCase()}`}
-                >
-                  <span className="md:hidden">{tab.emoji}</span>
-                  <span className="hidden md:inline">{tab.emoji} </span>
-                  <span>{tab.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <div className="relative">
+            <div
+              ref={tabScrollRef}
+              onScroll={checkTabScroll}
+              className="overflow-x-auto md:overflow-visible [&::-webkit-scrollbar]:hidden"
+            >
+              <TabsList className="flex w-max md:w-full gap-0.5 md:gap-1 h-auto p-1 bg-muted">
+                {TABS.map(tab => (
+                  <TabsTrigger
+                    key={tab.type}
+                    value={tab.type}
+                    className="text-xs md:text-sm px-2.5 md:px-3 py-1.5 whitespace-nowrap md:flex-1"
+                    data-testid={`tab-${tab.type.toLowerCase()}`}
+                  >
+                    <span className="md:hidden">{tab.emoji}</span>
+                    <span className="hidden md:inline">{tab.emoji} </span>
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+            {showTabArrow && (
+              <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
+                <div className="w-8 h-full bg-gradient-to-l from-muted to-transparent" />
+                <ChevronRight className="absolute right-0.5 w-4 h-4 text-muted-foreground animate-pulse" />
+              </div>
+            )}
           </div>
 
           {TABS.map(tab => (
