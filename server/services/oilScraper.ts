@@ -87,10 +87,12 @@ export async function downloadOilPriceCSV(
     });
 
     // NetFunnel(B1) 완료 대기 — fn_Download 함수가 로드될 때까지 (최대 5분)
+    // 주의: waitForFunction(fn, arg, options) — arg에 undefined, 세 번째 인자에 timeout
     let fnReady = false;
     await page
       .waitForFunction(
         () => typeof (window as any).fn_Download === "function",
+        undefined,
         { timeout: 300000 }
       )
       .then(() => { fnReady = true; })
