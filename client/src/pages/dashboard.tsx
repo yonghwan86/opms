@@ -192,7 +192,7 @@ function MetricCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
-            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 text-center">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 text-center pr-6 whitespace-pre-line">{subtitle}</p>}
           </div>
         </div>
         {live && !loading ? (
@@ -648,7 +648,7 @@ export default function DashboardPage() {
           {/* 전국 편차 */}
           <MetricCard
             title={`${isGlobal ? "전국" : "관할 지역"} ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
-            subtitle="최고가 − 최저가 격차"
+            subtitle={"최고가 −\n최저가 격차"}
             icon={BarChart2} iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"} loading={fuelLoading} source="오피넷"
             headerRight={
               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
