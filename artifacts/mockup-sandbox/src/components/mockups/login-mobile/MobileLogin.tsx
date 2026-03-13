@@ -13,12 +13,12 @@ export function MobileLogin() {
       <div className="w-[390px] min-h-[844px] bg-white overflow-hidden rounded-[40px] shadow-2xl border border-gray-200 flex flex-col relative">
 
         {/* 상단 초록 배경 헤더 */}
-        <div className="bg-[#f0f7f0] px-6 pt-10 pb-8 flex flex-col gap-6">
+        <div className="bg-[#f0f7f0] px-6 pt-16 pb-10 flex flex-col gap-8">
           {/* KPetro CI */}
           <img
             src="/__mockup/images/kpetro-ci.png"
             alt="한국석유관리원"
-            className="h-10 object-contain object-left"
+            className="h-14 object-contain object-left"
           />
 
           {/* 앱 아이콘 + 제목 */}
