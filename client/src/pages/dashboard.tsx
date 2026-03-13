@@ -192,7 +192,7 @@ function MetricCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
-            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 leading-tight">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground/90 mt-0.5 leading-tight">{subtitle}</p>}
           </div>
         </div>
         {live && !loading ? (
@@ -208,7 +208,7 @@ function MetricCard({
           <Skeleton className="h-5 w-28" />
         </div>
       ) : <div className="mt-3 flex-1">{children}</div>}
-      {source && <p className="text-[10px] text-muted-foreground/50 mt-2 text-right">출처: {source}</p>}
+      {source && <p className="text-[10px] text-muted-foreground/70 mt-2 text-right">출처: {source}</p>}
     </Card>
   );
 }
