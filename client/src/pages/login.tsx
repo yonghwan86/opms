@@ -108,8 +108,9 @@ function BrandPanel() {
 
       {/* 로고 */}
       <div className="relative z-10 flex items-center p-8 pb-0">
-        <img src={kpetroCiSrc} alt="한국석유관리원" className="h-14 object-contain"
-          style={{ filter: "brightness(1.1) drop-shadow(0 0 8px rgba(74,222,128,0.3))" }} />
+        <div className="bg-white rounded-xl px-4 py-2.5 inline-flex items-center shadow-lg">
+          <img src={kpetroCiSrc} alt="한국석유관리원" className="h-10 object-contain" />
+        </div>
       </div>
 
       {/* 대시보드 카드들 */}
@@ -288,7 +289,7 @@ export default function LoginPage() {
                         className="h-11 pl-10 rounded-md border-green-600 focus-visible:ring-green-600" />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next">
+                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white" disabled={checkUserPending} data-testid="button-next">
                     {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}다음
                   </Button>
                 </form>
@@ -314,7 +315,7 @@ export default function LoginPage() {
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 hover:!bg-green-700 !text-white" disabled={loginPending} data-testid="button-login">
+                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white" disabled={loginPending} data-testid="button-login">
                     {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}로그인
                   </Button>
                   <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username">
@@ -360,7 +361,7 @@ export default function LoginPage() {
                       <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>
                     )}
                   </div>
-                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 hover:!bg-green-700 !text-white"
+                  <Button type="submit" className="w-full h-12 rounded-md font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white"
                     disabled={setupPasswordPending || newPassword !== confirmPassword || newPassword.length < 8}
                     data-testid="button-set-password">
                     {setupPasswordPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}비밀번호 설정 완료
@@ -399,7 +400,7 @@ export default function LoginPage() {
                         data-testid="input-username-pc" className="h-11 pl-10" />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full h-12 font-semibold !bg-green-600 hover:!bg-green-700 !text-white" disabled={checkUserPending} data-testid="button-next-pc">
+                  <Button type="submit" className="w-full h-12 font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white" disabled={checkUserPending} data-testid="button-next-pc">
                     {checkUserPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}다음
                   </Button>
                 </form>
