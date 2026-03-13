@@ -1081,10 +1081,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!validTypes.includes(type) || !validFuels.includes(fuel)) {
         return res.status(400).json({ message: "잘못된 파라미터입니다." });
       }
-      // CEILING은 등유 지원 안함
-      if (type === 'CEILING' && fuel === 'kerosene') {
-        return res.status(400).json({ message: "최고가격제 분석은 휘발유·경유만 지원합니다." });
-      }
 
       // 이전 날짜 계산 (RISE/FALL용)
       let prevDate: string | undefined;

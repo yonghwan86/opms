@@ -274,7 +274,7 @@ export default function OilPricesPage() {
   // 탭 전환 시 fuel 초기화
   const handleTabChange = (tab: AnalysisType) => {
     setActiveTab(tab);
-    if ((tab === "WIDE" || tab === "CEILING") && selectedFuel === "kerosene") {
+    if (tab === "WIDE" && selectedFuel === "kerosene") {
       setSelectedFuel("gasoline");
     }
   };
@@ -357,22 +357,13 @@ export default function OilPricesPage() {
                           size="sm"
                           onClick={() => setSelectedFuel(f.value)}
                           data-testid={`btn-wide-${f.value}`}
-                          className="text-xs"
-                        >
-                          {f.label}
-                        </Button>
-                      ))}
-                    </div>
-                  ) : tab.type === "CEILING" ? (
-                    <div className="flex gap-1" data-testid="fuel-selector-ceiling">
-                      {FUELS.filter(f => f.type !== "kerosene").map(f => (
-                        <Button
-                          key={f.type}
-                          variant={selectedFuel === f.type ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedFuel(f.type)}
-                          data-testid={`btn-fuel-${f.type}`}
-                          className="text-xs"
+                          className={cn("text-xs border",
+                            selectedFuel === f.value
+                              ? f.value === "gasoline"
+                                ? "bg-amber-400 hover:bg-amber-500 border-amber-400 text-black"
+                                : "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white"
+                              : ""
+                          )}
                         >
                           {f.label}
                         </Button>
@@ -387,7 +378,15 @@ export default function OilPricesPage() {
                           size="sm"
                           onClick={() => setSelectedFuel(f.type)}
                           data-testid={`btn-fuel-${f.type}`}
-                          className="text-xs"
+                          className={cn("text-xs border",
+                            selectedFuel === f.type
+                              ? f.type === "gasoline"
+                                ? "bg-amber-400 hover:bg-amber-500 border-amber-400 text-black"
+                                : f.type === "diesel"
+                                  ? "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white"
+                                  : "bg-sky-500 hover:bg-sky-600 border-sky-500 text-white"
+                              : ""
+                          )}
                         >
                           {f.label}
                         </Button>
