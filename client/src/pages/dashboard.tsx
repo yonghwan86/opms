@@ -1087,7 +1087,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <AlertCircle className="w-8 h-8 text-muted-foreground/30 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">감지된 이상 징후 없음</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 및 상한가 초과 주유소 없음</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">전일 대비 100원 이상 변동 및 최고가격제 초과 주유소 없음</p>
                 </div>
               ) : (
                 <>
@@ -1103,7 +1103,7 @@ export default function DashboardPage() {
                       {ceilingAlerts.length > 0 && (
                         <>
                           <span className="mx-1.5 text-border">|</span>
-                          상한가 초과 <span className="text-orange-500 font-semibold">{ceilingAlerts.length}곳</span>
+                          최고가격제 초과 <span className="text-orange-500 font-semibold">{ceilingAlerts.length}곳</span>
                         </>
                       )}
                     </p>
@@ -1138,7 +1138,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
-                  {/* 상한가 초과 목록 */}
+                  {/* 최고가격제 초과 목록 */}
                   {ceilingAlerts.map((s) => (
                     <div key={s.stationId + s.fuelType + 'ceiling'} className="flex gap-3 p-3 rounded-lg border bg-orange-50 border-orange-100">
                       <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0 bg-orange-500" />
@@ -1155,7 +1155,7 @@ export default function DashboardPage() {
                           <span className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", s.fuelType === 'diesel' ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700")}>
                             {s.fuelType === 'diesel' ? '경유' : '휘발유'}
                           </span>
-                          상한가 초과 +{fmt(s.changeAmount ?? 0)}원
+                          최고가격제 초과 +{fmt(s.changeAmount ?? 0)}원
                         </p>
                       </div>
                     </div>
