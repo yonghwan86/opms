@@ -108,9 +108,8 @@ function BrandPanel() {
 
       {/* 로고 */}
       <div className="relative z-10 flex items-center p-8 pb-0">
-        <div className="bg-white rounded-xl px-4 py-2.5 inline-flex items-center shadow-lg">
-          <img src={kpetroCiSrc} alt="한국석유관리원" className="h-10 object-contain" />
-        </div>
+        <img src={kpetroCiSrc} alt="한국석유관리원" className="h-12 object-contain"
+          style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.8)) brightness(1.15) contrast(1.1)" }} />
       </div>
 
       {/* 대시보드 카드들 */}
@@ -397,7 +396,7 @@ export default function LoginPage() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <Input id="username" type="text" placeholder="아이디(ID)" value={username}
                         onChange={(e) => setUsername(e.target.value)} required autoFocus autoComplete="username"
-                        data-testid="input-username-pc" className="h-11 pl-10" />
+                        data-testid="input-username-pc" className="h-11 pl-10 border-green-600 focus-visible:ring-green-600" />
                     </div>
                   </div>
                   <Button type="submit" className="w-full h-12 font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white" disabled={checkUserPending} data-testid="button-next-pc">
@@ -419,13 +418,13 @@ export default function LoginPage() {
                     <div className="relative">
                       <Input id="password" type={showPw ? "text" : "password"} placeholder="비밀번호를 입력하세요"
                         value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus autoComplete="current-password"
-                        data-testid="input-password-pc" className="h-11 pr-10" />
+                        data-testid="input-password-pc" className="h-11 pr-10 border-green-600 focus-visible:ring-green-600" />
                       <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
                         {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full h-11 font-medium" disabled={loginPending} data-testid="button-login-pc">
+                  <Button type="submit" className="w-full h-11 font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white" disabled={loginPending} data-testid="button-login-pc">
                     {loginPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}로그인
                   </Button>
                   <Button type="button" variant="ghost" className="w-full" onClick={goBackToUsername} data-testid="button-back-username-pc">
@@ -451,7 +450,7 @@ export default function LoginPage() {
                     <div className="relative">
                       <Input id="newPassword" type={showNewPw ? "text" : "password"} placeholder="8자 이상 입력하세요"
                         value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required autoFocus minLength={8}
-                        data-testid="input-new-password-pc" className="h-11 pr-10" />
+                        data-testid="input-new-password-pc" className="h-11 pr-10 border-green-600 focus-visible:ring-green-600" />
                       <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowNewPw(!showNewPw)} tabIndex={-1}>
                         {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -462,7 +461,7 @@ export default function LoginPage() {
                     <div className="relative">
                       <Input id="confirmPassword" type={showConfirmPw ? "text" : "password"} placeholder="비밀번호를 다시 입력하세요"
                         value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
-                        data-testid="input-confirm-password-pc" className="h-11 pr-10" />
+                        data-testid="input-confirm-password-pc" className="h-11 pr-10 border-green-600 focus-visible:ring-green-600" />
                       <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground" onClick={() => setShowConfirmPw(!showConfirmPw)} tabIndex={-1}>
                         {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -471,7 +470,7 @@ export default function LoginPage() {
                       <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다.</p>
                     )}
                   </div>
-                  <Button type="submit" className="w-full h-11 font-medium"
+                  <Button type="submit" className="w-full h-11 font-semibold !bg-green-600 !border-green-600 hover:!bg-green-700 hover:!border-green-700 !text-white"
                     disabled={setupPasswordPending || newPassword !== confirmPassword || newPassword.length < 8}
                     data-testid="button-set-password-pc">
                     {setupPasswordPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}비밀번호 설정 완료
