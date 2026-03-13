@@ -186,13 +186,13 @@ function MetricCard({
   return (
     <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card flex flex-col">
       <div className="flex items-start justify-between gap-1 mb-1">
-        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
           <div className={cn("w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0", iconBg)}>
             <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs md:text-sm font-semibold text-muted-foreground leading-tight truncate">{title}</p>
-            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground/70 mt-0.5 pr-4 text-center whitespace-pre-line">{subtitle}</p>}
           </div>
         </div>
         {live && !loading ? (
@@ -648,7 +648,7 @@ export default function DashboardPage() {
           {/* 전국 편차 */}
           <MetricCard
             title={`${isGlobal ? "전국" : "관할 지역"} ${spreadTab === 'diesel' ? '경유' : '휘발유'} 가격 편차`}
-            subtitle="최고가 − 최저가 격차"
+            subtitle={"최고가 −\n최저가 격차"}
             icon={BarChart2} iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"} loading={fuelLoading} source="오피넷"
             headerRight={
               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
