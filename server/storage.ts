@@ -125,6 +125,7 @@ export interface IStorage {
 
   // 유가 원본 데이터
   saveOilPriceRaw(rows: InsertOilPriceRaw[]): Promise<void>;
+  getOilPriceRawByDate(date: string): Promise<OilPriceRaw[]>;
   getOilPriceLatestDate(): Promise<string | null>;
 
   // 유가 분석 결과
@@ -565,6 +566,13 @@ export class PostgresStorage implements IStorage {
           },
         });
     }
+  }
+
+  async getOilPriceRawByDate(date: string): Promise<OilPriceRaw[]> {
+    return db
+      .select()
+      .from(oilPriceRaw)
+      .where(eq(oilPriceRaw.date, date));
   }
 
   async getOilPriceLatestDate(): Promise<string | null> {

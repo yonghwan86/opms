@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { downloadOilPriceCSV } from "./oilScraper";
-import { parseOilPriceCSV, toInsertOilPriceRaw } from "./oilParser";
+import { parseOilPriceCSV, toInsertOilPriceRaw, type OilPriceRow } from "./oilParser";
 import { runAnalysis } from "./oilAnalyzer";
 import { storage } from "../storage";
 import { sendPushToAll } from "./pushService";
@@ -100,13 +100,30 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
     await storage.saveOilPriceRaw(insertRows);
     console.log(`[OilScheduler] 원본 저장 완료: ${insertRows.length}건`);
 
-    // CSV에 실제로 존재하는 날짜를 기준으로 분석 (오피넷 미게시 날짜 무시)
+    // CSV는 오늘(todayStr) 1일치만 포함 → 전일대비 분석을 위해 DB에서 어제 데이터 보완
     const csvDates = [...new Set(rows.map((r) => r.date))].sort();
     const analysisToday = csvDates[csvDates.length - 1] ?? todayStr;
-    const analysisYesterday = csvDates[csvDates.length - 2] ?? yesterdayStr;
-    console.log(`[OilScheduler] 분석 기준일: ${analysisYesterday} → ${analysisToday} (CSV 내 날짜: ${csvDates.join(", ")})`);
+    const analysisYesterday = yesterdayStr;
 
-    const analysisResults = runAnalysis(rows, analysisToday, analysisYesterday);
+    const dbYesterdayRaw = await storage.getOilPriceRawByDate(analysisYesterday);
+    const dbYesterdayRows: OilPriceRow[] = dbYesterdayRaw.map((r) => ({
+      stationId: r.stationId,
+      stationName: r.stationName,
+      address: r.address ?? "",
+      region: r.region,
+      sido: r.sido,
+      date: r.date,
+      brand: r.brand ?? "",
+      isSelf: r.isSelf,
+      premiumGasoline: r.premiumGasoline ?? null,
+      gasoline: r.gasoline ?? null,
+      diesel: r.diesel ?? null,
+      kerosene: r.kerosene ?? null,
+    }));
+    console.log(`[OilScheduler] 분석 기준일: ${analysisYesterday} → ${analysisToday} (DB 어제 ${dbYesterdayRows.length}건 보완)`);
+
+    const allRows = [...rows, ...dbYesterdayRows];
+    const analysisResults = runAnalysis(allRows, analysisToday, analysisYesterday);
     await storage.saveOilPriceAnalysis(analysisResults);
     console.log(`[OilScheduler] 분석 저장 완료: ${analysisResults.length}건`);
 
