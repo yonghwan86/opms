@@ -185,12 +185,12 @@ async function checkAndRecoverOnStartup(): Promise<void> {
     const kstHour = kstNow.getUTCHours();
     const kstMinute = kstNow.getUTCMinutes();
 
-    // 오전 9:10 이전 → 9:15에 재확인
-    if (kstHour < 9 || (kstHour === 9 && kstMinute < 10)) {
+    // 오전 9:30 이전 → 9:35에 재확인
+    if (kstHour < 9 || (kstHour === 9 && kstMinute < 30)) {
       const targetKST = new Date(kstNow);
-      targetKST.setUTCHours(9, 15, 0, 0);
+      targetKST.setUTCHours(9, 35, 0, 0);
       const delayMs = targetKST.getTime() - kstNow.getTime();
-      console.log(`[OilScheduler] 시작 복구: KST ${kstHour}:${String(kstMinute).padStart(2, "0")} (9:10 이전), ${Math.round(delayMs / 60000)}분 후 재확인`);
+      console.log(`[OilScheduler] 시작 복구: KST ${kstHour}:${String(kstMinute).padStart(2, "0")} (9:30 이전), ${Math.round(delayMs / 60000)}분 후 재확인`);
       setTimeout(() => checkAndRecoverOnStartup(), delayMs);
       return;
     }
@@ -239,13 +239,13 @@ async function checkAndRecoverOnStartup(): Promise<void> {
       return;
     }
 
-    // 9:10 ~ 16:00 → 오늘 오전(09:10 KST 이후) 수집이 이미 성공했으면 건너뜀
+    // 9:30 ~ 16:00 → 오늘 오전(09:30 KST 이후) 수집이 이미 성공했으면 건너뜀
     // (재배포 시 중복 수집 방지. 단, 오전 수집이 없었으면 무조건 실행)
     const morningDates = getMorningDates();
     const lastAnalysisTime = await storage.getLastAnalysisTime(morningDates.today);
-    // 09:10 KST = 00:10 UTC
+    // 09:30 KST = 00:30 UTC
     const todayMorningUTC = new Date(kstNow);
-    todayMorningUTC.setUTCHours(0, 10, 0, 0);
+    todayMorningUTC.setUTCHours(0, 30, 0, 0);
     if (lastAnalysisTime && lastAnalysisTime >= todayMorningUTC) {
       console.log(`[OilScheduler] 시작 복구(오전): 오늘 오전 ${morningDates.today} 분석 이미 완료(${lastAnalysisTime.toISOString()}), 건너뜀`);
       return;
@@ -274,9 +274,9 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
 }
 
 export function startOilScheduler(): void {
-  // 오전 9:10 — 전날 확정값 수집 (무조건 실행, 잠정값 덮어씌움)
-  cron.schedule("10 9 * * *", async () => {
-    console.log("[OilScheduler] 오전 수집 시작 (전날 확정값, 매일 09:10 KST)");
+  // 오전 9:30 — 전날 확정값 수집 (무조건 실행, 잠정값 덮어씌움)
+  cron.schedule("30 9 * * *", async () => {
+    console.log("[OilScheduler] 오전 수집 시작 (전날 확정값, 매일 09:30 KST)");
     await runWithRetryAndNotify({
       source: "오전 정기 수집",
       slot: "morning",
@@ -285,9 +285,9 @@ export function startOilScheduler(): void {
     });
   }, { timezone: "Asia/Seoul" });
 
-  // 오후 16:10 — 당일 잠정값 수집 (오늘 데이터 없을 때만)
-  cron.schedule("10 16 * * *", async () => {
-    console.log("[OilScheduler] 오후 수집 확인 (당일 잠정값, 매일 16:10 KST)");
+  // 오후 16:30 — 당일 잠정값 수집 (오늘 데이터 없을 때만)
+  cron.schedule("30 16 * * *", async () => {
+    console.log("[OilScheduler] 오후 수집 확인 (당일 잠정값, 매일 16:30 KST)");
     const todayStr = getKSTDateStr();
     const availableDates = await storage.getOilAvailableDates();
     const latestAvailable = availableDates[0];
@@ -310,7 +310,7 @@ export function startOilScheduler(): void {
     await fetchOpinetFuelAverages();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:10 / 오후 잠정 16:10 / 유류 평균 1,2,9,12,16,19시 KST)");
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 1,2,9,12,16,19시 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 
