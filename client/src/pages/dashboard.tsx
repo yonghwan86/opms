@@ -580,6 +580,9 @@ export default function DashboardPage() {
               ];
               return (
                 <div className="space-y-2">
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    적용일 <span className="font-bold text-foreground">{cur.effectiveDate}</span>
+                  </p>
                   {rows.map(row => {
                     const curVal = row.cur ? Number(row.cur) : null;
                     const prevVal = row.prev ? Number(row.prev) : null;
@@ -596,7 +599,6 @@ export default function DashboardPage() {
                       </div>
                     );
                   })}
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">적용일: {cur.effectiveDate}</p>
                 </div>
               );
             })() : (
@@ -1082,7 +1084,7 @@ export default function DashboardPage() {
                     )}
                   </div>
                   {/* 개별 목록 */}
-                  {allAlerts.slice(0, 10).map((s) => (
+                  {allAlerts.map((s) => (
                     <div key={s.stationId + s.dir} className={cn("flex gap-3 p-3 rounded-lg border", s.dir === 'rise' ? "bg-red-50 border-red-100" : "bg-blue-50 border-blue-100")}>
                       <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", s.dir === 'rise' ? "bg-red-500" : "bg-blue-500")} />
                       <div className="min-w-0">
