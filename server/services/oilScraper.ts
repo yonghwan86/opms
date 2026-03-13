@@ -82,19 +82,23 @@ export async function downloadOilPriceCSV(
 
     console.log("[OilScraper] 페이지 로딩...");
     await page.goto(DOWNLOAD_PAGE, {
-      waitUntil: "load",
-      timeout: 60000,
+      waitUntil: "domcontentloaded",
+      timeout: 120000,
     });
 
-    // NetFunnel(B1) 완료 대기 — fn_Download 함수가 로드될 때까지 (최대 60초)
+    // NetFunnel(B1) 완료 대기 — fn_Download 함수가 로드될 때까지 (최대 5분)
+    let fnReady = false;
     await page
       .waitForFunction(
         () => typeof (window as any).fn_Download === "function",
-        { timeout: 60000 }
+        { timeout: 300000 }
       )
-      .catch(() => {
-        console.log("[OilScraper] fn_Download 함수 대기 타임아웃 — 계속 진행");
-      });
+      .then(() => { fnReady = true; })
+      .catch(() => {});
+
+    if (!fnReady) {
+      throw new Error("fn_Download 함수 로드 실패 — NetFunnel 타임아웃 (5분 초과)");
+    }
 
     console.log("[OilScraper] fn_Download 함수 확인 완료");
 
