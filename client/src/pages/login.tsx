@@ -111,7 +111,7 @@ function BrandPanel() {
       <div className="relative z-10 p-8 pb-0">
         <img src={kpetroCorporateSrc} alt="한국석유관리원"
           className="h-16 w-auto object-contain rounded-xl"
-          style={{ background: "rgba(255,255,255,0.92)", padding: "10px 20px" }} />
+          style={{ background: "#ffffff", padding: "10px 20px" }} />
       </div>
 
       {/* 대시보드 카드들 */}
