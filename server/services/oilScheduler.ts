@@ -85,10 +85,10 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
   const todayStr = today ?? getDateStr(kstNow);
   const yesterdayStr = yesterday ?? getDateStr(kstYesterday);
 
-  console.log(`[OilScheduler] 수집 시작: ${yesterdayStr} ~ ${todayStr}`);
+  console.log(`[OilScheduler] 수집 시작: ${todayStr} (1일치)`);
 
   try {
-    const buffer = await downloadOilPriceCSV(yesterdayStr, todayStr);
+    const buffer = await downloadOilPriceCSV(todayStr, todayStr);
     if (!buffer) {
       return { success: false, rawCount: 0, analysisCount: 0, today: todayStr, yesterday: yesterdayStr, error: "CSV 다운로드 실패" };
     }
