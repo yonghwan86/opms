@@ -156,8 +156,10 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
 
   if (result.success && result.analysisCount === 0) {
     console.log(`[OilScheduler] ${source}: 원본은 받았으나 분석 데이터 0건 (오피넷 미제공 가능성), 10분 후 재시도`);
+    await sendMasterPush("수집 주의", `${source}: 데이터 수집됐으나 분석 0건 — 10분 후 재시도합니다.`);
   } else {
     console.log(`[OilScheduler] ${source} 실패, 10분 후 재시도 예정`);
+    await sendMasterPush("수집 실패", `${source}: 수집 실패 (${result.error ?? "오류 미상"}) — 10분 후 재시도합니다.`);
   }
 
   setTimeout(async () => {

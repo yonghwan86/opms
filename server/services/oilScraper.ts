@@ -94,7 +94,7 @@ export async function downloadOilPriceCSV(
     // 다운로드 이벤트를 먼저 등록한 후 fn_Download(6) 호출
     console.log("[OilScraper] fn_Download(6) 호출 + 다운로드 대기...");
     const [download] = await Promise.all([
-      page.waitForEvent("download", { timeout: 90000 }),
+      page.waitForEvent("download", { timeout: 150000 }),
       page.evaluate(() => {
         (window as any).fn_Download(6);
       }),
