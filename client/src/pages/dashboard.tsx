@@ -543,6 +543,7 @@ export default function DashboardPage() {
           {/* 석유 최고가격제 */}
           <MetricCard
             title="석유 최고가격제"
+            subtitle={ceilingData[0] ? `적용일 ${ceilingData[0].effectiveDate}` : undefined}
             icon={ShieldCheck}
             iconBg="bg-indigo-600"
             loading={ceilingLoading}
@@ -580,9 +581,6 @@ export default function DashboardPage() {
               ];
               return (
                 <div className="space-y-2">
-                  <p className="text-xs md:text-sm font-semibold text-foreground">
-                    적용일 <span className="font-bold">{cur.effectiveDate}</span>
-                  </p>
                   {rows.map(row => {
                     const curVal = row.cur ? Number(row.cur) : null;
                     const prevVal = row.prev ? Number(row.prev) : null;
