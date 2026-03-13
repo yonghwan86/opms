@@ -542,19 +542,18 @@ export default function DashboardPage() {
           <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance" live>
             {wti ? (
               <>
-                <p className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{fmtUsd(wti.price)}</p>
-                <div className="mt-1">
+                <div className="flex items-center justify-between gap-1.5 overflow-hidden">
+                  <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight shrink-0">{fmtUsd(wti.price)}</p>
+                  {fx && (
+                    <div className="flex flex-col items-end shrink-0 border border-border rounded-lg px-2 py-1 bg-muted/70 dark:bg-muted/50">
+                      <span className="text-[11px] md:text-sm font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
+                      <ChangeChip val={fx.change} unit="원" />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-1.5">
                   <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} decimals={2} />
                 </div>
-                {fx && (
-                  <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 bg-muted/60">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">달러 환율</span>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm font-bold text-foreground whitespace-nowrap">{fmt(Math.round(fx.rate))}원/달러</span>
-                      <ChangeChip val={fx.change} unit="원" percent={fx.changePercent} />
-                    </div>
-                  </div>
-                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">데이터 없음</p>
