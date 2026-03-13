@@ -326,7 +326,7 @@ export default function OilPricesPage() {
         </div>
 
         {/* 탭 */}
-        <div className="w-fit max-w-full md:w-full">
+        <div className="w-fit max-w-full">
         <Tabs value={activeTab} onValueChange={v => handleTabChange(v as AnalysisType)}>
           <div className="relative">
             <div
@@ -487,7 +487,7 @@ function BrandIcon({ brand }: { brand: string | null }) {
 function StationTable({ type, stations, fuelType }: { type: AnalysisType; stations: OilTopStation[]; fuelType?: FuelType }) {
   if (type === "CEILING") {
     return (
-      <table className="w-full text-sm">
+      <table className="w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
@@ -545,7 +545,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
 
   if (type === "HIGH" || type === "LOW") {
     return (
-      <table className="w-full text-sm">
+      <table className="w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
@@ -588,7 +588,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
 
   if (type === "RISE" || type === "FALL") {
     return (
-      <table className="w-full text-sm">
+      <table className="w-auto text-sm">
         <thead>
           <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
             <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
@@ -642,7 +642,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
   // WIDE
   const isDieselKerosene = fuelType === "diesel";
   return (
-    <table className="w-full text-sm">
+    <table className="w-auto text-sm">
       <thead>
         <tr className="bg-muted/50 text-muted-foreground text-xs md:text-sm">
           <th className="text-center py-2.5 px-1.5 md:px-3 font-medium w-10 md:w-14 whitespace-nowrap">순위</th>
