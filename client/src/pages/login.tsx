@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Loader2, ArrowLeft, KeyRound, TrendingUp, TrendingDown, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import kpetroCiSrc from "@assets/kpetro-ci.png";
-import kpetroCorporateSrc from "@assets/코퍼레이트_심볼_1773399471313.jpg";
+import kpetroCorporateSrc from "@assets/한글상하조합_1773399535514.jpg";
 import loginIconSrc from "@assets/file_1773328850418_1773332426820.jpeg";
 
 type Step = "username" | "password" | "setup-password";
@@ -108,9 +108,10 @@ function BrandPanel() {
       </div>
 
       {/* 로고 */}
-      <div className="relative z-10 flex items-center p-8 pb-0">
-        <img src={kpetroCorporateSrc} alt="한국석유관리원" className="h-14 object-contain"
-          style={{ filter: "invert(1) hue-rotate(180deg)", mixBlendMode: "screen" }} />
+      <div className="relative z-10 p-8 pb-0">
+        <img src={kpetroCorporateSrc} alt="한국석유관리원"
+          className="h-16 w-auto object-contain rounded-xl"
+          style={{ background: "rgba(255,255,255,0.92)", padding: "10px 20px" }} />
       </div>
 
       {/* 대시보드 카드들 */}
