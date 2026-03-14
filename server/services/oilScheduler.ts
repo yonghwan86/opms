@@ -179,20 +179,37 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
     await sendMasterPush("수집 실패", `${source}: 수집 실패 (${result.error ?? "오류 미상"}) — 10분 후 재시도합니다.`);
   }
 
+  // 1차 재시도 (10분 후)
   setTimeout(async () => {
-    console.log(`[OilScheduler] ${source} 재시도 시작`);
-    const retry = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
-    console.log(`[OilScheduler] ${source} 재시도 결과:`, retry);
+    console.log(`[OilScheduler] ${source} 1차 재시도 시작`);
+    const retry1 = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
+    console.log(`[OilScheduler] ${source} 1차 재시도 결과:`, retry1);
 
-    if (retry.success && retry.analysisCount > 0) {
-      await sendUserPush(retry.today, pushMessage, slot);
-      await sendMasterPush(`${source} 재시도 성공`, `재시도 수집 완료: 원본 ${retry.rawCount}건, 분석 ${retry.analysisCount}건`);
-    } else {
-      await sendMasterPush(
-        "유가 수집 최종 실패",
-        `${source} 재시도까지 실패했습니다.\n오류: ${retry.error ?? `분석 ${retry.analysisCount}건`}\n수동 수집이 필요합니다.`,
-      );
+    if (retry1.success && retry1.analysisCount > 0) {
+      await sendUserPush(retry1.today, pushMessage, slot);
+      await sendMasterPush(`${source} 1차 재시도 성공`, `재시도 수집 완료: 원본 ${retry1.rawCount}건, 분석 ${retry1.analysisCount}건`);
+      return;
     }
+
+    console.log(`[OilScheduler] ${source} 1차 재시도 실패, 10분 후 2차 재시도 예정`);
+    await sendMasterPush("1차 재시도 실패", `${source}: 1차 재시도 실패 — 10분 후 2차 재시도합니다.`);
+
+    // 2차 재시도 (20분 후)
+    setTimeout(async () => {
+      console.log(`[OilScheduler] ${source} 2차 재시도 시작`);
+      const retry2 = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
+      console.log(`[OilScheduler] ${source} 2차 재시도 결과:`, retry2);
+
+      if (retry2.success && retry2.analysisCount > 0) {
+        await sendUserPush(retry2.today, pushMessage, slot);
+        await sendMasterPush(`${source} 2차 재시도 성공`, `2차 재시도 수집 완료: 원본 ${retry2.rawCount}건, 분석 ${retry2.analysisCount}건`);
+      } else {
+        await sendMasterPush(
+          "유가 수집 최종 실패",
+          `${source} 2차 재시도까지 실패했습니다.\n오류: ${retry2.error ?? `분석 ${retry2.analysisCount}건`}\n수동 수집이 필요합니다.`,
+        );
+      }
+    }, 10 * 60 * 1000);
   }, 10 * 60 * 1000);
 }
 
@@ -322,12 +339,12 @@ export function startOilScheduler(): void {
     });
   }, { timezone: "Asia/Seoul" });
 
-  cron.schedule("0 1,2,9,12,16,19 * * *", async () => {
+  cron.schedule("0 9,12,16,19 * * *", async () => {
     console.log("[OpinetScheduler] 정기 유류 평균 수집 (KST)");
     await fetchOpinetFuelAverages();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 1,2,9,12,16,19시 KST)");
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 
