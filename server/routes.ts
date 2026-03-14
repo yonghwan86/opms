@@ -1001,6 +1001,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/oil-prices/reanalyze — MASTER 전용 DB 원본으로 분석만 재실행 (CSV 재다운로드 없음)
+  app.post("/api/oil-prices/reanalyze", requireMaster, async (req, res) => {
+    try {
+      const { runAnalysisOnlyFromDB } = await import("./services/oilScheduler");
+      const { targetDate, yesterdayDate } = req.body as { targetDate: string; yesterdayDate: string };
+      if (!targetDate || !yesterdayDate) {
+        return res.status(400).json({ message: "targetDate, yesterdayDate 필수" });
+      }
+      const result = await runAnalysisOnlyFromDB(targetDate, yesterdayDate);
+      if (!result.success) {
+        return res.status(502).json({ message: result.error || "분석 재실행 실패" });
+      }
+      res.json(result);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "서버 오류";
+      res.status(500).json({ message: msg });
+    }
+  });
+
   // GET /api/oil-prices/latest-date — 최근 분석 날짜 조회
   app.get("/api/oil-prices/latest-date", requireAuth, async (req, res) => {
     try {

@@ -70,8 +70,91 @@ async function sendMasterPush(title: string, body: string): Promise<void> {
   }
 }
 
+function dbRawToOilPriceRow(r: {
+  stationId: string;
+  stationName: string;
+  address: string | null;
+  region: string;
+  sido: string;
+  date: string;
+  brand: string | null;
+  isSelf: boolean;
+  premiumGasoline: number | null;
+  gasoline: number | null;
+  diesel: number | null;
+  kerosene: number | null;
+}): OilPriceRow {
+  return {
+    stationId: r.stationId,
+    stationName: r.stationName,
+    address: r.address ?? "",
+    region: r.region,
+    sido: r.sido,
+    date: r.date,
+    brand: r.brand ?? "",
+    isSelf: r.isSelf,
+    premiumGasoline: r.premiumGasoline ?? null,
+    gasoline: r.gasoline ?? null,
+    diesel: r.diesel ?? null,
+    kerosene: r.kerosene ?? null,
+  };
+}
+
+async function runAnalysisWithDbRetry(
+  allRows: OilPriceRow[],
+  analysisToday: string,
+  analysisYesterday: string,
+  maxAttempts = 3,
+  retryDelayMs = 30_000,
+): Promise<number> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const analysisResults = runAnalysis(allRows, analysisToday, analysisYesterday);
+      await storage.saveOilPriceAnalysis(analysisResults);
+      if (attempt > 1) {
+        console.log(`[OilScheduler] 분석 저장 ${attempt}차 시도 성공: ${analysisResults.length}건`);
+      }
+      return analysisResults.length;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt < maxAttempts) {
+        console.warn(`[OilScheduler] 분석 저장 ${attempt}차 실패 (${msg}), ${retryDelayMs / 1000}초 후 재시도`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      } else {
+        throw err;
+      }
+    }
+  }
+  return 0;
+}
+
+export async function runAnalysisOnlyFromDB(targetDate: string, yesterdayDate: string): Promise<{
+  success: boolean;
+  analysisCount: number;
+  error?: string;
+}> {
+  console.log(`[OilScheduler] DB 원본 분석 재실행: ${yesterdayDate} → ${targetDate}`);
+  try {
+    const todayRaw = await storage.getOilPriceRawByDate(targetDate);
+    if (todayRaw.length === 0) {
+      return { success: false, analysisCount: 0, error: `DB에 ${targetDate} 원본 데이터 없음` };
+    }
+    const yesterdayRaw = await storage.getOilPriceRawByDate(yesterdayDate);
+    const allRows = [...todayRaw.map(dbRawToOilPriceRow), ...yesterdayRaw.map(dbRawToOilPriceRow)];
+    console.log(`[OilScheduler] DB 원본: 오늘 ${todayRaw.length}건, 어제 ${yesterdayRaw.length}건`);
+    const analysisCount = await runAnalysisWithDbRetry(allRows, targetDate, yesterdayDate);
+    console.log(`[OilScheduler] DB 원본 분석 저장 완료: ${analysisCount}건`);
+    return { success: true, analysisCount };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[OilScheduler] DB 원본 분석 오류:", msg);
+    return { success: false, analysisCount: 0, error: msg };
+  }
+}
+
 export async function runOilPriceJob(today?: string, yesterday?: string): Promise<{
   success: boolean;
+  rawSaved: boolean;
   rawCount: number;
   analysisCount: number;
   today: string;
@@ -87,10 +170,15 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
 
   console.log(`[OilScheduler] 수집 시작: ${todayStr} (1일치)`);
 
+  let rawSaved = false;
+  let rawCount = 0;
+  let analysisToday = todayStr;
+  const analysisYesterday = yesterdayStr;
+
   try {
     const buffer = await downloadOilPriceCSV(todayStr, todayStr);
     if (!buffer) {
-      return { success: false, rawCount: 0, analysisCount: 0, today: todayStr, yesterday: yesterdayStr, error: "CSV 다운로드 실패" };
+      return { success: false, rawSaved: false, rawCount: 0, analysisCount: 0, today: todayStr, yesterday: yesterdayStr, error: "CSV 다운로드 실패" };
     }
 
     const rows = parseOilPriceCSV(buffer);
@@ -98,46 +186,33 @@ export async function runOilPriceJob(today?: string, yesterday?: string): Promis
 
     const insertRows = toInsertOilPriceRaw(rows);
     await storage.saveOilPriceRaw(insertRows);
-    console.log(`[OilScheduler] 원본 저장 완료: ${insertRows.length}건`);
+    rawCount = insertRows.length;
+    rawSaved = true;
+    console.log(`[OilScheduler] 원본 저장 완료: ${rawCount}건`);
 
-    // CSV는 오늘(todayStr) 1일치만 포함 → 전일대비 분석을 위해 DB에서 어제 데이터 보완
     const csvDates = [...new Set(rows.map((r) => r.date))].sort();
-    const analysisToday = csvDates[csvDates.length - 1] ?? todayStr;
-    const analysisYesterday = yesterdayStr;
+    analysisToday = csvDates[csvDates.length - 1] ?? todayStr;
 
     const dbYesterdayRaw = await storage.getOilPriceRawByDate(analysisYesterday);
-    const dbYesterdayRows: OilPriceRow[] = dbYesterdayRaw.map((r) => ({
-      stationId: r.stationId,
-      stationName: r.stationName,
-      address: r.address ?? "",
-      region: r.region,
-      sido: r.sido,
-      date: r.date,
-      brand: r.brand ?? "",
-      isSelf: r.isSelf,
-      premiumGasoline: r.premiumGasoline ?? null,
-      gasoline: r.gasoline ?? null,
-      diesel: r.diesel ?? null,
-      kerosene: r.kerosene ?? null,
-    }));
+    const dbYesterdayRows = dbYesterdayRaw.map(dbRawToOilPriceRow);
     console.log(`[OilScheduler] 분석 기준일: ${analysisYesterday} → ${analysisToday} (DB 어제 ${dbYesterdayRows.length}건 보완)`);
 
     const allRows = [...rows, ...dbYesterdayRows];
-    const analysisResults = runAnalysis(allRows, analysisToday, analysisYesterday);
-    await storage.saveOilPriceAnalysis(analysisResults);
-    console.log(`[OilScheduler] 분석 저장 완료: ${analysisResults.length}건`);
+    const analysisCount = await runAnalysisWithDbRetry(allRows, analysisToday, analysisYesterday);
+    console.log(`[OilScheduler] 분석 저장 완료: ${analysisCount}건`);
 
     return {
       success: true,
-      rawCount: insertRows.length,
-      analysisCount: analysisResults.length,
+      rawSaved: true,
+      rawCount,
+      analysisCount,
       today: analysisToday,
       yesterday: analysisYesterday,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[OilScheduler] 오류:", msg);
-    return { success: false, rawCount: 0, analysisCount: 0, today: todayStr, yesterday: yesterdayStr, error: msg };
+    return { success: false, rawSaved, rawCount, analysisCount: 0, today: analysisToday, yesterday: analysisYesterday, error: msg };
   }
 }
 
@@ -171,23 +246,40 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
     return;
   }
 
+  // 원본은 저장됐지만 분석 실패 → 분석만 재시도 (Chrome 불필요)
+  const analysisFailed = result.rawSaved && !result.success;
+
   if (result.success && result.analysisCount === 0) {
     console.log(`[OilScheduler] ${source}: 원본은 받았으나 분석 데이터 0건 (오피넷 미제공 가능성), 10분 후 재시도`);
     await sendMasterPush("수집 주의", `${source}: 데이터 수집됐으나 분석 0건 — 10분 후 재시도합니다.`);
+  } else if (analysisFailed) {
+    console.log(`[OilScheduler] ${source}: 원본 저장 성공, 분석만 실패 (${result.error ?? "오류 미상"}) — 분석만 재시도합니다.`);
+    await sendMasterPush("분석 저장 실패", `${source}: 원본 ${result.rawCount}건 저장 성공, 분석 저장 실패 (${result.error ?? "오류 미상"}) — 분석만 재시도합니다.`);
   } else {
     console.log(`[OilScheduler] ${source} 실패, 10분 후 재시도 예정`);
     await sendMasterPush("수집 실패", `${source}: 수집 실패 (${result.error ?? "오류 미상"}) — 10분 후 재시도합니다.`);
   }
 
+  const retryFn = async (label: string) => {
+    if (analysisFailed || result.rawSaved) {
+      // 원본이 DB에 있으면 분석만 재실행
+      console.log(`[OilScheduler] ${source} ${label}: 분석만 재실행 (DB 원본 사용)`);
+      return runAnalysisOnlyFromDB(result.today, result.yesterday);
+    }
+    // 원본 저장도 실패했으면 전체 재수집
+    console.log(`[OilScheduler] ${source} ${label}: 전체 재수집`);
+    return runOilPriceJob(jobDates?.today, jobDates?.yesterday);
+  };
+
   // 1차 재시도 (10분 후)
   setTimeout(async () => {
     console.log(`[OilScheduler] ${source} 1차 재시도 시작`);
-    const retry1 = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
+    const retry1 = await retryFn("1차 재시도");
     console.log(`[OilScheduler] ${source} 1차 재시도 결과:`, retry1);
 
     if (retry1.success && retry1.analysisCount > 0) {
-      await sendUserPush(retry1.today, pushMessage, slot);
-      await sendMasterPush(`${source} 1차 재시도 성공`, `재시도 수집 완료: 원본 ${retry1.rawCount}건, 분석 ${retry1.analysisCount}건`);
+      await sendUserPush(result.today, pushMessage, slot);
+      await sendMasterPush(`${source} 1차 재시도 성공`, `재시도 완료: 분석 ${retry1.analysisCount}건`);
       return;
     }
 
@@ -197,12 +289,12 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
     // 2차 재시도 (20분 후)
     setTimeout(async () => {
       console.log(`[OilScheduler] ${source} 2차 재시도 시작`);
-      const retry2 = await runOilPriceJob(jobDates?.today, jobDates?.yesterday);
+      const retry2 = await retryFn("2차 재시도");
       console.log(`[OilScheduler] ${source} 2차 재시도 결과:`, retry2);
 
       if (retry2.success && retry2.analysisCount > 0) {
-        await sendUserPush(retry2.today, pushMessage, slot);
-        await sendMasterPush(`${source} 2차 재시도 성공`, `2차 재시도 수집 완료: 원본 ${retry2.rawCount}건, 분석 ${retry2.analysisCount}건`);
+        await sendUserPush(result.today, pushMessage, slot);
+        await sendMasterPush(`${source} 2차 재시도 성공`, `2차 재시도 완료: 분석 ${retry2.analysisCount}건`);
       } else {
         await sendMasterPush(
           "유가 수집 최종 실패",

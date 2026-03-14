@@ -563,6 +563,7 @@ export class PostgresStorage implements IStorage {
             gasoline: sql`EXCLUDED.gasoline`,
             diesel: sql`EXCLUDED.diesel`,
             kerosene: sql`EXCLUDED.kerosene`,
+            createdAt: sql`now()`,
           },
         });
     }
