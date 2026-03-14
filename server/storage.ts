@@ -3,7 +3,7 @@ import { eq, and, ilike, or, desc, asc, count, sql, inArray } from "drizzle-orm"
 import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs, pageViews,
-  oilPriceRaw, oilPriceAnalysis,
+  oilPriceRaw, oilPriceAnalysis, oilCollectionLogs,
   pushSubscriptions, oilCeilingPrices,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
@@ -14,6 +14,7 @@ import {
   type InsertOilPriceAnalysis, type OilPriceAnalysis,
   type PushSubscription, type InsertPushSubscription,
   type OilCeilingPrices, type InsertOilCeilingPrices,
+  type InsertOilCollectionLog, type OilCollectionLog,
 } from "@shared/schema";
 
 // ─── 시/도 전체명 → 오피넷 축약명 매핑 ────────────────────────────────────────
@@ -178,6 +179,10 @@ export interface IStorage {
   // 석유 최고가격제
   getCeilingPrices(): Promise<OilCeilingPrices[]>;
   setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices>;
+
+  // 유가 수집 이력 로그
+  saveOilCollectionLog(log: InsertOilCollectionLog): Promise<void>;
+  getOilCollectionLogs(params?: { page?: number; pageSize?: number; status?: string; jobType?: string }): Promise<{ data: OilCollectionLog[]; total: number; page: number; totalPages: number }>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -1116,6 +1121,25 @@ export class PostgresStorage implements IStorage {
   async setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices> {
     const [row] = await db.insert(oilCeilingPrices).values(data).returning();
     return row;
+  }
+
+  // ── 유가 수집 이력 로그 ────────────────────────────────────────────────────
+  async saveOilCollectionLog(log: InsertOilCollectionLog): Promise<void> {
+    await db.insert(oilCollectionLogs).values(log);
+  }
+
+  async getOilCollectionLogs(params: { page?: number; pageSize?: number; status?: string; jobType?: string } = {}): Promise<{ data: OilCollectionLog[]; total: number; page: number; totalPages: number }> {
+    const { page = 1, pageSize = 30, status, jobType } = params;
+    const offset = (page - 1) * pageSize;
+    const conditions = [];
+    if (status) conditions.push(eq(oilCollectionLogs.status, status));
+    if (jobType) conditions.push(eq(oilCollectionLogs.jobType, jobType));
+    const where = conditions.length ? and(...conditions) : undefined;
+    const [rows, [{ total }]] = await Promise.all([
+      db.select().from(oilCollectionLogs).where(where).orderBy(desc(oilCollectionLogs.createdAt)).limit(pageSize).offset(offset),
+      db.select({ total: count() }).from(oilCollectionLogs).where(where),
+    ]);
+    return { data: rows, total: Number(total), page, totalPages: Math.ceil(Number(total) / pageSize) };
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────

@@ -1001,6 +1001,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/oil-collection-logs — MASTER 전용 수집 이력 조회
+  app.get("/api/oil-collection-logs", requireMaster, async (req, res) => {
+    try {
+      const page = Number(req.query.page) || 1;
+      const pageSize = Number(req.query.pageSize) || 30;
+      const status = req.query.status as string | undefined;
+      const jobType = req.query.jobType as string | undefined;
+      const result = await storage.getOilCollectionLogs({ page, pageSize, status: status || undefined, jobType: jobType || undefined });
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // POST /api/oil-prices/reanalyze — MASTER 전용 DB 원본으로 분석만 재실행 (CSV 재다운로드 없음)
   app.post("/api/oil-prices/reanalyze", requireMaster, async (req, res) => {
     try {

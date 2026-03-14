@@ -181,6 +181,27 @@ export const insertOilCeilingPricesSchema = createInsertSchema(oilCeilingPrices)
 export type InsertOilCeilingPrices = z.infer<typeof insertOilCeilingPricesSchema>;
 export type OilCeilingPrices = typeof oilCeilingPrices.$inferSelect;
 
+// ─── 유가 수집 이력 로그 (Oil Collection Logs) ───────────────────────────────
+export const oilCollectionLogs = pgTable("oil_collection_logs", {
+  id: serial("id").primaryKey(),
+  jobType: varchar("job_type", { length: 50 }).notNull(),
+  // scheduled_morning | scheduled_afternoon | manual | reanalyze | retry_1st | retry_2nd
+  status: varchar("status", { length: 20 }).notNull(),
+  // success | failed | partial (원본 성공, 분석 실패)
+  targetDate: varchar("target_date", { length: 8 }),
+  yesterdayDate: varchar("yesterday_date", { length: 8 }),
+  rawCount: integer("raw_count").default(0),
+  analysisCount: integer("analysis_count").default(0),
+  rawDurationMs: integer("raw_duration_ms"),
+  analysisDurationMs: integer("analysis_duration_ms"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOilCollectionLogSchema = createInsertSchema(oilCollectionLogs).omit({ id: true, createdAt: true });
+export type InsertOilCollectionLog = z.infer<typeof insertOilCollectionLogSchema>;
+export type OilCollectionLog = typeof oilCollectionLogs.$inferSelect;
+
 // ─── 푸시 구독 (Push Subscriptions) ─────────────────────────────────────────
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),
