@@ -220,37 +220,22 @@ export default function OilPricesPage() {
   // 날짜 기본값 설정 (최신 날짜)
   const resolvedDate = selectedDate || availableDates[0] || "";
 
-  // 관할 시/도 목록 조회 (HQ_USER 전용 — 권한에 등록된 시/도만)
-  const { data: permittedSidos = [] } = useQuery<string[]>({
-    queryKey: ["/api/users/my-permitted-regions"],
+  // 관할 세부 시/군/구 목록 조회 (HQ_USER 전용 — 권한 기준 한 단계 세분화)
+  const { data: subregions = [] } = useQuery<string[]>({
+    queryKey: ["/api/oil-prices/subregions", resolvedDate],
     queryFn: () =>
-      fetch(`/api/users/my-permitted-regions`, { credentials: "include" })
-        .then(r => r.json())
-        .then((list: string[] | null) => {
-          if (!list) return [];
-          // SIDO_LIST 순서 유지하며 중복 제거
-          const sidoSet = new Set<string>();
-          list.forEach(r => {
-            if (!r.includes(" ")) {
-              // 시/도 단위 권한 (e.g. "서울", "경기")
-              sidoSet.add(r);
-            } else {
-              // 시/군/구 단위 권한에서 상위 시/도 추출 (e.g. "충북 청주시" → "충북")
-              sidoSet.add(r.split(" ")[0]);
-            }
-          });
-          // SIDO_LIST 순으로 정렬
-          return SIDO_LIST.filter(s => sidoSet.has(s));
-        }),
-    enabled: !isMaster,
-    staleTime: 10 * 60 * 1000,
+      fetch(`/api/oil-prices/subregions?date=${resolvedDate}`, { credentials: "include" })
+        .then(r => r.json()),
+    enabled: !isMaster && !!resolvedDate,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // 지역 파라미터 조합 — HQ_USER도 sido 파라미터 사용 (마스터와 동일)
+  // 지역 파라미터 조합
   const regionParam = useMemo(() => {
     if (selectedRegion === "ALL") return "";
-    return `&sido=${encodeURIComponent(selectedRegion)}`;
-  }, [selectedRegion]);
+    if (isMaster) return `&sido=${encodeURIComponent(selectedRegion)}`;
+    return `&region=${encodeURIComponent(selectedRegion)}`;
+  }, [selectedRegion, isMaster]);
 
   // TOP 주유소 쿼리
   const stationsQueryKey = resolvedDate
@@ -263,7 +248,7 @@ export default function OilPricesPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // 지역 드롭다운 옵션 — HQ_USER도 시/도 단위로 표시 (마스터와 동일한 UX)
+  // 지역 드롭다운 옵션
   const regionOptions = useMemo(() => {
     if (isMaster) {
       return [
@@ -271,16 +256,18 @@ export default function OilPricesPage() {
         ...SIDO_LIST.map(s => ({ value: s, label: s })),
       ];
     } else {
-      // 권한에 등록된 시/도만 표시. 빈 경우 = 전국 관할 (HQ 직속)
-      const sidoItems = permittedSidos.length > 0
-        ? permittedSidos.map(s => ({ value: s, label: s }))
-        : SIDO_LIST.map(s => ({ value: s, label: s }));
+      // HQ_USER: 권한 한 단계 세분화 (도→시군, 시→구)
+      // value = "경기 성남시" (필터용 전체 값), label = "성남시" (표시용)
+      const subItems = subregions.map(r => ({
+        value: r,
+        label: r.includes(" ") ? r.split(" ").slice(1).join(" ") : r,
+      }));
       return [
         { value: "ALL", label: "전체 (내 관할)" },
-        ...sidoItems,
+        ...subItems,
       ];
     }
-  }, [isMaster, permittedSidos]);
+  }, [isMaster, subregions]);
 
   // 현재 탭 정보
   const currentTab = TABS.find(t => t.type === activeTab)!;
