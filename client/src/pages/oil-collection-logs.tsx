@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, DatabaseZap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, DatabaseZap, CheckCircle2, XCircle, AlertTriangle, Download } from "lucide-react";
 
 interface OilCollectionLog {
   id: number;
@@ -88,10 +88,37 @@ function formatCreatedAt(iso: string): string {
   return `${mm}-${dd} ${hh}:${min}`;
 }
 
+function downloadCsv(logs: OilCollectionLog[]) {
+  const headers = ["수집시각", "유형", "결과", "대상날짜", "원본건수", "분석건수", "수집소요(초)", "분석소요(초)", "오류내용"];
+  const rows = logs.map(log => [
+    formatCreatedAt(log.createdAt),
+    JOB_TYPE_LABELS[log.jobType] ?? log.jobType,
+    log.status === "success" ? "성공" : log.status === "partial" ? "부분성공" : "실패",
+    formatDate(log.targetDate),
+    log.rawCount ?? "",
+    log.analysisCount ?? "",
+    log.rawDurationMs != null ? (log.rawDurationMs / 1000).toFixed(1) : "",
+    log.analysisDurationMs != null ? (log.analysisDurationMs / 1000).toFixed(1) : "",
+    log.errorMessage ?? "",
+  ]);
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `유가수집이력_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function OilCollectionLogsPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterJobType, setFilterJobType] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [downloading, setDownloading] = useState(false);
 
   const params = new URLSearchParams({ page: String(page), pageSize: "30" });
   if (filterStatus !== "all") params.set("status", filterStatus);
@@ -102,6 +129,20 @@ export default function OilCollectionLogsPage() {
     queryFn: () => fetch(`/api/oil-collection-logs?${params.toString()}`).then(r => r.json()),
   });
 
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const allParams = new URLSearchParams({ page: "1", pageSize: "10000" });
+      if (filterStatus !== "all") allParams.set("status", filterStatus);
+      if (filterJobType !== "all") allParams.set("jobType", filterJobType);
+      const res = await fetch(`/api/oil-collection-logs?${allParams.toString()}`);
+      const result: PaginatedResult<OilCollectionLog> = await res.json();
+      downloadCsv(result.data);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const successCount = data?.data.filter(d => d.status === "success").length ?? 0;
   const partialCount = data?.data.filter(d => d.status === "partial").length ?? 0;
   const failedCount = data?.data.filter(d => d.status === "failed").length ?? 0;
@@ -109,9 +150,22 @@ export default function OilCollectionLogsPage() {
   return (
     <Layout>
       <PageHeader title="유가 수집 이력" description="유가 데이터 수집·분석 이력을 확인합니다.">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <DatabaseZap className="w-4 h-4" />
-          <span>총 {data?.total ?? 0}건</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <DatabaseZap className="w-4 h-4" />
+            <span>총 {data?.total ?? 0}건</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            disabled={downloading || !data || data.total === 0}
+            data-testid="button-download-csv"
+            className="gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            {downloading ? "다운로드 중..." : "CSV"}
+          </Button>
         </div>
       </PageHeader>
 
