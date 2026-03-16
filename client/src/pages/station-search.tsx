@@ -344,7 +344,10 @@ export default function StationSearchPage() {
                   <th className="py-3 px-3 text-left whitespace-nowrap w-[336px]">상호</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap w-12">상표</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap w-10">셀프</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap hidden md:table-cell w-48">주소</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap w-48">
+                    <span className="md:hidden">지역</span>
+                    <span className="hidden md:inline">주소</span>
+                  </th>
                   <th className="py-3 px-2 text-right whitespace-nowrap">
                     현재가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
@@ -384,9 +387,12 @@ export default function StationSearchPage() {
                           ? <span className="text-green-600 font-medium">✓</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs w-48 max-w-[12rem] overflow-hidden">
-                        <span className="block truncate" title={row.address ?? ""}>
+                      <td className="py-2.5 px-3 text-muted-foreground text-xs w-48 max-w-[12rem] overflow-hidden">
+                        <span className="hidden md:block truncate" title={row.address ?? ""}>
                           {row.address ?? "—"}
+                        </span>
+                        <span className="md:hidden whitespace-nowrap">
+                          {row.region ?? "—"}
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
