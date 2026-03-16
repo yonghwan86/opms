@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -220,6 +220,18 @@ export default function StationSearchPage() {
 
   const fuelLabel = FUELS.find(f => f.type === fuel)?.label ?? "";
 
+  const stationGroups = useMemo(() => {
+    const map = new Map<string, StationSearchRow[]>();
+    for (const row of rows) {
+      if (!map.has(row.stationId)) map.set(row.stationId, []);
+      map.get(row.stationId)!.push(row);
+    }
+    return Array.from(map.entries()).map(([stationId, groupRows]) => ({
+      stationId,
+      rows: [...groupRows].sort((a, b) => b.date.localeCompare(a.date)),
+    }));
+  }, [rows]);
+
   return (
     <Layout>
       <PageHeader
@@ -344,7 +356,7 @@ export default function StationSearchPage() {
           <div className="relative" style={{ overflow: "hidden" }}>
           <div className="rounded-xl border bg-card" style={{ overflow: "hidden" }}>
           <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }} className="[&::-webkit-scrollbar]:hidden">
-            <table className="text-sm" style={{ width: "max-content", minWidth: "100%" }}>
+            <table className="text-sm" style={{ width: "max-content" }}>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap">일자</th>
@@ -365,60 +377,69 @@ export default function StationSearchPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, idx) => {
-                  const price   = getPrice(row);
-                  const ceiling = getCeiling(row);
-                  const excess  = getExcess(row);
-                  return (
-                    <tr
-                      key={`${row.stationId}-${row.date}`}
-                      data-testid={`row-station-${row.stationId}-${row.date}`}
-                      className={cn(
-                        "border-b last:border-0 transition-colors hover:bg-muted/30",
-                        idx % 2 === 0 ? "bg-background" : "bg-muted/10",
-                      )}
-                    >
-                      <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
-                        {formatDate(row.date)}
-                      </td>
-                      <td className="py-2.5 px-3 font-medium whitespace-nowrap">
-                        {row.stationName}
-                      </td>
-                      <td className="py-2.5 px-2 text-center">
-                        <BrandIcon brand={row.brand} />
-                      </td>
-                      <td className="py-2.5 px-2 text-center text-xs">
-                        {row.isSelf
-                          ? <span className="text-green-600 font-medium">✓</span>
-                          : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="py-2.5 px-3 text-muted-foreground text-xs whitespace-nowrap">
-                        <span className="hidden md:inline">{row.address ?? "—"}</span>
-                        <span className="md:hidden">{row.region ?? "—"}</span>
-                      </td>
-                      <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
-                        {price != null
-                          ? <span>{price.toLocaleString("ko-KR")}원</span>
-                          : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="py-2.5 px-2 text-right whitespace-nowrap text-muted-foreground">
-                        {formatPrice(ceiling)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
-                        {excess == null
-                          ? <span className="text-muted-foreground">—</span>
-                          : excess > 0
-                            ? <span className="text-red-500">+{excess.toLocaleString("ko-KR")}원</span>
-                            : <span className="text-muted-foreground">{excess.toLocaleString("ko-KR")}원</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {stationGroups.map((group, groupIdx) => (
+                  <Fragment key={group.stationId}>
+                    {groupIdx > 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-0 border-t-4 border-muted/60" />
+                      </tr>
+                    )}
+                    {group.rows.map((row, rowIdx) => {
+                      const price   = getPrice(row);
+                      const ceiling = getCeiling(row);
+                      const excess  = getExcess(row);
+                      return (
+                        <tr
+                          key={`${row.stationId}-${row.date}`}
+                          data-testid={`row-station-${row.stationId}-${row.date}`}
+                          className={cn(
+                            "border-b last:border-0 transition-colors hover:bg-muted/30",
+                            rowIdx % 2 === 0 ? "bg-background" : "bg-muted/10",
+                          )}
+                        >
+                          <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
+                            {formatDate(row.date)}
+                          </td>
+                          <td className="py-2.5 px-3 font-medium whitespace-nowrap">
+                            {row.stationName}
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <BrandIcon brand={row.brand} />
+                          </td>
+                          <td className="py-2.5 px-2 text-center text-xs">
+                            {row.isSelf
+                              ? <span className="text-green-600 font-medium">✓</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-muted-foreground text-xs whitespace-nowrap">
+                            <span className="hidden md:inline">{row.address ?? "—"}</span>
+                            <span className="md:hidden">{row.region ?? "—"}</span>
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
+                            {price != null
+                              ? <span>{price.toLocaleString("ko-KR")}원</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="py-2.5 px-2 text-right whitespace-nowrap text-muted-foreground">
+                            {formatPrice(ceiling)}
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
+                            {excess == null
+                              ? <span className="text-muted-foreground">—</span>
+                              : excess > 0
+                                ? <span className="text-red-500">+{excess.toLocaleString("ko-KR")}원</span>
+                                : <span className="text-muted-foreground">{excess.toLocaleString("ko-KR")}원</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>
           <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-muted/20">
-            총 {rows.length}건 · 최근 10일 데이터 기준
+            총 {stationGroups.length}개 업체 · 최근 10일 데이터 기준
           </div>
           </div>
           <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
