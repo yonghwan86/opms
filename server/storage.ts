@@ -150,6 +150,7 @@ export interface IStorage {
   }): Promise<OilTopStation[]>;
   getOilAvailableDates(): Promise<string[]>;
   getLastAnalysisTime(date: string): Promise<Date | null>;
+  hasSuccessfulMorningLog(targetDate: string, sinceUTC: Date): Promise<boolean>;
   getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }>;
   getOilSubregions(date: string, permitted: { sidoList: string[]; regionList: string[] }): Promise<string[]>;
 
@@ -769,6 +770,18 @@ export class PostgresStorage implements IStorage {
     );
     const val = (result.rows[0] as any)?.last_time;
     return val ? new Date(val) : null;
+  }
+
+  async hasSuccessfulMorningLog(targetDate: string, sinceUTC: Date): Promise<boolean> {
+    const result = await db.execute(
+      sql`SELECT COUNT(*) AS cnt FROM oil_collection_logs
+          WHERE target_date = ${targetDate}
+            AND status = 'success'
+            AND job_type LIKE 'scheduled_morning%'
+            AND created_at >= ${sinceUTC.toISOString()}`
+    );
+    const cnt = Number((result.rows[0] as any)?.cnt ?? 0);
+    return cnt > 0;
   }
 
   async getUserPermittedRegions(userId: number): Promise<{ sidoList: string[]; regionList: string[] }> {

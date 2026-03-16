@@ -382,15 +382,15 @@ async function checkAndRecoverOnStartup(): Promise<void> {
       return;
     }
 
-    // 9:30 ~ 16:00 → 오늘 오전(09:30 KST 이후) 수집이 이미 성공했으면 건너뜀
-    // (재배포 시 중복 수집 방지. 단, 오전 수집이 없었으면 무조건 실행)
+    // 9:30 ~ 16:00 → 오늘 오전(09:30 KST 이후) 수집 성공 로그가 있으면 건너뜀
+    // oil_collection_logs 기반으로 체크 (oil_price_analysis DELETE→INSERT 공백 문제 방지)
     const morningDates = getMorningDates();
-    const lastAnalysisTime = await storage.getLastAnalysisTime(morningDates.today);
-    // 09:30 KST = 00:30 UTC
+    // 09:30 KST = 00:30 UTC. kstNow는 9h 앞당긴 Date이므로 같은 날짜 UTC 00:30으로 세팅
     const todayMorningUTC = new Date(kstNow);
     todayMorningUTC.setUTCHours(0, 30, 0, 0);
-    if (lastAnalysisTime && lastAnalysisTime >= todayMorningUTC) {
-      console.log(`[OilScheduler] 시작 복구(오전): 오늘 오전 ${morningDates.today} 분석 이미 완료(${lastAnalysisTime.toISOString()}), 건너뜀`);
+    const alreadyDone = await storage.hasSuccessfulMorningLog(morningDates.today, todayMorningUTC);
+    if (alreadyDone) {
+      console.log(`[OilScheduler] 시작 복구(오전): 오늘 오전 ${morningDates.today} 수집 성공 로그 확인됨, 건너뜀`);
       return;
     }
     console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 오늘 오전 수집 미완료 → 수집 시작`);
