@@ -188,6 +188,26 @@ export interface IStorage {
   // 만족도 조사
   saveSatisfaction(userId: number, rating: string): Promise<void>;
   hasSatisfactionToday(userId: number): Promise<boolean>;
+
+  // 주유소 가격 검색
+  searchStations(params: { name: string; sido?: string }): Promise<StationSearchRow[]>;
+}
+
+export interface StationSearchRow {
+  date: string;
+  stationId: string;
+  stationName: string;
+  brand: string | null;
+  isSelf: boolean;
+  address: string | null;
+  region: string;
+  sido: string;
+  gasoline: number | null;
+  diesel: number | null;
+  kerosene: number | null;
+  ceilingGasoline: number | null;
+  ceilingDiesel: number | null;
+  ceilingKerosene: number | null;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -1175,6 +1195,61 @@ export class PostgresStorage implements IStorage {
             AND created_at >= ${todayStartUTC.toISOString()}`
     );
     return Number((result.rows[0] as any)?.cnt ?? 0) > 0;
+  }
+
+  // ── 주유소 가격 검색 ──────────────────────────────────────────────────────
+  async searchStations(params: { name: string; sido?: string }): Promise<StationSearchRow[]> {
+    const { name, sido } = params;
+    const sidoCond = sido ? sql` AND sido = ${sido}` : sql``;
+    const result = await db.execute(sql`
+      WITH latest_ceiling AS (
+        SELECT gasoline, diesel, kerosene
+        FROM oil_ceiling_prices
+        ORDER BY created_at DESC
+        LIMIT 1
+      ),
+      matching AS (
+        SELECT DISTINCT station_id
+        FROM oil_price_raw
+        WHERE station_name ILIKE ${'%' + name + '%'}
+        ${sidoCond}
+      ),
+      latest_dates AS (
+        SELECT DISTINCT date
+        FROM oil_price_raw
+        WHERE station_id IN (SELECT station_id FROM matching)
+        ORDER BY date DESC
+        LIMIT 10
+      )
+      SELECT
+        r.date, r.station_id, r.station_name, r.brand, r.is_self,
+        r.address, r.region, r.sido,
+        r.gasoline, r.diesel, r.kerosene,
+        c.gasoline AS ceiling_gasoline,
+        c.diesel   AS ceiling_diesel,
+        c.kerosene AS ceiling_kerosene
+      FROM oil_price_raw r
+      CROSS JOIN latest_ceiling c
+      WHERE r.station_id IN (SELECT station_id FROM matching)
+        AND r.date IN (SELECT date FROM latest_dates)
+      ORDER BY r.date DESC, r.station_name
+    `);
+    return (result.rows as any[]).map(row => ({
+      date:            row.date,
+      stationId:       row.station_id,
+      stationName:     row.station_name,
+      brand:           row.brand ?? null,
+      isSelf:          row.is_self,
+      address:         row.address ?? null,
+      region:          row.region,
+      sido:            row.sido,
+      gasoline:        row.gasoline != null ? Number(row.gasoline) : null,
+      diesel:          row.diesel   != null ? Number(row.diesel)   : null,
+      kerosene:        row.kerosene != null ? Number(row.kerosene) : null,
+      ceilingGasoline: row.ceiling_gasoline != null ? Number(row.ceiling_gasoline) : null,
+      ceilingDiesel:   row.ceiling_diesel   != null ? Number(row.ceiling_diesel)   : null,
+      ceilingKerosene: row.ceiling_kerosene != null ? Number(row.ceiling_kerosene) : null,
+    }));
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────

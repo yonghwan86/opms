@@ -1170,6 +1170,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/station-search — 주유소 가격 검색
+  app.get("/api/station-search", requireAuth, async (req, res) => {
+    try {
+      const { name, sido } = req.query as Record<string, string>;
+      if (!name || name.trim().length < 1) {
+        return res.status(400).json({ message: "name 파라미터가 필요합니다." });
+      }
+      const rows = await storage.searchStations({
+        name: name.trim(),
+        sido: sido && sido !== "all" ? sido : undefined,
+      });
+      res.json(rows);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // ─── 대시보드 유가 분석 API ─────────────────────────────────────────────────
 
   // GET /api/dashboard/wti — WTI 국제 유가 (Yahoo Finance)
