@@ -1566,6 +1566,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── 만족도 조사 ────────────────────────────────────────────────────────────
+  // GET /api/satisfaction/list — 관리자 전체 조회 (MASTER only)
+  app.get("/api/satisfaction/list", requireMaster, async (req, res) => {
+    try {
+      const page = Math.max(1, parseInt(String(req.query.page ?? "1")));
+      const pageSize = Math.max(1, Math.min(100, parseInt(String(req.query.pageSize ?? "20"))));
+      const search = req.query.search ? String(req.query.search) : undefined;
+      const result = await storage.getSatisfactionList({ page, pageSize, search });
+      const totalPages = Math.ceil(result.total / pageSize);
+      res.json({ data: result.data, total: result.total, page, totalPages });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // GET /api/satisfaction/today — 오늘(KST) 이미 응답했는지 확인
   app.get("/api/satisfaction/today", requireAuth, async (req, res) => {
     try {

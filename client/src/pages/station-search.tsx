@@ -416,16 +416,16 @@ export default function StationSearchPage() {
                 })}
               </tbody>
             </table>
-          </div>{/* /overflow-x-auto */}
+          </div>
           <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-muted/20">
             총 {rows.length}건 · 최근 10일 데이터 기준
           </div>
-          </div>{/* /card */}
+          </div>
             <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
               <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
               <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
             </div>
-          </div>{/* /relative */}
+          </div>
         )}
       </div>
     </Layout>

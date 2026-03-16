@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
-  Bell, BellOff, Upload, Eye, DatabaseZap, Search
+  Bell, BellOff, Upload, Eye, DatabaseZap, Search, SmilePlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "페이지 뷰 로그", href: "/logs/page-views", icon: Eye, masterOnly: true },
   { label: "유가 수집 이력", href: "/logs/oil-collection", icon: DatabaseZap, masterOnly: true },
+  { label: "만족도 조사 결과", href: "/logs/satisfaction", icon: SmilePlus, masterOnly: true },
 ];
 
 const PAGE_LABELS: Record<string, string> = {
@@ -52,6 +53,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/logs/audit": "감사 로그",
   "/logs/page-views": "페이지 뷰 로그",
   "/logs/oil-collection": "유가 수집 이력",
+  "/logs/satisfaction": "만족도 조사 결과",
   "/my-info": "내 정보",
 };
 

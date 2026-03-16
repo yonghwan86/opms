@@ -19,6 +19,7 @@ import OilPricesPage from "@/pages/oil-prices";
 import OilUploadPage from "@/pages/oil-upload";
 import OilCollectionLogsPage from "@/pages/oil-collection-logs";
 import StationSearchPage from "@/pages/station-search";
+import SatisfactionLogPage from "@/pages/satisfaction-log";
 import NotFound from "@/pages/not-found";
 
 function LoadingScreen() {
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/oil-prices/upload" component={() => <ProtectedRoute component={OilUploadPage} masterOnly />} />
       <Route path="/logs/oil-collection" component={() => <ProtectedRoute component={OilCollectionLogsPage} masterOnly />} />
       <Route path="/station-search" component={() => <ProtectedRoute component={StationSearchPage} />} />
+      <Route path="/logs/satisfaction" component={() => <ProtectedRoute component={SatisfactionLogPage} masterOnly />} />
       <Route component={NotFound} />
     </Switch>
   );
