@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StationSearchRow {
@@ -88,6 +88,17 @@ export default function StationSearchPage() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipSuggestRef = useRef(false);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [tableScroll, setTableScroll] = useState({ canLeft: false, canRight: true });
+
+  const handleTableScroll = useCallback(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    setTableScroll({
+      canLeft: el.scrollLeft > 0,
+      canRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  }, []);
 
   const enabled = searchName.trim().length > 0;
 
@@ -129,6 +140,14 @@ export default function StationSearchPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // ── 검색 결과 변경 시 스크롤 상태 초기화 ─────────────────────────────
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    el.scrollLeft = 0;
+    handleTableScroll();
+  }, [searchName, handleTableScroll]);
 
   // ── 자동완성 선택 ────────────────────────────────────────────────────────
   const selectSuggestion = useCallback((name: string) => {
@@ -355,7 +374,7 @@ export default function StationSearchPage() {
         ) : (
           <div className="relative" style={{ overflow: "hidden" }}>
           <div className="rounded-xl border bg-card" style={{ overflow: "hidden" }}>
-          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }} className="[&::-webkit-scrollbar]:hidden">
+          <div ref={tableScrollRef} onScroll={handleTableScroll} style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }} className="[&::-webkit-scrollbar]:hidden">
             <table className="text-sm w-full" style={{ minWidth: "700px" }}>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
@@ -442,10 +461,18 @@ export default function StationSearchPage() {
             총 {stationGroups.length}개 업체 · 최근 10일 데이터 기준
           </div>
           </div>
-          <div className="absolute right-0 top-12 flex items-center pointer-events-none md:hidden">
-            <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
-            <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
-          </div>
+          {tableScroll.canLeft && (
+            <div className="absolute left-0 top-12 flex items-center pointer-events-none md:hidden">
+              <ChevronLeft className="absolute left-1 w-4 h-4 text-muted-foreground animate-pulse z-10" />
+              <div className="w-10 h-8 bg-gradient-to-r from-card to-transparent rounded-l-xl" />
+            </div>
+          )}
+          {tableScroll.canRight && (
+            <div className="absolute right-0 top-12 flex items-center pointer-events-none md:hidden">
+              <div className="w-10 h-8 bg-gradient-to-l from-card to-transparent rounded-r-xl" />
+              <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
+            </div>
+          )}
           </div>
         )}
       </div>

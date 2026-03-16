@@ -197,12 +197,15 @@ export default function OilPricesPage() {
   const [selectedRegion, setSelectedRegion] = useState<string>("ALL");
 
   const tabScrollRef = useRef<HTMLDivElement>(null);
-  const [showTabArrow, setShowTabArrow] = useState(true);
+  const [tabScroll, setTabScroll] = useState({ canLeft: false, canRight: true });
 
   const checkTabScroll = () => {
     const el = tabScrollRef.current;
     if (!el) return;
-    setShowTabArrow(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    setTabScroll({
+      canLeft: el.scrollLeft > 0,
+      canRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
   };
 
   useEffect(() => {
@@ -336,7 +339,13 @@ export default function OilPricesPage() {
                 ))}
               </TabsList>
             </div>
-            {showTabArrow && (
+            {tabScroll.canLeft && (
+              <div className="absolute left-0 top-0 h-full flex items-center pointer-events-none md:hidden">
+                <ChevronLeft className="absolute left-0.5 w-4 h-4 text-muted-foreground animate-pulse z-10" />
+                <div className="w-8 h-full bg-gradient-to-r from-muted to-transparent" />
+              </div>
+            )}
+            {tabScroll.canRight && (
               <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
                 <div className="w-8 h-full bg-gradient-to-l from-muted to-transparent" />
                 <ChevronRight className="absolute right-0.5 w-4 h-4 text-muted-foreground animate-pulse" />
@@ -424,15 +433,9 @@ export default function OilPricesPage() {
                     <p className="text-muted-foreground text-xs mt-1">관리자가 데이터를 수집하면 표시됩니다.</p>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
-                      <StationTable type={tab.type} stations={stations} fuelType={selectedFuel} />
-                    </div>
-                    <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
-                      <div className="w-8 h-full bg-gradient-to-l from-card to-transparent" />
-                      <ChevronRight className="absolute right-0.5 w-4 h-4 text-muted-foreground animate-pulse" />
-                    </div>
-                  </div>
+                  <TableScrollWrapper>
+                    <StationTable type={tab.type} stations={stations} fuelType={selectedFuel} />
+                  </TableScrollWrapper>
                 )}
               </div>
             </TabsContent>
@@ -441,6 +444,42 @@ export default function OilPricesPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+// ─── 테이블 수평 스크롤 래퍼 (모바일 좌/우 화살표) ─────────────────────────
+function TableScrollWrapper({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const check = () => {
+    const el = ref.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 0);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  };
+
+  useEffect(() => { check(); }, []);
+
+  return (
+    <div className="relative">
+      <div ref={ref} onScroll={check} className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
+        {children}
+      </div>
+      {canLeft && (
+        <div className="absolute left-0 top-12 flex items-center pointer-events-none md:hidden">
+          <ChevronLeft className="absolute left-0.5 w-4 h-4 text-muted-foreground animate-pulse z-10" />
+          <div className="w-8 h-8 bg-gradient-to-r from-card to-transparent" />
+        </div>
+      )}
+      {canRight && (
+        <div className="absolute right-0 top-12 flex items-center pointer-events-none md:hidden">
+          <div className="w-8 h-8 bg-gradient-to-l from-card to-transparent" />
+          <ChevronRight className="absolute right-0.5 w-4 h-4 text-muted-foreground animate-pulse" />
+        </div>
+      )}
+    </div>
   );
 }
 
