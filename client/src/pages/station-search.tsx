@@ -252,7 +252,7 @@ export default function StationSearchPage() {
                 onChange={e => { setInputValue(e.target.value); }}
                 onKeyDown={handleKeyDown}
                 onFocus={() => { if (suggestions.length > 0) setShowSuggest(true); }}
-                className="w-72 sm:w-96"
+                className="w-[268px] sm:w-96"
                 autoComplete="off"
               />
               {/* 자동완성 드롭다운 */}
@@ -442,7 +442,7 @@ export default function StationSearchPage() {
             총 {stationGroups.length}개 업체 · 최근 10일 데이터 기준
           </div>
           </div>
-          <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
+          <div className="absolute right-0 top-12 flex items-center pointer-events-none md:hidden">
             <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
             <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
           </div>
