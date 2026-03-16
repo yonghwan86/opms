@@ -1367,6 +1367,118 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 공개 대시보드 API (인증 불필요) ────────────────────────────────────────
+
+  // GET /api/public/wti
+  app.get("/api/public/wti", async (_req, res) => {
+    try {
+      const { getWtiData, getWtiHistory } = await import("./services/externalData");
+      const [current, history] = await Promise.all([getWtiData(), getWtiHistory()]);
+      res.json({ current, history });
+    } catch (e) {
+      res.status(500).json({ message: "WTI 조회 실패" });
+    }
+  });
+
+  // GET /api/public/exchange-rate
+  app.get("/api/public/exchange-rate", async (_req, res) => {
+    try {
+      const { getExchangeRate } = await import("./services/externalData");
+      const data = await getExchangeRate();
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "환율 조회 실패" });
+    }
+  });
+
+  // GET /api/public/ceiling-prices
+  app.get("/api/public/ceiling-prices", async (_req, res) => {
+    try {
+      const rows = await storage.getCeilingPrices();
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "석유 최고가격제 조회 실패" });
+    }
+  });
+
+  // GET /api/public/fuel-stats?region=충북+청주시
+  app.get("/api/public/fuel-stats", async (req, res) => {
+    try {
+      const { getCachedFuelAverages } = await import("./services/opinetApi");
+      const cached = getCachedFuelAverages();
+      const dates = await storage.getOilAvailableDates();
+
+      let averages;
+      let averagesDate: string | null = null;
+
+      if (cached) {
+        averages = {
+          gasoline: cached.gasoline, diesel: cached.diesel, kerosene: cached.kerosene,
+          gasolineChange: cached.gasolineChange, dieselChange: cached.dieselChange, keroseneChange: cached.keroseneChange,
+        };
+        averagesDate = cached.tradeDate;
+      } else if (dates.length > 0) {
+        const prevDate = dates[1] ?? dates[0];
+        averages = await storage.getOilNationalAverages(dates[0], prevDate);
+        averagesDate = dates[0];
+      } else {
+        return res.json({ averages: null, spread: null });
+      }
+
+      let spread = null;
+      if (dates.length > 0) {
+        const { region } = req.query as Record<string, string>;
+        let sidoFilter: string[] | undefined;
+        let regionFilter: string[] | undefined;
+        if (region) {
+          if (region.includes(' ')) {
+            regionFilter = [region];
+          } else {
+            sidoFilter = [region];
+          }
+        }
+        spread = await storage.getOilPriceSpread(dates[0], sidoFilter, regionFilter);
+      }
+
+      res.json({ date: averagesDate, averages, spread });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/public/regional-averages?region=충북+청주시
+  // region 파라미터: 공백 없으면 sido(예: 서울), 공백 있으면 시군구(예: 충북 청주시)
+  app.get("/api/public/regional-averages", async (req, res) => {
+    try {
+      const dates = await storage.getOilAvailableDates();
+      if (dates.length === 0) return res.json([]);
+      const { region } = req.query as Record<string, string>;
+      let sidoFilter: string[] | undefined;
+      let regionFilter: string[] | undefined;
+      if (region) {
+        if (region.includes(' ')) {
+          regionFilter = [region];
+        } else {
+          sidoFilter = [region];
+        }
+      }
+      const data = await storage.getOilRegionalAverages(dates[0], sidoFilter, regionFilter);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/public/domestic-history
+  app.get("/api/public/domestic-history", async (_req, res) => {
+    try {
+      const data = await storage.getOilDomesticHistory();
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // ─── 유가 CSV 업로드 API ─────────────────────────────────────────────────────
 
   // ─── CSV 청크 업로드 (프록시 크기 제한 우회) ────────────────────────────────

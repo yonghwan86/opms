@@ -20,6 +20,7 @@ import OilUploadPage from "@/pages/oil-upload";
 import OilCollectionLogsPage from "@/pages/oil-collection-logs";
 import StationSearchPage from "@/pages/station-search";
 import SatisfactionLogPage from "@/pages/satisfaction-log";
+import PublicDashboardPage from "@/pages/public-dashboard";
 import NotFound from "@/pages/not-found";
 
 function LoadingScreen() {
@@ -81,6 +82,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      <Route path="/public" component={PublicDashboardPage} />
       <Route path="/" component={HomeRoute} />
       <Route path="/users" component={() => <ProtectedRoute component={UsersPage} masterOnly />} />
       <Route path="/users/upload" component={() => <ProtectedRoute component={UsersUploadPage} masterOnly />} />
