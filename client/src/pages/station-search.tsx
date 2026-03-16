@@ -356,7 +356,7 @@ export default function StationSearchPage() {
           <div className="relative" style={{ overflow: "hidden" }}>
           <div className="rounded-xl border bg-card" style={{ overflow: "hidden" }}>
           <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }} className="[&::-webkit-scrollbar]:hidden">
-            <table className="text-sm" style={{ width: "max-content" }}>
+            <table className="text-sm w-full" style={{ minWidth: "700px" }}>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap">일자</th>
