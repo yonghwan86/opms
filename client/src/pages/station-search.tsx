@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StationSearchRow {
@@ -335,7 +335,8 @@ export default function StationSearchPage() {
             <p className="text-xs">상호명을 다시 확인하거나 지역을 변경해보세요</p>
           </div>
         ) : (
-          <div className="rounded-xl border bg-card overflow-x-auto">
+          <div className="relative">
+          <div className="rounded-xl border bg-card overflow-x-auto [&::-webkit-scrollbar]:hidden">
             <table className="text-sm w-auto">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
@@ -410,6 +411,11 @@ export default function StationSearchPage() {
             </table>
             <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-muted/20">
               총 {rows.length}건 · 최근 10일 데이터 기준
+            </div>
+          </div>
+            <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
+              <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
+              <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
             </div>
           </div>
         )}
