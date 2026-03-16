@@ -87,12 +87,17 @@ export default function StationSearchPage() {
   const [activeSuggest, setActiveSuggest] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipSuggestRef = useRef(false);
 
   const enabled = searchName.trim().length > 0;
 
   // ── 자동완성 fetch (디바운스 300ms) ──────────────────────────────────────
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (skipSuggestRef.current) {
+      skipSuggestRef.current = false;
+      return;
+    }
     if (inputValue.trim().length < 2) {
       setSuggestions([]);
       setShowSuggest(false);
@@ -127,6 +132,7 @@ export default function StationSearchPage() {
 
   // ── 자동완성 선택 ────────────────────────────────────────────────────────
   const selectSuggestion = useCallback((name: string) => {
+    skipSuggestRef.current = true;
     setInputValue(name);
     setSearchName(name);
     setShowSuggest(false);
