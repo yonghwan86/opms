@@ -337,14 +337,14 @@ export default function StationSearchPage() {
         ) : (
           <div className="relative">
           <div className="rounded-xl border bg-card overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            <table className="text-sm w-auto">
+            <table className="text-sm w-full">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap">일자</th>
                   <th className="py-3 px-3 text-left whitespace-nowrap w-[336px]">상호</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap w-12">상표</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap w-10">셀프</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap w-48">
+                  <th className="py-3 px-3 text-left whitespace-nowrap w-full">
                     <span className="md:hidden">지역</span>
                     <span className="hidden md:inline">주소</span>
                   </th>
@@ -387,7 +387,7 @@ export default function StationSearchPage() {
                           ? <span className="text-green-600 font-medium">✓</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 text-muted-foreground text-xs w-48 max-w-[12rem] overflow-hidden">
+                      <td className="py-2.5 px-3 text-muted-foreground text-xs w-full max-w-0 overflow-hidden">
                         <span className="hidden md:block truncate" title={row.address ?? ""}>
                           {row.address ?? "—"}
                         </span>
