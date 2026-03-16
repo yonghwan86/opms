@@ -157,7 +157,7 @@ export default function StationSearchPage() {
       <div className="px-4 md:px-6 pt-2 pb-4 space-y-3">
         {/* 검색창 + 지역 필터 */}
         <div className="flex gap-2 flex-wrap items-center">
-          {/* 상호 검색창 — 고정 너비로 축소 */}
+          {/* 상호 검색창 */}
           <div className="flex gap-2 w-full sm:w-auto">
             <Input
               data-testid="input-station-name"
@@ -165,7 +165,7 @@ export default function StationSearchPage() {
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-48 sm:w-56"
+              className="w-72 sm:w-96"
             />
             <Button
               data-testid="button-search"
@@ -190,20 +190,25 @@ export default function StationSearchPage() {
             </SelectContent>
           </Select>
 
-          {/* 세부지역 드롭다운 — 시도 선택 시에만 표시 */}
-          {sido !== "all" && (
-            <Select value={subRegion} onValueChange={setSubRegion}>
-              <SelectTrigger data-testid="select-subregion" className="w-36">
-                <SelectValue placeholder="전체" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체</SelectItem>
-                {subRegions.map(r => (
-                  <SelectItem key={r} value={r}>{shortRegion(r, sido)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* 세부지역 드롭다운 — 항상 표시, 시도 미선택 시 비활성 */}
+          <Select
+            value={subRegion}
+            onValueChange={setSubRegion}
+            disabled={sido === "all"}
+          >
+            <SelectTrigger
+              data-testid="select-subregion"
+              className="w-36 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <SelectValue placeholder={sido === "all" ? "세부지역" : "전체"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체</SelectItem>
+              {subRegions.map(r => (
+                <SelectItem key={r} value={r}>{shortRegion(r, sido)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* 유종 탭 */}
