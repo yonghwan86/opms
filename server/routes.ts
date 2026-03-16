@@ -1516,5 +1516,37 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 만족도 조사 ────────────────────────────────────────────────────────────
+  // GET /api/satisfaction/today — 오늘(KST) 이미 응답했는지 확인
+  app.get("/api/satisfaction/today", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const submitted = await storage.hasSatisfactionToday(userId);
+      res.json({ submitted });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // POST /api/satisfaction — 만족도 저장
+  app.post("/api/satisfaction", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const already = await storage.hasSatisfactionToday(userId);
+      if (already) {
+        return res.status(400).json({ message: "오늘은 이미 만족도 조사에 참여하셨습니다." });
+      }
+      const { rating } = req.body;
+      const valid = ["매우만족", "만족", "보통", "불만족", "매우불만족"];
+      if (!rating || !valid.includes(rating)) {
+        return res.status(400).json({ message: "올바른 만족도를 선택해주세요." });
+      }
+      await storage.saveSatisfaction(userId, rating);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   return httpServer;
 }

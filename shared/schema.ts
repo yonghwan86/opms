@@ -202,6 +202,18 @@ export const insertOilCollectionLogSchema = createInsertSchema(oilCollectionLogs
 export type InsertOilCollectionLog = z.infer<typeof insertOilCollectionLogSchema>;
 export type OilCollectionLog = typeof oilCollectionLogs.$inferSelect;
 
+// ─── 만족도 조사 (User Satisfactions) ────────────────────────────────────────
+export const userSatisfactions = pgTable("user_satisfactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  rating: varchar("rating", { length: 20 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertUserSatisfactionSchema = createInsertSchema(userSatisfactions).omit({ id: true, createdAt: true });
+export type InsertUserSatisfaction = z.infer<typeof insertUserSatisfactionSchema>;
+export type UserSatisfaction = typeof userSatisfactions.$inferSelect;
+
 // ─── 푸시 구독 (Push Subscriptions) ─────────────────────────────────────────
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),

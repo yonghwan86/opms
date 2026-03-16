@@ -4,7 +4,7 @@ import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis, oilCollectionLogs,
-  pushSubscriptions, oilCeilingPrices,
+  pushSubscriptions, oilCeilingPrices, userSatisfactions,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -184,6 +184,10 @@ export interface IStorage {
   // 유가 수집 이력 로그
   saveOilCollectionLog(log: InsertOilCollectionLog): Promise<void>;
   getOilCollectionLogs(params?: { page?: number; pageSize?: number; status?: string; jobType?: string }): Promise<{ data: OilCollectionLog[]; total: number; page: number; totalPages: number }>;
+
+  // 만족도 조사
+  saveSatisfaction(userId: number, rating: string): Promise<void>;
+  hasSatisfactionToday(userId: number): Promise<boolean>;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -1153,6 +1157,24 @@ export class PostgresStorage implements IStorage {
       db.select({ total: count() }).from(oilCollectionLogs).where(where),
     ]);
     return { data: rows, total: Number(total), page, totalPages: Math.ceil(Number(total) / pageSize) };
+  }
+
+  // ── 만족도 조사 ──────────────────────────────────────────────────────────
+  async saveSatisfaction(userId: number, rating: string): Promise<void> {
+    await db.insert(userSatisfactions).values({ userId, rating });
+  }
+
+  async hasSatisfactionToday(userId: number): Promise<boolean> {
+    const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const kstMidnight = new Date(kstNow);
+    kstMidnight.setUTCHours(0, 0, 0, 0);
+    const todayStartUTC = new Date(kstMidnight.getTime() - 9 * 60 * 60 * 1000);
+    const result = await db.execute(
+      sql`SELECT COUNT(*) AS cnt FROM user_satisfactions
+          WHERE user_id = ${userId}
+            AND created_at >= ${todayStartUTC.toISOString()}`
+    );
+    return Number((result.rows[0] as any)?.cnt ?? 0) > 0;
   }
 
   // ── 대시보드 ──────────────────────────────────────────────────────────────

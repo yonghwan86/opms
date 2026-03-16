@@ -16,7 +16,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2, HelpCircle, Pencil, ShieldCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2, HelpCircle, Pencil, ShieldCheck, ClipboardList, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -388,6 +388,25 @@ export default function DashboardPage() {
     onError: () => toast({ title: "저장 실패", variant: "destructive" }),
   });
 
+  // ── 만족도 조사 ──────────────────────────────────────────────────────────
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [surveyRating, setSurveyRating] = useState<string>("");
+  const { data: surveyStatus, refetch: refetchSurvey } = useQuery<{ submitted: boolean }>({
+    queryKey: ["/api/satisfaction/today"],
+    staleTime: 60 * 1000,
+  });
+  const surveySubmitted = surveyStatus?.submitted ?? false;
+  const surveyMutation = useMutation({
+    mutationFn: (rating: string) => apiRequest("POST", "/api/satisfaction", { rating }),
+    onSuccess: () => {
+      refetchSurvey();
+      setSurveyOpen(false);
+      setSurveyRating("");
+      toast({ title: "소중한 의견 감사합니다 🙏", description: "만족도 조사에 참여해 주셨습니다." });
+    },
+    onError: () => toast({ title: "제출 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" }),
+  });
+
   // PC 여부 감지 (lg = 1024px 이상)
   const [isLg, setIsLg] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   useEffect(() => {
@@ -531,7 +550,26 @@ export default function DashboardPage() {
         title="대시보드"
         description={`안녕하세요, ${user?.displayName}님! 유가 가격의 현재 현황을 확인하세요.`}
       >
-        <DateWeatherWidget isMaster={isMaster} headquartersCode={user?.headquartersCode} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { if (!surveySubmitted) setSurveyOpen(true); }}
+            disabled={surveySubmitted}
+            data-testid="button-survey-open"
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-medium transition-colors",
+              surveySubmitted
+                ? "border-muted-foreground/30 text-muted-foreground/50 bg-muted/40 cursor-default"
+                : "border-green-600/60 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 hover:bg-green-100 dark:hover:bg-green-900/40 cursor-pointer"
+            )}
+            title={surveySubmitted ? "오늘 이미 참여하셨습니다" : "서비스 만족도 조사 참여"}
+          >
+            {surveySubmitted
+              ? <><CheckCircle2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">오늘 참여 완료</span></>
+              : <><ClipboardList className="w-3.5 h-3.5" /><span>눌러보세요</span></>
+            }
+          </button>
+          <DateWeatherWidget isMaster={isMaster} headquartersCode={user?.headquartersCode} />
+        </div>
       </PageHeader>
 
       <div className="p-3 md:p-5 space-y-4 md:space-y-5">
@@ -1257,6 +1295,60 @@ export default function DashboardPage() {
               {ceilingMutation.isPending ? "저장 중..." : "저장"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 만족도 조사 모달 ─────────────────────────────────────── */}
+      <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-survey">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-green-600" />
+              서비스 만족도 조사
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">
+            오늘 서비스 이용 경험을 알려주세요. <span className="text-xs">(1일 1회)</span>
+          </p>
+          <div className="space-y-2 mt-1">
+            {[
+              { value: "매우만족", emoji: "😄" },
+              { value: "만족",   emoji: "🙂" },
+              { value: "보통",   emoji: "😐" },
+              { value: "불만족",  emoji: "🙁" },
+              { value: "매우불만족", emoji: "😞" },
+            ].map(({ value, emoji }) => (
+              <label
+                key={value}
+                data-testid={`survey-option-${value}`}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors select-none",
+                  surveyRating === value
+                    ? "border-green-600 bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 font-medium"
+                    : "border-border hover:bg-muted/50"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="survey-rating"
+                  value={value}
+                  checked={surveyRating === value}
+                  onChange={() => setSurveyRating(value)}
+                  className="accent-green-600"
+                />
+                <span className="text-lg leading-none">{emoji}</span>
+                <span className="text-sm">{value}</span>
+              </label>
+            ))}
+          </div>
+          <Button
+            className="w-full mt-1 !bg-green-600 hover:!bg-green-700 text-white"
+            disabled={!surveyRating || surveyMutation.isPending}
+            onClick={() => surveyRating && surveyMutation.mutate(surveyRating)}
+            data-testid="button-survey-submit"
+          >
+            {surveyMutation.isPending ? "제출 중..." : "제출하기"}
+          </Button>
         </DialogContent>
       </Dialog>
     </Layout>
