@@ -24,11 +24,12 @@ interface NavItem {
   icon: React.ElementType;
   masterOnly?: boolean;
   hqUserOnly?: boolean;
+  devOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
   { label: "대시보드", href: "/", icon: LayoutDashboard },
-  { label: "공개 대시보드", href: "/public", icon: Globe },
+  { label: "공개 대시보드", href: "/public", icon: Globe, devOnly: true },
   { label: "유가 분석", href: "/oil-prices", icon: Fuel },
   { label: "주유소 가격 검색", href: "/station-search", icon: Search },
   { label: "유가 CSV 업로드", href: "/oil-prices/upload", icon: Upload, masterOnly: true },
@@ -100,6 +101,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const visibleNav = navItems.filter(item => {
     if (item.masterOnly && !isMaster) return false;
     if (item.hqUserOnly && isMaster) return false;
+    if (item.devOnly && import.meta.env.PROD) return false;
     return true;
   });
 
