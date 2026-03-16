@@ -336,21 +336,25 @@ export default function StationSearchPage() {
           </div>
         ) : (
           <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="text-sm w-auto min-w-full">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
-                  <th className="py-3 px-3 text-left whitespace-nowrap w-28">일자</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap w-[200px] md:w-[336px]">상호</th>
-                  <th className="py-3 px-2 text-center whitespace-nowrap w-12">상표</th>
-                  <th className="py-3 px-2 text-center whitespace-nowrap w-10">셀프</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap hidden md:table-cell">주소</th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap w-28">
-                    현재가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
+                  <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap">일자</th>
+                  <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap w-[160px] md:w-[336px]">상호</th>
+                  <th className="py-3 px-1 md:px-2 text-center whitespace-nowrap w-9 md:w-12">상표</th>
+                  <th className="py-3 px-1 md:px-2 text-center whitespace-nowrap w-8 md:w-10">셀프</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap hidden md:table-cell w-48">주소</th>
+                  <th className="py-3 px-1.5 md:px-2 text-right whitespace-nowrap">
+                    <span className="hidden md:inline">현재가</span>
+                    <span className="md:hidden">가격</span>
+                    <span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap w-28">
-                    최고가격제<span className="text-[10px] ml-0.5">({fuelLabel})</span>
+                  <th className="py-3 px-1.5 md:px-2 text-right whitespace-nowrap">
+                    <span className="hidden md:inline">최고가격제</span>
+                    <span className="md:hidden">상한가</span>
+                    <span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap w-20">초과</th>
+                  <th className="py-3 px-1.5 md:px-2 text-right whitespace-nowrap">초과</th>
                 </tr>
               </thead>
               <tbody>
@@ -367,36 +371,37 @@ export default function StationSearchPage() {
                         idx % 2 === 0 ? "bg-background" : "bg-muted/10",
                       )}
                     >
-                      <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
-                        {formatDate(row.date)}
+                      <td className="py-2.5 px-1.5 md:px-3 whitespace-nowrap text-muted-foreground text-xs">
+                        <span className="hidden md:inline">{formatDate(row.date)}</span>
+                        <span className="md:hidden">{row.date.slice(4,6)}.{row.date.slice(6,8)}</span>
                       </td>
-                      <td className="py-2.5 px-3 font-medium w-[200px] md:w-[336px] max-w-[200px] md:max-w-[336px] overflow-hidden">
+                      <td className="py-2.5 px-1.5 md:px-3 font-medium w-[160px] md:w-[336px] max-w-[160px] md:max-w-[336px] overflow-hidden">
                         <span className="block truncate" title={row.stationName}>
                           {row.stationName}
                         </span>
                       </td>
-                      <td className="py-2.5 px-2 text-center">
+                      <td className="py-2.5 px-1 md:px-2 text-center">
                         <BrandIcon brand={row.brand} />
                       </td>
-                      <td className="py-2.5 px-2 text-center text-xs">
+                      <td className="py-2.5 px-1 md:px-2 text-center text-xs">
                         {row.isSelf
                           ? <span className="text-green-600 font-medium">✓</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs max-w-0 w-full overflow-hidden">
+                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs w-48 max-w-[12rem] overflow-hidden">
                         <span className="block truncate" title={row.address ?? ""}>
                           {row.address ?? "—"}
                         </span>
                       </td>
-                      <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
+                      <td className="py-2.5 px-1.5 md:px-2 text-right font-semibold whitespace-nowrap">
                         {price != null
                           ? <span>{price.toLocaleString("ko-KR")}원</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-2 text-right whitespace-nowrap text-muted-foreground">
+                      <td className="py-2.5 px-1.5 md:px-2 text-right whitespace-nowrap text-muted-foreground">
                         {formatPrice(ceiling)}
                       </td>
-                      <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
+                      <td className="py-2.5 px-1.5 md:px-2 text-right font-semibold whitespace-nowrap">
                         {excess == null
                           ? <span className="text-muted-foreground">—</span>
                           : excess > 0
