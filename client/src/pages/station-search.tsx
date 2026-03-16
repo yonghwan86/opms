@@ -341,10 +341,10 @@ export default function StationSearchPage() {
             <p className="text-xs">상호명을 다시 확인하거나 지역을 변경해보세요</p>
           </div>
         ) : (
-          <div className="relative">
-          <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            <table className="text-sm w-auto">
+          <div className="relative" style={{ overflow: "hidden" }}>
+          <div className="rounded-xl border bg-card" style={{ overflow: "hidden" }}>
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }} className="[&::-webkit-scrollbar]:hidden">
+            <table className="text-sm" style={{ width: "max-content", minWidth: "100%" }}>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap">일자</th>
@@ -421,10 +421,10 @@ export default function StationSearchPage() {
             총 {rows.length}건 · 최근 10일 데이터 기준
           </div>
           </div>
-            <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
-              <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
-              <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
-            </div>
+          <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
+            <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
+            <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
+          </div>
           </div>
         )}
       </div>
