@@ -342,15 +342,16 @@ export default function StationSearchPage() {
           </div>
         ) : (
           <div className="relative">
-          <div className="rounded-xl border bg-card overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            <table className="text-sm w-full">
+          <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            <table className="text-sm w-auto">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-3 px-1.5 md:px-3 text-left whitespace-nowrap">일자</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap w-[336px]">상호</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">상호</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap w-12">상표</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap w-10">셀프</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap w-full">
+                  <th className="py-3 px-3 text-left whitespace-nowrap">
                     <span className="md:hidden">지역</span>
                     <span className="hidden md:inline">주소</span>
                   </th>
@@ -380,10 +381,8 @@ export default function StationSearchPage() {
                       <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-2.5 px-3 font-medium w-[336px] max-w-[336px] overflow-hidden">
-                        <span className="block truncate" title={row.stationName}>
-                          {row.stationName}
-                        </span>
+                      <td className="py-2.5 px-3 font-medium whitespace-nowrap">
+                        {row.stationName}
                       </td>
                       <td className="py-2.5 px-2 text-center">
                         <BrandIcon brand={row.brand} />
@@ -393,13 +392,9 @@ export default function StationSearchPage() {
                           ? <span className="text-green-600 font-medium">✓</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 text-muted-foreground text-xs w-full max-w-0 overflow-hidden">
-                        <span className="hidden md:block truncate" title={row.address ?? ""}>
-                          {row.address ?? "—"}
-                        </span>
-                        <span className="md:hidden whitespace-nowrap">
-                          {row.region ?? "—"}
-                        </span>
+                      <td className="py-2.5 px-3 text-muted-foreground text-xs whitespace-nowrap">
+                        <span className="hidden md:inline">{row.address ?? "—"}</span>
+                        <span className="md:hidden">{row.region ?? "—"}</span>
                       </td>
                       <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
                         {price != null
@@ -421,15 +416,16 @@ export default function StationSearchPage() {
                 })}
               </tbody>
             </table>
-            <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-muted/20">
-              총 {rows.length}건 · 최근 10일 데이터 기준
-            </div>
+          </div>{/* /overflow-x-auto */}
+          <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-muted/20">
+            총 {rows.length}건 · 최근 10일 데이터 기준
           </div>
+          </div>{/* /card */}
             <div className="absolute right-0 top-0 h-full flex items-center pointer-events-none md:hidden">
               <div className="w-10 h-full bg-gradient-to-l from-card to-transparent rounded-r-xl" />
               <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
             </div>
-          </div>
+          </div>{/* /relative */}
         )}
       </div>
     </Layout>
