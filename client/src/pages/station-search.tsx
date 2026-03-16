@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,21 +71,40 @@ function formatPrice(p: number | null): string {
   return p.toLocaleString("ko-KR") + "원";
 }
 
+// ─── 세부지역 이름 축약 ───────────────────────────────────────────────────────
+function shortRegion(region: string, sido: string): string {
+  return region.startsWith(sido + " ") ? region.slice(sido.length + 1) : region;
+}
+
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export default function StationSearchPage() {
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue]   = useState("");
   const [searchName, setSearchName]   = useState("");
   const [sido, setSido]               = useState("all");
+  const [subRegion, setSubRegion]     = useState("all");
   const [fuel, setFuel]               = useState<FuelType>("gasoline");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const enabled = searchName.trim().length > 0;
 
+  // ─── 세부지역 목록 ───────────────────────────────────────────────────────
+  const { data: subRegions = [] } = useQuery<string[]>({
+    queryKey: ["/api/station-search/subregions", sido],
+    queryFn: async () => {
+      const res = await fetch(`/api/station-search/subregions?sido=${encodeURIComponent(sido)}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: sido !== "all",
+    staleTime: 5 * 60_000,
+  });
+
+  // ─── 검색 결과 ───────────────────────────────────────────────────────────
   const { data: rows = [], isLoading, isFetching } = useQuery<StationSearchRow[]>({
-    queryKey: ["/api/station-search", searchName, sido],
+    queryKey: ["/api/station-search", searchName, sido, subRegion],
     queryFn: async () => {
       const params = new URLSearchParams({ name: searchName });
       if (sido !== "all") params.set("sido", sido);
+      if (subRegion !== "all") params.set("region", subRegion);
       const res = await fetch(`/api/station-search?${params}`);
       if (!res.ok) throw new Error("검색 실패");
       return res.json();
@@ -100,6 +119,11 @@ export default function StationSearchPage() {
     setSearchName(v);
   }
 
+  function handleSidoChange(val: string) {
+    setSido(val);
+    setSubRegion("all");
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleSearch();
   }
@@ -107,9 +131,7 @@ export default function StationSearchPage() {
   const loading = enabled && (isLoading || isFetching);
 
   // ─── 선택 유종 기준 가격 추출 ────────────────────────────────────────────
-  function getPrice(row: StationSearchRow): number | null {
-    return row[fuel];
-  }
+  function getPrice(row: StationSearchRow): number | null { return row[fuel]; }
   function getCeiling(row: StationSearchRow): number | null {
     if (fuel === "gasoline") return row.ceilingGasoline;
     if (fuel === "diesel")   return row.ceilingDiesel;
@@ -122,6 +144,8 @@ export default function StationSearchPage() {
     return p - c;
   }
 
+  const fuelLabel = FUELS.find(f => f.type === fuel)?.label ?? "";
+
   return (
     <Layout>
       <PageHeader
@@ -131,17 +155,17 @@ export default function StationSearchPage() {
 
       {/* 검색 영역 */}
       <div className="px-4 md:px-6 pt-2 pb-4 space-y-3">
-        {/* 검색창 + 지역 */}
-        <div className="flex gap-2 flex-wrap">
-          <div className="flex gap-2 flex-1 min-w-0">
+        {/* 검색창 + 지역 필터 */}
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* 상호 검색창 — 고정 너비로 축소 */}
+          <div className="flex gap-2 w-full sm:w-auto">
             <Input
-              ref={inputRef}
               data-testid="input-station-name"
-              placeholder="주유소 상호 입력 (예: 홍길동주유소)"
+              placeholder="주유소 상호 검색"
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1"
+              className="w-48 sm:w-56"
             />
             <Button
               data-testid="button-search"
@@ -152,20 +176,34 @@ export default function StationSearchPage() {
               검색
             </Button>
           </div>
-          <Select value={sido} onValueChange={setSido}>
-            <SelectTrigger
-              data-testid="select-sido"
-              className="w-36 shrink-0"
-            >
-              <SelectValue placeholder="전국 전체" />
+
+          {/* 시도 드롭다운 */}
+          <Select value={sido} onValueChange={handleSidoChange}>
+            <SelectTrigger data-testid="select-sido" className="w-32">
+              <SelectValue placeholder="시도 전체" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">전국 전체</SelectItem>
+              <SelectItem value="all">시도 전체</SelectItem>
               {SIDO_LIST.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {/* 세부지역 드롭다운 — 시도 선택 시에만 표시 */}
+          {sido !== "all" && (
+            <Select value={subRegion} onValueChange={setSubRegion}>
+              <SelectTrigger data-testid="select-subregion" className="w-36">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체</SelectItem>
+                {subRegions.map(r => (
+                  <SelectItem key={r} value={r}>{shortRegion(r, sido)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* 유종 탭 */}
@@ -218,10 +256,10 @@ export default function StationSearchPage() {
                   <th className="py-3 px-2 text-center whitespace-nowrap">셀프</th>
                   <th className="py-3 px-3 text-left whitespace-nowrap hidden md:table-cell">주소</th>
                   <th className="py-3 px-3 text-right whitespace-nowrap">
-                    현재가<span className="text-[10px] ml-0.5">({FUELS.find(f=>f.type===fuel)?.label})</span>
+                    현재가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
                   <th className="py-3 px-3 text-right whitespace-nowrap">
-                    최고가격제<span className="text-[10px] ml-0.5">({FUELS.find(f=>f.type===fuel)?.label})</span>
+                    최고가격제<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
                   <th className="py-3 px-3 text-right whitespace-nowrap">초과</th>
                 </tr>
@@ -231,50 +269,46 @@ export default function StationSearchPage() {
                   const price   = getPrice(row);
                   const ceiling = getCeiling(row);
                   const excess  = getExcess(row);
-                  const isEven  = idx % 2 === 0;
                   return (
                     <tr
                       key={`${row.stationId}-${row.date}`}
                       data-testid={`row-station-${row.stationId}-${row.date}`}
-                      className={cn("border-b last:border-0", isEven ? "bg-background" : "bg-muted/20")}
+                      className={cn(
+                        "border-b last:border-0 transition-colors hover:bg-muted/30",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/10",
+                      )}
                     >
                       <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-2.5 px-3 font-medium whitespace-nowrap max-w-[140px] truncate">
+                      <td className="py-2.5 px-3 font-medium whitespace-nowrap max-w-[160px] truncate">
                         {row.stationName}
                       </td>
                       <td className="py-2.5 px-2 text-center">
                         <BrandIcon brand={row.brand} />
                       </td>
                       <td className="py-2.5 px-2 text-center text-xs">
-                        {row.isSelf ? (
-                          <span className="text-green-600 font-medium">✓</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        {row.isSelf
+                          ? <span className="text-green-600 font-medium">✓</span>
+                          : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs max-w-[200px] truncate">
                         {row.address ?? "—"}
                       </td>
                       <td className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">
-                        {price != null ? (
-                          <span>{price.toLocaleString("ko-KR")}원</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        {price != null
+                          ? <span>{price.toLocaleString("ko-KR")}원</span>
+                          : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="py-2.5 px-3 text-right whitespace-nowrap text-muted-foreground">
                         {formatPrice(ceiling)}
                       </td>
                       <td className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">
-                        {excess == null ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : excess > 0 ? (
-                          <span className="text-red-500">+{excess.toLocaleString("ko-KR")}원</span>
-                        ) : (
-                          <span className="text-muted-foreground">{excess.toLocaleString("ko-KR")}원</span>
-                        )}
+                        {excess == null
+                          ? <span className="text-muted-foreground">—</span>
+                          : excess > 0
+                            ? <span className="text-red-500">+{excess.toLocaleString("ko-KR")}원</span>
+                            : <span className="text-muted-foreground">{excess.toLocaleString("ko-KR")}원</span>}
                       </td>
                     </tr>
                   );

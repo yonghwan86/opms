@@ -190,7 +190,8 @@ export interface IStorage {
   hasSatisfactionToday(userId: number): Promise<boolean>;
 
   // 주유소 가격 검색
-  searchStations(params: { name: string; sido?: string }): Promise<StationSearchRow[]>;
+  searchStations(params: { name: string; sido?: string; region?: string }): Promise<StationSearchRow[]>;
+  getStationSubregions(sido: string): Promise<string[]>;
 }
 
 export interface StationSearchRow {
@@ -1198,9 +1199,25 @@ export class PostgresStorage implements IStorage {
   }
 
   // ── 주유소 가격 검색 ──────────────────────────────────────────────────────
-  async searchStations(params: { name: string; sido?: string }): Promise<StationSearchRow[]> {
-    const { name, sido } = params;
-    const sidoCond = sido ? sql` AND sido = ${sido}` : sql``;
+  async getStationSubregions(sido: string): Promise<string[]> {
+    const result = await db.execute(sql`
+      SELECT DISTINCT region
+      FROM oil_price_raw
+      WHERE sido = ${sido}
+        AND region IS NOT NULL
+        AND region != sido
+      ORDER BY region
+    `);
+    return (result.rows as any[]).map(r => r.region as string);
+  }
+
+  async searchStations(params: { name: string; sido?: string; region?: string }): Promise<StationSearchRow[]> {
+    const { name, sido, region } = params;
+    const filterCond = region
+      ? sql` AND region = ${region}`
+      : sido
+        ? sql` AND sido = ${sido}`
+        : sql``;
     const result = await db.execute(sql`
       WITH latest_ceiling AS (
         SELECT gasoline, diesel, kerosene
@@ -1212,7 +1229,7 @@ export class PostgresStorage implements IStorage {
         SELECT DISTINCT station_id
         FROM oil_price_raw
         WHERE station_name ILIKE ${'%' + name + '%'}
-        ${sidoCond}
+        ${filterCond}
       ),
       latest_dates AS (
         SELECT DISTINCT date
