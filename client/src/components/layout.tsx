@@ -101,7 +101,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const visibleNav = navItems.filter(item => {
     if (item.masterOnly && !isMaster) return false;
     if (item.hqUserOnly && isMaster) return false;
-    if (item.devOnly && import.meta.env.PROD) return false;
+    if (item.devOnly && import.meta.env.PROD && !isMaster) return false;
     return true;
   });
 

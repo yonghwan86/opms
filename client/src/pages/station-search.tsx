@@ -462,13 +462,13 @@ export default function StationSearchPage() {
           </div>
           </div>
           {tableScroll.canLeft && (
-            <div className="absolute left-0 top-12 flex items-center pointer-events-none md:hidden">
+            <div className="absolute left-0 top-0 flex items-center pointer-events-none md:hidden">
               <ChevronLeft className="absolute left-1 w-4 h-4 text-muted-foreground animate-pulse z-10" />
               <div className="w-10 h-8 bg-gradient-to-r from-card to-transparent rounded-l-xl" />
             </div>
           )}
           {tableScroll.canRight && (
-            <div className="absolute right-0 top-12 flex items-center pointer-events-none md:hidden">
+            <div className="absolute right-0 top-0 flex items-center pointer-events-none md:hidden">
               <div className="w-10 h-8 bg-gradient-to-l from-card to-transparent rounded-r-xl" />
               <ChevronRight className="absolute right-1 w-4 h-4 text-muted-foreground animate-pulse" />
             </div>
