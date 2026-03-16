@@ -468,15 +468,17 @@ function TableScrollWrapper({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       {canLeft && (
-        <div className="absolute left-0 top-0 flex items-center pointer-events-none md:hidden">
-          <ChevronLeft className="absolute left-0.5 w-4 h-4 text-muted-foreground animate-pulse z-10" />
-          <div className="w-8 h-8 bg-gradient-to-r from-card to-transparent" />
+        <div className="fixed left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none md:hidden">
+          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-full p-1 shadow-sm">
+            <ChevronLeft className="w-4 h-4 text-muted-foreground animate-pulse" />
+          </div>
         </div>
       )}
       {canRight && (
-        <div className="absolute right-0 top-0 flex items-center pointer-events-none md:hidden">
-          <div className="w-8 h-8 bg-gradient-to-l from-card to-transparent" />
-          <ChevronRight className="absolute right-0.5 w-4 h-4 text-muted-foreground animate-pulse" />
+        <div className="fixed right-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none md:hidden">
+          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-full p-1 shadow-sm">
+            <ChevronRight className="w-4 h-4 text-muted-foreground animate-pulse" />
+          </div>
         </div>
       )}
     </div>
