@@ -192,6 +192,7 @@ export interface IStorage {
   // 주유소 가격 검색
   searchStations(params: { name: string; sido?: string; region?: string }): Promise<StationSearchRow[]>;
   getStationSubregions(sido: string): Promise<string[]>;
+  suggestStations(params: { q: string; sido?: string; region?: string }): Promise<string[]>;
 }
 
 export interface StationSearchRow {
@@ -1199,6 +1200,24 @@ export class PostgresStorage implements IStorage {
   }
 
   // ── 주유소 가격 검색 ──────────────────────────────────────────────────────
+  async suggestStations(params: { q: string; sido?: string; region?: string }): Promise<string[]> {
+    const { q, sido, region } = params;
+    const filterCond = region
+      ? sql` AND region = ${region}`
+      : sido
+        ? sql` AND sido = ${sido}`
+        : sql``;
+    const result = await db.execute(sql`
+      SELECT DISTINCT station_name
+      FROM oil_price_raw
+      WHERE station_name ILIKE ${'%' + q + '%'}
+      ${filterCond}
+      ORDER BY station_name
+      LIMIT 15
+    `);
+    return (result.rows as any[]).map(r => r.station_name as string);
+  }
+
   async getStationSubregions(sido: string): Promise<string[]> {
     const result = await db.execute(sql`
       SELECT DISTINCT region

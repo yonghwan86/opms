@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,7 +25,6 @@ interface StationSearchRow {
   ceilingKerosene: number | null;
 }
 
-// ─── 상수 ────────────────────────────────────────────────────────────────────
 const SIDO_LIST = [
   "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종시",
   "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
@@ -71,22 +70,70 @@ function formatPrice(p: number | null): string {
   return p.toLocaleString("ko-KR") + "원";
 }
 
-// ─── 세부지역 이름 축약 ───────────────────────────────────────────────────────
 function shortRegion(region: string, sido: string): string {
   return region.startsWith(sido + " ") ? region.slice(sido.length + 1) : region;
 }
 
-// ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export default function StationSearchPage() {
-  const [inputValue, setInputValue]   = useState("");
-  const [searchName, setSearchName]   = useState("");
-  const [sido, setSido]               = useState("all");
-  const [subRegion, setSubRegion]     = useState("all");
-  const [fuel, setFuel]               = useState<FuelType>("gasoline");
+  const [inputValue, setInputValue] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [sido, setSido]             = useState("all");
+  const [subRegion, setSubRegion]   = useState("all");
+  const [fuel, setFuel]             = useState<FuelType>("gasoline");
+
+  // 자동완성 상태
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const [activeSuggest, setActiveSuggest] = useState(-1);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const enabled = searchName.trim().length > 0;
 
-  // ─── 세부지역 목록 ───────────────────────────────────────────────────────
+  // ── 자동완성 fetch (디바운스 300ms) ──────────────────────────────────────
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (inputValue.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggest(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ q: inputValue.trim() });
+        if (sido !== "all") params.set("sido", sido);
+        if (subRegion !== "all") params.set("region", subRegion);
+        const res = await fetch(`/api/station-search/suggest?${params}`);
+        if (!res.ok) return;
+        const data: string[] = await res.json();
+        setSuggestions(data);
+        setShowSuggest(data.length > 0);
+        setActiveSuggest(-1);
+      } catch { /* ignore */ }
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [inputValue, sido, subRegion]);
+
+  // ── 외부 클릭 시 드롭다운 닫기 ──────────────────────────────────────────
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowSuggest(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ── 자동완성 선택 ────────────────────────────────────────────────────────
+  const selectSuggestion = useCallback((name: string) => {
+    setInputValue(name);
+    setSearchName(name);
+    setShowSuggest(false);
+    setSuggestions([]);
+  }, []);
+
+  // ── 세부지역 목록 ─────────────────────────────────────────────────────────
   const { data: subRegions = [] } = useQuery<string[]>({
     queryKey: ["/api/station-search/subregions", sido],
     queryFn: async () => {
@@ -98,7 +145,7 @@ export default function StationSearchPage() {
     staleTime: 5 * 60_000,
   });
 
-  // ─── 검색 결과 ───────────────────────────────────────────────────────────
+  // ── 검색 결과 ─────────────────────────────────────────────────────────────
   const { data: rows = [], isLoading, isFetching } = useQuery<StationSearchRow[]>({
     queryKey: ["/api/station-search", searchName, sido, subRegion],
     queryFn: async () => {
@@ -117,6 +164,7 @@ export default function StationSearchPage() {
     const v = inputValue.trim();
     if (v.length < 1) return;
     setSearchName(v);
+    setShowSuggest(false);
   }
 
   function handleSidoChange(val: string) {
@@ -125,12 +173,32 @@ export default function StationSearchPage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (showSuggest && suggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveSuggest(i => Math.min(i + 1, suggestions.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveSuggest(i => Math.max(i - 1, -1));
+        return;
+      }
+      if (e.key === "Enter" && activeSuggest >= 0) {
+        e.preventDefault();
+        selectSuggestion(suggestions[activeSuggest]);
+        return;
+      }
+      if (e.key === "Escape") {
+        setShowSuggest(false);
+        return;
+      }
+    }
     if (e.key === "Enter") handleSearch();
   }
 
   const loading = enabled && (isLoading || isFetching);
 
-  // ─── 선택 유종 기준 가격 추출 ────────────────────────────────────────────
   function getPrice(row: StationSearchRow): number | null { return row[fuel]; }
   function getCeiling(row: StationSearchRow): number | null {
     if (fuel === "gasoline") return row.ceilingGasoline;
@@ -153,20 +221,43 @@ export default function StationSearchPage() {
         subtitle="주유소 상호명으로 최근 10일 유가 이력을 조회합니다"
       />
 
-      {/* 검색 영역 */}
       <div className="px-4 md:px-6 pt-2 pb-4 space-y-3">
-        {/* 검색창 + 지역 필터 */}
         <div className="flex gap-2 flex-wrap items-center">
-          {/* 상호 검색창 */}
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Input
-              data-testid="input-station-name"
-              placeholder="주유소 상호 검색"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-72 sm:w-96"
-            />
+
+          {/* 자동완성 검색창 */}
+          <div ref={wrapperRef} className="relative flex gap-2">
+            <div className="relative">
+              <Input
+                data-testid="input-station-name"
+                placeholder="주유소 상호 검색"
+                value={inputValue}
+                onChange={e => { setInputValue(e.target.value); }}
+                onKeyDown={handleKeyDown}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggest(true); }}
+                className="w-72 sm:w-96"
+                autoComplete="off"
+              />
+              {/* 자동완성 드롭다운 */}
+              {showSuggest && suggestions.length > 0 && (
+                <ul className="absolute left-0 top-full mt-1 z-50 w-full bg-popover border rounded-lg shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+                  {suggestions.map((name, i) => (
+                    <li
+                      key={name}
+                      data-testid={`suggest-item-${i}`}
+                      onMouseDown={e => { e.preventDefault(); selectSuggestion(name); }}
+                      className={cn(
+                        "px-3 py-2 text-sm cursor-pointer transition-colors",
+                        i === activeSuggest
+                          ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                          : "hover:bg-muted",
+                      )}
+                    >
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <Button
               data-testid="button-search"
               onClick={handleSearch}
@@ -190,16 +281,9 @@ export default function StationSearchPage() {
             </SelectContent>
           </Select>
 
-          {/* 세부지역 드롭다운 — 항상 표시, 시도 미선택 시 비활성 */}
-          <Select
-            value={subRegion}
-            onValueChange={setSubRegion}
-            disabled={sido === "all"}
-          >
-            <SelectTrigger
-              data-testid="select-subregion"
-              className="w-36 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          {/* 세부지역 드롭다운 — 항상 표시 */}
+          <Select value={subRegion} onValueChange={setSubRegion} disabled={sido === "all"}>
+            <SelectTrigger data-testid="select-subregion" className="w-36 disabled:opacity-50">
               <SelectValue placeholder={sido === "all" ? "세부지역" : "전체"} />
             </SelectTrigger>
             <SelectContent>
@@ -231,7 +315,7 @@ export default function StationSearchPage() {
         </div>
       </div>
 
-      {/* 결과 영역 */}
+      {/* 결과 */}
       <div className="px-4 md:px-6 pb-8">
         {!enabled ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground space-y-2">
@@ -252,7 +336,17 @@ export default function StationSearchPage() {
           </div>
         ) : (
           <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-28" />
+                <col className="w-52" />
+                <col className="w-12" />
+                <col className="w-10" />
+                <col />
+                <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-20" />
+              </colgroup>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
                   <th className="py-3 px-3 text-left whitespace-nowrap">일자</th>
@@ -260,13 +354,13 @@ export default function StationSearchPage() {
                   <th className="py-3 px-2 text-center whitespace-nowrap">상표</th>
                   <th className="py-3 px-2 text-center whitespace-nowrap">셀프</th>
                   <th className="py-3 px-3 text-left whitespace-nowrap hidden md:table-cell">주소</th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">
+                  <th className="py-3 px-2 text-right whitespace-nowrap">
                     현재가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">
+                  <th className="py-3 px-2 text-right whitespace-nowrap">
                     최고가격제<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-3 text-right whitespace-nowrap">초과</th>
+                  <th className="py-3 px-2 text-right whitespace-nowrap">초과</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,8 +380,10 @@ export default function StationSearchPage() {
                       <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-2.5 px-3 font-medium whitespace-nowrap max-w-[160px] truncate">
-                        {row.stationName}
+                      <td className="py-2.5 px-3 font-medium overflow-hidden">
+                        <span className="block truncate" title={row.stationName}>
+                          {row.stationName}
+                        </span>
                       </td>
                       <td className="py-2.5 px-2 text-center">
                         <BrandIcon brand={row.brand} />
@@ -297,18 +393,20 @@ export default function StationSearchPage() {
                           ? <span className="text-green-600 font-medium">✓</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs max-w-[200px] truncate">
-                        {row.address ?? "—"}
+                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs overflow-hidden">
+                        <span className="block truncate" title={row.address ?? ""}>
+                          {row.address ?? "—"}
+                        </span>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">
+                      <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
                         {price != null
                           ? <span>{price.toLocaleString("ko-KR")}원</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap text-muted-foreground">
+                      <td className="py-2.5 px-2 text-right whitespace-nowrap text-muted-foreground">
                         {formatPrice(ceiling)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">
+                      <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
                         {excess == null
                           ? <span className="text-muted-foreground">—</span>
                           : excess > 0

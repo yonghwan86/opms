@@ -1170,6 +1170,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/station-search/suggest?q=&sido=&region= — 자동완성 제안
+  app.get("/api/station-search/suggest", requireAuth, async (req, res) => {
+    try {
+      const { q, sido, region } = req.query as Record<string, string>;
+      if (!q || q.trim().length < 2) return res.json([]);
+      const names = await storage.suggestStations({
+        q: q.trim(),
+        sido: sido && sido !== "all" ? sido : undefined,
+        region: region && region !== "all" ? region : undefined,
+      });
+      res.json(names);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // GET /api/station-search/subregions?sido= — 시도별 세부지역 목록
   app.get("/api/station-search/subregions", requireAuth, async (req, res) => {
     try {
