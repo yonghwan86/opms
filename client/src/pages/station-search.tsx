@@ -336,31 +336,21 @@ export default function StationSearchPage() {
           </div>
         ) : (
           <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm table-fixed">
-              <colgroup>
-                <col className="w-28" />
-                <col className="w-52" />
-                <col className="w-12" />
-                <col className="w-10" />
-                <col />
-                <col className="w-28" />
-                <col className="w-28" />
-                <col className="w-20" />
-              </colgroup>
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
-                  <th className="py-3 px-3 text-left whitespace-nowrap">일자</th>
-                  <th className="py-3 px-3 text-left whitespace-nowrap">상호</th>
-                  <th className="py-3 px-2 text-center whitespace-nowrap">상표</th>
-                  <th className="py-3 px-2 text-center whitespace-nowrap">셀프</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap w-28">일자</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap w-[200px] md:w-[336px]">상호</th>
+                  <th className="py-3 px-2 text-center whitespace-nowrap w-12">상표</th>
+                  <th className="py-3 px-2 text-center whitespace-nowrap w-10">셀프</th>
                   <th className="py-3 px-3 text-left whitespace-nowrap hidden md:table-cell">주소</th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap">
+                  <th className="py-3 px-2 text-right whitespace-nowrap w-28">
                     현재가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap">
+                  <th className="py-3 px-2 text-right whitespace-nowrap w-28">
                     최고가격제<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap">초과</th>
+                  <th className="py-3 px-2 text-right whitespace-nowrap w-20">초과</th>
                 </tr>
               </thead>
               <tbody>
@@ -380,7 +370,7 @@ export default function StationSearchPage() {
                       <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground text-xs">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-2.5 px-3 font-medium overflow-hidden">
+                      <td className="py-2.5 px-3 font-medium w-[200px] md:w-[336px] max-w-[200px] md:max-w-[336px] overflow-hidden">
                         <span className="block truncate" title={row.stationName}>
                           {row.stationName}
                         </span>
@@ -393,7 +383,7 @@ export default function StationSearchPage() {
                           ? <span className="text-green-600 font-medium">✓</span>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs overflow-hidden">
+                      <td className="py-2.5 px-3 hidden md:table-cell text-muted-foreground text-xs max-w-0 w-full overflow-hidden">
                         <span className="block truncate" title={row.address ?? ""}>
                           {row.address ?? "—"}
                         </span>
