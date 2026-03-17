@@ -1571,13 +1571,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             const pushBody = isToday
               ? "오늘 유가 데이터(잠정)가 업데이트되었습니다."
               : "전일 유가 확정값이 업데이트되었습니다.";
-            await sendPushToAll(subs, {
+            const { sent: manualSent, expiredEndpoints: manualExpired } = await sendPushToAll(subs, {
               title: "유가 모니터링",
               body: pushBody,
               icon: "/icon-192.png",
               url: "/oil-prices",
             });
-            console.log(`[ManualUpload] 사용자 푸시 발송 완료: ${subs.length}명`);
+            if (manualExpired.length > 0) {
+              await Promise.all(manualExpired.map((ep) => storage.deletePushSubscription(ep)));
+              console.log(`[ManualUpload] 만료된 구독 ${manualExpired.length}건 자동 삭제`);
+            }
+            console.log(`[ManualUpload] 사용자 푸시 발송 완료: ${manualSent}건`);
           }
         } catch (pushErr) {
           console.error("[ManualUpload] 푸시 발송 오류 (업로드는 성공):", pushErr);
@@ -1670,7 +1674,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         url: "/oil-prices",
         badgeCount,
       };
-      const { sent, failed } = await sendPushToAll(subs, payload);
+      const { sent, failed, expiredEndpoints } = await sendPushToAll(subs, payload);
+      if (expiredEndpoints.length > 0) {
+        await Promise.all(expiredEndpoints.map((ep) => storage.deletePushSubscription(ep)));
+      }
       res.json({ ok: true, sent, failed });
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });

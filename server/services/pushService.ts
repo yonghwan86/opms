@@ -34,12 +34,13 @@ export interface PushPayload {
   body: string;
   icon?: string;
   url?: string;
+  badgeCount?: number;
 }
 
 export async function sendPush(
   subscription: { endpoint: string; p256dh: string; auth: string },
   payload: PushPayload
-): Promise<boolean> {
+): Promise<{ ok: boolean; expired: boolean }> {
   try {
     await webpush.sendNotification(
       {
@@ -48,28 +49,32 @@ export async function sendPush(
       },
       JSON.stringify(payload)
     );
-    return true;
+    return { ok: true, expired: false };
   } catch (err: any) {
     if (err.statusCode === 410 || err.statusCode === 404) {
-      return false;
+      return { ok: false, expired: true };
     }
     console.error("푸시 전송 오류:", err.message ?? err);
-    return false;
+    return { ok: false, expired: false };
   }
 }
 
 export async function sendPushToAll(
   subscriptions: Array<{ endpoint: string; p256dh: string; auth: string }>,
   payload: PushPayload
-): Promise<{ sent: number; failed: number }> {
+): Promise<{ sent: number; failed: number; expiredEndpoints: string[] }> {
   let sent = 0;
   let failed = 0;
+  const expiredEndpoints: string[] = [];
   await Promise.all(
     subscriptions.map(async (sub) => {
-      const ok = await sendPush(sub, payload);
-      if (ok) sent++;
-      else failed++;
+      const result = await sendPush(sub, payload);
+      if (result.ok) sent++;
+      else {
+        failed++;
+        if (result.expired) expiredEndpoints.push(sub.endpoint);
+      }
     })
   );
-  return { sent, failed };
+  return { sent, failed, expiredEndpoints };
 }

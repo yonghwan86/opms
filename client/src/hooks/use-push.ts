@@ -35,6 +35,39 @@ export function usePush() {
     checkState();
   }, [checkState]);
 
+  useEffect(() => {
+    const silentRefresh = async () => {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      if (Notification.permission !== "granted") return;
+      try {
+        const res = await fetch("/api/push/vapid-public-key", { credentials: "include" });
+        if (!res.ok) return;
+        const { publicKey } = await res.json();
+
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+        }
+
+        const { endpoint, keys } = sub.toJSON() as {
+          endpoint: string;
+          keys: { p256dh: string; auth: string };
+        };
+        await apiRequest("POST", "/api/push/subscribe", {
+          endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+        });
+      } catch {
+      }
+    };
+    silentRefresh();
+  }, []);
+
   const subscribe = useCallback(async (): Promise<boolean> => {
     setState("loading");
     try {

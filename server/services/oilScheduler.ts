@@ -49,9 +49,13 @@ async function sendUserPush(dateKey: string, message: string, slot: "morning" | 
       icon: "/icon-192.png",
       url: "/oil-prices",
     };
-    const { sent, failed } = await sendPushToAll(subs, payload);
+    const { sent, failed, expiredEndpoints } = await sendPushToAll(subs, payload);
     if (slot === "morning") lastMorningPushDate = dateKey;
     else lastAfternoonPushDate = dateKey;
+    if (expiredEndpoints.length > 0) {
+      await Promise.all(expiredEndpoints.map((ep) => storage.deletePushSubscription(ep)));
+      console.log(`[PushScheduler] 만료된 구독 ${expiredEndpoints.length}건 자동 삭제`);
+    }
     console.log(`[PushScheduler] ${slot === "morning" ? "오전" : "오후"} 푸시 발송 완료: 성공 ${sent}건, 실패 ${failed}건`);
   } catch (err) {
     console.error("[PushScheduler] 푸시 발송 오류:", err);
@@ -63,7 +67,11 @@ async function sendMasterPush(title: string, body: string): Promise<void> {
     const subs = await storage.getMasterPushSubscriptions();
     if (subs.length === 0) return;
     const payload = { title, body, icon: "/icon-192.png", url: "/oil-prices" };
-    const { sent, failed } = await sendPushToAll(subs, payload);
+    const { sent, failed, expiredEndpoints } = await sendPushToAll(subs, payload);
+    if (expiredEndpoints.length > 0) {
+      await Promise.all(expiredEndpoints.map((ep) => storage.deletePushSubscription(ep)));
+      console.log(`[PushScheduler] 만료된 마스터 구독 ${expiredEndpoints.length}건 자동 삭제`);
+    }
     console.log(`[PushScheduler] 마스터 푸시 발송: 성공 ${sent}건, 실패 ${failed}건`);
   } catch (err) {
     console.error("[PushScheduler] 마스터 푸시 발송 오류:", err);
