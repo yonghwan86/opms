@@ -585,34 +585,20 @@ export default function CeilingTrendPage() {
 
         {/* 선택된 최고가격 표시 */}
         {selectedCeiling && (
-          <>
-            {/* 모바일: 한 줄 컴팩트 */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden">
-              {FUEL_CONFIG.map(f => {
-                const val = selectedCeiling[f.key];
-                return val ? (
-                  <span key={f.key} className="flex items-center gap-1 text-xs whitespace-nowrap">
-                    <span className={cn("w-2 h-2 rounded-full flex-shrink-0", f.dot)} />
-                    <span className="text-muted-foreground">{f.label}:</span>
-                    <span className="font-bold text-foreground">{fmt(Number(val))}원</span>
-                  </span>
-                ) : null;
-              })}
-            </div>
-            {/* PC: 기존 카드 형태 */}
-            <div className="hidden sm:flex flex-wrap gap-3">
-              {FUEL_CONFIG.map(f => {
-                const val = selectedCeiling[f.key];
-                return val ? (
-                  <div key={f.key} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-                    <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", f.dot)} />
-                    <span className="text-xs text-muted-foreground">{f.label} 최고가:</span>
-                    <span className="text-xs font-bold text-foreground">{fmt(Number(val))}원</span>
-                  </div>
-                ) : null;
-              })}
-            </div>
-          </>
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+            <span className="text-muted-foreground font-medium whitespace-nowrap">- 최고가 :</span>
+            {FUEL_CONFIG.map((f, i) => {
+              const val = selectedCeiling[f.key];
+              return val ? (
+                <span key={f.key} className="flex items-center gap-1 whitespace-nowrap">
+                  {i > 0 && <span className="text-muted-foreground mr-0.5">,</span>}
+                  <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", f.dot)} />
+                  <span className="text-foreground">{f.label}</span>
+                  <span className="font-bold text-foreground">{fmt(Number(val))}원</span>
+                </span>
+              ) : null;
+            })}
+          </div>
         )}
 
         {/* 차트 카드 */}
@@ -713,7 +699,7 @@ export default function CeilingTrendPage() {
                       stroke={f.ceilingColor}
                       strokeDasharray="6 3"
                       strokeWidth={1.5}
-                      label={i === 0 ? { value: combinedLabel, position: "insideTopRight", fontSize: 9, fill: "#6b7280", dy: -6 } : undefined}
+                      label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 6 } : undefined}
                     />
                   ));
                 })()}
