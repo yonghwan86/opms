@@ -62,6 +62,7 @@ interface StationSuggest {
 
 // ─── 유틸 ──────────────────────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString("ko-KR");
+const shortSigungu = (s: string) => s.replace(/(시|군|구)$/, "");
 
 function toLabel(yyyymmdd: string): string {
   if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd;
@@ -491,55 +492,58 @@ export default function CeilingTrendPage() {
 
             <div className="w-px h-8 bg-border" />
 
-            {/* 시도 선택 */}
-            <div ref={sidoRef} className="relative">
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시도</p>
-              <button
-                onClick={() => setShowSidoMenu(p => !p)}
-                className="flex items-center gap-1.5 border border-border text-xs text-foreground px-3 py-1.5 rounded-lg"
-                data-testid="button-select-sido"
-              >
-                {selectedSido || "전국"} <ChevronDown className="w-3 h-3" />
-              </button>
-              {showSidoMenu && (
-                <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[110px] max-h-64 overflow-y-auto">
-                  <button
-                    className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", !selectedSido && "font-semibold text-primary")}
-                    onClick={() => { setSelectedSido(""); setSelectedSigungu(""); setShowSidoMenu(false); }}
-                  >
-                    전국
-                  </button>
-                  {SIDO_LIST.map(s => (
-                    <button
-                      key={s}
-                      className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", selectedSido === s && "font-semibold text-primary")}
-                      onClick={() => { setSelectedSido(s); setSelectedSigungu(""); setShowSidoMenu(false); }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 시군구 선택 */}
-            <div>
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시군구</p>
-              {selectedSido && sigunguList.length > 0 ? (
-                <select
-                  value={selectedSigungu}
-                  onChange={e => setSelectedSigungu(e.target.value)}
-                  className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background appearance-none pr-7 cursor-pointer"
-                  data-testid="select-sigungu"
+            {/* 시도 + 시군구 (모바일에서 한 줄) */}
+            <div className="flex items-end gap-2">
+              {/* 시도 선택 */}
+              <div ref={sidoRef} className="relative">
+                <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시도</p>
+                <button
+                  onClick={() => setShowSidoMenu(p => !p)}
+                  className="flex items-center gap-1.5 border border-border text-xs text-foreground px-3 py-1.5 rounded-lg"
+                  data-testid="button-select-sido"
                 >
-                  <option value="">전체</option>
-                  {sigunguList.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              ) : (
-                <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
-                  전체 <ChevronDown className="w-3 h-3" />
+                  {selectedSido || "전국"} <ChevronDown className="w-3 h-3" />
                 </button>
-              )}
+                {showSidoMenu && (
+                  <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[110px] max-h-64 overflow-y-auto">
+                    <button
+                      className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", !selectedSido && "font-semibold text-primary")}
+                      onClick={() => { setSelectedSido(""); setSelectedSigungu(""); setShowSidoMenu(false); }}
+                    >
+                      전국
+                    </button>
+                    {SIDO_LIST.map(s => (
+                      <button
+                        key={s}
+                        className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", selectedSido === s && "font-semibold text-primary")}
+                        onClick={() => { setSelectedSido(s); setSelectedSigungu(""); setShowSidoMenu(false); }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 시군구 선택 */}
+              <div>
+                <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시군구</p>
+                {selectedSido && sigunguList.length > 0 ? (
+                  <select
+                    value={selectedSigungu}
+                    onChange={e => setSelectedSigungu(e.target.value)}
+                    className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background appearance-none pr-7 cursor-pointer"
+                    data-testid="select-sigungu"
+                  >
+                    <option value="">전체</option>
+                    {sigunguList.map(s => <option key={s} value={s}>{shortSigungu(s)}</option>)}
+                  </select>
+                ) : (
+                  <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
+                    전체 <ChevronDown className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="w-px h-8 bg-border" />
@@ -580,18 +584,34 @@ export default function CeilingTrendPage() {
 
         {/* 선택된 최고가격 표시 */}
         {selectedCeiling && (
-          <div className="flex flex-wrap gap-3">
-            {FUEL_CONFIG.map(f => {
-              const val = selectedCeiling[f.key];
-              return val ? (
-                <div key={f.key} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-                  <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", f.dot)} />
-                  <span className="text-xs text-muted-foreground">{f.label} 최고가:</span>
-                  <span className="text-xs font-bold text-foreground">{fmt(Number(val))}원</span>
-                </div>
-              ) : null;
-            })}
-          </div>
+          <>
+            {/* 모바일: 한 줄 컴팩트 */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden">
+              {FUEL_CONFIG.map(f => {
+                const val = selectedCeiling[f.key];
+                return val ? (
+                  <span key={f.key} className="flex items-center gap-1 text-xs whitespace-nowrap">
+                    <span className={cn("w-2 h-2 rounded-full flex-shrink-0", f.dot)} />
+                    <span className="text-muted-foreground">{f.label}:</span>
+                    <span className="font-bold text-foreground">{fmt(Number(val))}원</span>
+                  </span>
+                ) : null;
+              })}
+            </div>
+            {/* PC: 기존 카드 형태 */}
+            <div className="hidden sm:flex flex-wrap gap-3">
+              {FUEL_CONFIG.map(f => {
+                const val = selectedCeiling[f.key];
+                return val ? (
+                  <div key={f.key} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+                    <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", f.dot)} />
+                    <span className="text-xs text-muted-foreground">{f.label} 최고가:</span>
+                    <span className="text-xs font-bold text-foreground">{fmt(Number(val))}원</span>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          </>
         )}
 
         {/* 차트 카드 */}

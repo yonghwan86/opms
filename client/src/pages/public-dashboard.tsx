@@ -819,39 +819,42 @@ export default function PublicDashboardPage() {
 
                 <div className="w-px h-8 bg-border" />
 
-                {/* 시도 */}
-                <div ref={ceilSidoRef} className="relative">
-                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시도</p>
-                  <button onClick={() => setCeilSidoMenu(p => !p)}
-                    className="flex items-center gap-1.5 border border-border text-xs text-foreground px-3 py-1.5 rounded-lg">
-                    {ceilSido || "전국"} <ChevronDown className="w-3 h-3" />
-                  </button>
-                  {ceilSidoMenu && (
-                    <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[110px] max-h-64 overflow-y-auto">
-                      <button className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", !ceilSido && "font-semibold text-primary")}
-                        onClick={() => { setCeilSido(""); setCeilSigungu(""); setCeilSidoMenu(false); }}>전국</button>
-                      {SIDO_LIST.map(s => (
-                        <button key={s} className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", ceilSido === s && "font-semibold text-primary")}
-                          onClick={() => { setCeilSido(s); setCeilSigungu(""); setCeilSidoMenu(false); }}>{s}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 시군구 */}
-                <div>
-                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시군구</p>
-                  {ceilSido && ceilSigunguList.length > 0 ? (
-                    <select value={ceilSigungu} onChange={e => setCeilSigungu(e.target.value)}
-                      className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background">
-                      <option value="">전체</option>
-                      {ceilSigunguList.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  ) : (
-                    <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
-                      전체 <ChevronDown className="w-3 h-3" />
+                {/* 시도 + 시군구 (모바일에서 한 줄) */}
+                <div className="flex items-end gap-2">
+                  {/* 시도 */}
+                  <div ref={ceilSidoRef} className="relative">
+                    <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시도</p>
+                    <button onClick={() => setCeilSidoMenu(p => !p)}
+                      className="flex items-center gap-1.5 border border-border text-xs text-foreground px-3 py-1.5 rounded-lg">
+                      {ceilSido || "전국"} <ChevronDown className="w-3 h-3" />
                     </button>
-                  )}
+                    {ceilSidoMenu && (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[110px] max-h-64 overflow-y-auto">
+                        <button className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", !ceilSido && "font-semibold text-primary")}
+                          onClick={() => { setCeilSido(""); setCeilSigungu(""); setCeilSidoMenu(false); }}>전국</button>
+                        {SIDO_LIST.map(s => (
+                          <button key={s} className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", ceilSido === s && "font-semibold text-primary")}
+                            onClick={() => { setCeilSido(s); setCeilSigungu(""); setCeilSidoMenu(false); }}>{s}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 시군구 */}
+                  <div>
+                    <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시군구</p>
+                    {ceilSido && ceilSigunguList.length > 0 ? (
+                      <select value={ceilSigungu} onChange={e => setCeilSigungu(e.target.value)}
+                        className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background">
+                        <option value="">전체</option>
+                        {ceilSigunguList.map(s => <option key={s} value={s}>{s.replace(/(시|군|구)$/, "")}</option>)}
+                      </select>
+                    ) : (
+                      <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
+                        전체 <ChevronDown className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="w-px h-8 bg-border" />
