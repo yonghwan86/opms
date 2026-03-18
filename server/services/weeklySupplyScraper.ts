@@ -22,38 +22,28 @@ function parsePrice(val: string | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
-function getMostRecentMonday(): string {
+function getMostRecentWeekKey(): string {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const yy = String(kst.getUTCFullYear()).slice(2);
+  const mm = String(kst.getUTCMonth() + 1).padStart(2, "0");
   const day = kst.getUTCDay();
-  const diff = day === 0 ? 6 : day - 1;
-  const monday = new Date(kst);
-  monday.setUTCDate(kst.getUTCDate() - diff);
-  const y = monday.getUTCFullYear();
-  const m = String(monday.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(monday.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
+  const date = kst.getUTCDate();
+  const firstOfMonth = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), 1));
+  const firstDay = firstOfMonth.getUTCDay();
+  const firstMonOfWeek1 = firstDay === 0 ? -5 : firstDay <= 1 ? 1 - firstDay + 1 : 1 - firstDay + 8;
+  const weekNum = Math.ceil((date - firstMonOfWeek1 + 1) / 7);
+  const ww = String(Math.max(1, weekNum)).padStart(2, "0");
+  return `${yy}${mm}${ww}`;
 }
 
-function deriveWeekStartFromPeriod(periodText: string): string | null {
+function deriveWeekKey(periodText: string): string | null {
   const match = periodText.match(/(\d{2})년\s*(\d{2})월\s*(\d+)주/);
   if (!match) return null;
-
-  const year = 2000 + parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-  const weekNum = parseInt(match[3], 10);
-
-  const firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
-  const firstDay = firstOfMonth.getUTCDay();
-  const firstMonday = firstDay <= 1
-    ? 1 + (1 - firstDay)
-    : 1 + (8 - firstDay);
-
-  const targetDate = new Date(Date.UTC(year, month - 1, firstMonday + (weekNum - 1) * 7));
-  const y = targetDate.getUTCFullYear();
-  const m = String(targetDate.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(targetDate.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
+  const yy = match[1];
+  const mm = match[2].padStart(2, "0");
+  const ww = match[3].padStart(2, "0");
+  return `${yy}${mm}${ww}`;
 }
 
 export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
@@ -139,16 +129,16 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
 
     let weekStart: string;
     if (periodText) {
-      const derived = deriveWeekStartFromPeriod(periodText);
+      const derived = deriveWeekKey(periodText);
       if (derived) {
         weekStart = derived;
-        console.log(`[WeeklySupplyScraper] 페이지 기간에서 weekStart 산출: ${weekStart}`);
+        console.log(`[WeeklySupplyScraper] 페이지 기간에서 weekKey 산출: ${weekStart}`);
       } else {
-        weekStart = getMostRecentMonday();
+        weekStart = getMostRecentWeekKey();
         console.log(`[WeeklySupplyScraper] 기간 파싱 실패, 시스템 날짜 fallback: ${weekStart}`);
       }
     } else {
-      weekStart = getMostRecentMonday();
+      weekStart = getMostRecentWeekKey();
       console.log(`[WeeklySupplyScraper] 기간 텍스트 없음, 시스템 날짜 fallback: ${weekStart}`);
     }
 
