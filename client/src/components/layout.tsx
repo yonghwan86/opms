@@ -30,8 +30,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "대시보드", href: "/", icon: LayoutDashboard },
   { label: "공개 대시보드", href: "/public", icon: Globe, devOnly: true },
-  { label: "유가 분석", href: "/oil-prices", icon: Fuel },
   { label: "최고가격제 변동추이", href: "/ceiling-trend", icon: TrendingUp },
+  { label: "유가 분석", href: "/oil-prices", icon: Fuel },
   { label: "주유소 가격 검색", href: "/station-search", icon: Search },
   { label: "유가 CSV 업로드", href: "/oil-prices/upload", icon: Upload, masterOnly: true },
   { label: "본부 권한", href: "/region-permissions", icon: MapPin, masterOnly: true },
