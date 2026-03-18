@@ -214,6 +214,24 @@ export const insertUserSatisfactionSchema = createInsertSchema(userSatisfactions
 export type InsertUserSatisfaction = z.infer<typeof insertUserSatisfactionSchema>;
 export type UserSatisfaction = typeof userSatisfactions.$inferSelect;
 
+// ─── 주간공급가격 (Oil Weekly Supply Prices) ─────────────────────────────────
+export const oilWeeklySupplyPrices = pgTable("oil_weekly_supply_prices", {
+  id: serial("id").primaryKey(),
+  weekStart: varchar("week_start", { length: 8 }).notNull(),
+  company: varchar("company", { length: 50 }).notNull(),
+  premiumGasoline: numeric("premium_gasoline", { precision: 10, scale: 2 }),
+  gasoline: numeric("gasoline", { precision: 10, scale: 2 }),
+  diesel: numeric("diesel", { precision: 10, scale: 2 }),
+  kerosene: numeric("kerosene", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  weekCompanyIdx: uniqueIndex("oil_weekly_supply_week_company_idx").on(table.weekStart, table.company),
+}));
+
+export const insertOilWeeklySupplyPriceSchema = createInsertSchema(oilWeeklySupplyPrices).omit({ id: true, createdAt: true });
+export type InsertOilWeeklySupplyPrice = z.infer<typeof insertOilWeeklySupplyPriceSchema>;
+export type OilWeeklySupplyPrice = typeof oilWeeklySupplyPrices.$inferSelect;
+
 // ─── 푸시 구독 (Push Subscriptions) ─────────────────────────────────────────
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),

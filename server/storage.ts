@@ -4,7 +4,7 @@ import {
   headquarters, teams, users, hqTeamRegionPermissions,
   loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis, oilCollectionLogs,
-  pushSubscriptions, oilCeilingPrices, userSatisfactions,
+  pushSubscriptions, oilCeilingPrices, userSatisfactions, oilWeeklySupplyPrices,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -15,6 +15,7 @@ import {
   type PushSubscription, type InsertPushSubscription,
   type OilCeilingPrices, type InsertOilCeilingPrices,
   type InsertOilCollectionLog, type OilCollectionLog,
+  type InsertOilWeeklySupplyPrice, type OilWeeklySupplyPrice,
 } from "@shared/schema";
 
 // ─── 최고가격제 변동추이 타입 ──────────────────────────────────────────────────
@@ -245,6 +246,10 @@ export interface IStorage {
   getStationSubregions(sido: string): Promise<string[]>;
   suggestStations(params: { q: string; sido?: string; region?: string }): Promise<string[]>;
   suggestStationsDetailed(params: { q: string; sido?: string; region?: string }): Promise<{ stationId: string; stationName: string; region: string }[]>;
+
+  // 주간공급가격
+  upsertWeeklySupplyPrices(rows: InsertOilWeeklySupplyPrice[]): Promise<void>;
+  getWeeklySupplyPrices(limitWeeks?: number): Promise<OilWeeklySupplyPrice[]>;
 }
 
 export interface StationSearchRow {
@@ -1578,6 +1583,43 @@ export class PostgresStorage implements IStorage {
       usersCount: Number(userCount[0].total),
       recentLoginCount: Number(recentLogin[0].total),
     };
+  }
+
+  // ── 주간공급가격 ───────────────────────────────────────────────────────────
+  async upsertWeeklySupplyPrices(rows: InsertOilWeeklySupplyPrice[]): Promise<void> {
+    if (rows.length === 0) return;
+    for (const row of rows) {
+      await db
+        .insert(oilWeeklySupplyPrices)
+        .values(row)
+        .onConflictDoUpdate({
+          target: [oilWeeklySupplyPrices.weekStart, oilWeeklySupplyPrices.company],
+          set: {
+            premiumGasoline: row.premiumGasoline,
+            gasoline: row.gasoline,
+            diesel: row.diesel,
+            kerosene: row.kerosene,
+            createdAt: new Date(),
+          },
+        });
+    }
+  }
+
+  async getWeeklySupplyPrices(limitWeeks = 10): Promise<OilWeeklySupplyPrice[]> {
+    const recentWeeks = await db
+      .selectDistinct({ weekStart: oilWeeklySupplyPrices.weekStart })
+      .from(oilWeeklySupplyPrices)
+      .orderBy(desc(oilWeeklySupplyPrices.weekStart))
+      .limit(limitWeeks);
+
+    if (recentWeeks.length === 0) return [];
+
+    const weekStarts = recentWeeks.map(r => r.weekStart);
+    return db
+      .select()
+      .from(oilWeeklySupplyPrices)
+      .where(inArray(oilWeeklySupplyPrices.weekStart, weekStarts))
+      .orderBy(desc(oilWeeklySupplyPrices.weekStart), asc(oilWeeklySupplyPrices.company));
   }
 }
 

@@ -118,6 +118,22 @@ export async function initDb() {
         ADD COLUMN IF NOT EXISTS badge_count INTEGER NOT NULL DEFAULT 0;
     `);
 
+    // oil_weekly_supply_prices 테이블 생성 (주간공급가격)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS oil_weekly_supply_prices (
+        id SERIAL PRIMARY KEY,
+        week_start VARCHAR(8) NOT NULL,
+        company VARCHAR(50) NOT NULL,
+        premium_gasoline NUMERIC(10, 2),
+        gasoline NUMERIC(10, 2),
+        diesel NUMERIC(10, 2),
+        kerosene NUMERIC(10, 2),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS oil_weekly_supply_week_company_idx
+        ON oil_weekly_supply_prices (week_start, company);
+    `);
+
     console.log("DB 테이블 초기화 완료");
   } finally {
     client.release();

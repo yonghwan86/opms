@@ -1807,6 +1807,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 주간공급가격 ───────────────────────────────────────────────────────────
+  // GET /api/oil/weekly-supply — 최근 N주 주간공급가격 데이터
+  app.get("/api/oil/weekly-supply", requireAuth, async (req, res) => {
+    try {
+      const rawLimit = parseInt(String(req.query.limit ?? "10"), 10);
+      const limitWeeks = isNaN(rawLimit) ? 10 : Math.min(52, Math.max(1, rawLimit));
+      const data = await storage.getWeeklySupplyPrices(limitWeeks);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // ─── 만족도 조사 ────────────────────────────────────────────────────────────
   // GET /api/satisfaction/list — 관리자 전체 조회 (MASTER only)
   app.get("/api/satisfaction/list", requireMaster, async (req, res) => {

@@ -34,6 +34,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   scheduled_morning_retry2: "오전 2차 재시도",
   scheduled_afternoon_retry1: "오후 1차 재시도",
   scheduled_afternoon_retry2: "오후 2차 재시도",
+  weekly_supply_price: "주간공급가격",
 };
 
 const JOB_TYPE_FILTER_OPTIONS = [
@@ -46,6 +47,7 @@ const JOB_TYPE_FILTER_OPTIONS = [
   { value: "scheduled_morning_retry2", label: "오전 2차 재시도" },
   { value: "scheduled_afternoon_retry1", label: "오후 1차 재시도" },
   { value: "scheduled_afternoon_retry2", label: "오후 2차 재시도" },
+  { value: "weekly_supply_price", label: "주간공급가격" },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -57,6 +59,11 @@ function StatusBadge({ status }: { status: string }) {
   if (status === "partial") return (
     <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-0 gap-1">
       <AlertTriangle className="w-3 h-3" /> 부분성공
+    </Badge>
+  );
+  if (status === "skipped") return (
+    <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400 border-0 gap-1">
+      <AlertTriangle className="w-3 h-3" /> 건너뜀
     </Badge>
   );
   return (
@@ -93,7 +100,7 @@ function downloadCsv(logs: OilCollectionLog[]) {
   const rows = logs.map(log => [
     formatCreatedAt(log.createdAt),
     JOB_TYPE_LABELS[log.jobType] ?? log.jobType,
-    log.status === "success" ? "성공" : log.status === "partial" ? "부분성공" : "실패",
+    log.status === "success" ? "성공" : log.status === "partial" ? "부분성공" : log.status === "skipped" ? "건너뜀" : "실패",
     formatDate(log.targetDate),
     log.rawCount ?? "",
     log.analysisCount ?? "",
@@ -181,6 +188,7 @@ export default function OilCollectionLogsPage() {
               <SelectItem value="success">성공</SelectItem>
               <SelectItem value="partial">부분성공</SelectItem>
               <SelectItem value="failed">실패</SelectItem>
+              <SelectItem value="skipped">건너뜀</SelectItem>
             </SelectContent>
           </Select>
 

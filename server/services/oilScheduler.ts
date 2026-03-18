@@ -5,6 +5,8 @@ import { runAnalysis } from "./oilAnalyzer";
 import { storage } from "../storage";
 import { sendPushToAll } from "./pushService";
 import { fetchFuelAveragesWithRetry, setCachedFuelAverages } from "./opinetApi";
+import { scrapeWeeklySupplyPrices } from "./weeklySupplyScraper";
+import { isKoreanHoliday } from "./koreanHoliday";
 
 function getDateStr(date: Date): string {
   const y = date.getFullYear();
@@ -424,6 +426,49 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
   }
 }
 
+async function runWeeklySupplyJob(): Promise<void> {
+  const jobType = "weekly_supply_price";
+  const start = Date.now();
+  console.log("[WeeklySupplyScheduler] 주간공급가격 수집 시작");
+  try {
+    const rows = await scrapeWeeklySupplyPrices();
+    if (rows.length === 0) {
+      await storage.saveOilCollectionLog({ jobType, status: "failed", errorMessage: "파싱된 데이터 없음 (정유사 4사 행 미발견)" });
+      await sendMasterPush("주간공급가격 수집 실패", "테이블 파싱 후 대상 정유사 데이터가 없습니다.");
+      return;
+    }
+    const insertRows = rows.map(r => ({
+      weekStart: r.weekStart,
+      company: r.company,
+      premiumGasoline: r.premiumGasoline != null ? String(r.premiumGasoline) : null,
+      gasoline: r.gasoline != null ? String(r.gasoline) : null,
+      diesel: r.diesel != null ? String(r.diesel) : null,
+      kerosene: r.kerosene != null ? String(r.kerosene) : null,
+    }));
+    await storage.upsertWeeklySupplyPrices(insertRows);
+    const durationMs = Date.now() - start;
+    await storage.saveOilCollectionLog({ jobType, status: "success", rawCount: rows.length, analysisDurationMs: durationMs });
+    console.log(`[WeeklySupplyScheduler] 수집 완료: ${rows.length}건 (${durationMs}ms)`);
+
+    const weekStart = rows[0]?.weekStart ?? "";
+    const pushBody = `${weekStart.slice(0, 4)}-${weekStart.slice(4, 6)}-${weekStart.slice(6, 8)} 주간 공급가격 데이터가 업데이트되었습니다.`;
+    const allSubs = await storage.getAllPushSubscriptions();
+    if (allSubs.length > 0) {
+      const payload = { title: "주간공급가격 업데이트", body: pushBody, icon: "/icon-192.png", url: "/oil-prices" };
+      const { sent, failed, expiredEndpoints } = await sendPushToAll(allSubs, payload);
+      if (expiredEndpoints.length > 0) {
+        await Promise.all(expiredEndpoints.map(ep => storage.deletePushSubscription(ep)));
+      }
+      console.log(`[WeeklySupplyScheduler] 푸시 발송: 성공 ${sent}건, 실패 ${failed}건`);
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[WeeklySupplyScheduler] 오류:", msg);
+    await storage.saveOilCollectionLog({ jobType, status: "failed", errorMessage: msg, analysisDurationMs: Date.now() - start });
+    await sendMasterPush("주간공급가격 수집 오류", `오류: ${msg}`);
+  }
+}
+
 export function startOilScheduler(): void {
   // 오전 9:30 — 전날 확정값 수집 (무조건 실행, 잠정값 덮어씌움)
   cron.schedule("30 9 * * *", async () => {
@@ -461,7 +506,33 @@ export function startOilScheduler(): void {
     await fetchOpinetFuelAverages();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST)");
+  // 금요일 13:00 KST — 금요일이 평일이면 수집
+  cron.schedule("0 13 * * 5", async () => {
+    const today = getKSTNow();
+    console.log(`[WeeklySupplyScheduler] 금요일 13:00 KST 트리거 (${getDateStr(today)})`);
+    if (isKoreanHoliday(today)) {
+      console.log("[WeeklySupplyScheduler] 오늘은 한국 공휴일 → 수집 건너뜀 (월요일에 수집 예정)");
+      await storage.saveOilCollectionLog({ jobType: "weekly_supply_price", status: "skipped", errorMessage: "금요일 공휴일로 인해 건너뜀" });
+      return;
+    }
+    await runWeeklySupplyJob();
+  }, { timezone: "Asia/Seoul" });
+
+  // 월요일 13:00 KST — 직전 금요일이 공휴일이었으면 수집
+  cron.schedule("0 13 * * 1", async () => {
+    const today = getKSTNow();
+    const lastFriday = new Date(today);
+    lastFriday.setUTCDate(lastFriday.getUTCDate() - 3);
+    console.log(`[WeeklySupplyScheduler] 월요일 13:00 KST 트리거 (${getDateStr(today)}), 직전 금요일: ${getDateStr(lastFriday)}`);
+    if (!isKoreanHoliday(lastFriday)) {
+      console.log("[WeeklySupplyScheduler] 직전 금요일이 평일 → 이미 금요일에 수집됨, 건너뜀");
+      await storage.saveOilCollectionLog({ jobType: "weekly_supply_price", status: "skipped", errorMessage: "직전 금요일 평일 수집됨으로 건너뜀" });
+      return;
+    }
+    await runWeeklySupplyJob();
+  }, { timezone: "Asia/Seoul" });
+
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 
