@@ -703,20 +703,20 @@ export default function CeilingTrendPage() {
                 />
 
                 {/* 최고가격 수평 기준선 */}
-                {selectedCeiling && FUEL_CONFIG.filter(f => fuels[f.key]).map(f => {
-                  const val = selectedCeiling[f.key];
-                  if (!val) return null;
-                  return (
+                {selectedCeiling && (() => {
+                  const activeFuels = FUEL_CONFIG.filter(f => fuels[f.key] && selectedCeiling[f.key]);
+                  const combinedLabel = `최고가: ${activeFuels.map(f => `${f.label} ${fmt(Number(selectedCeiling[f.key]))}원`).join(', ')}`;
+                  return activeFuels.map((f, i) => (
                     <ReferenceLine
                       key={f.key}
-                      y={Number(val)}
+                      y={Number(selectedCeiling[f.key])}
                       stroke={f.ceilingColor}
                       strokeDasharray="6 3"
                       strokeWidth={1.5}
-                      label={{ value: `${f.label} ${fmt(Number(val))}원`, position: "insideTopRight", fontSize: 9, fill: f.ceilingColor, dy: -6 }}
+                      label={i === 0 ? { value: combinedLabel, position: "insideTopRight", fontSize: 9, fill: "#6b7280", dy: -6 } : undefined}
                     />
-                  );
-                })}
+                  ));
+                })()}
 
                 {/* 공표일 수직선 */}
                 {ceilingLabel && (
