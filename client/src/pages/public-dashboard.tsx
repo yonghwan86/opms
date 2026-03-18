@@ -847,7 +847,7 @@ export default function PublicDashboardPage() {
                       <select value={ceilSigungu} onChange={e => setCeilSigungu(e.target.value)}
                         className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background">
                         <option value="">전체</option>
-                        {ceilSigunguList.map(s => <option key={s} value={s}>{s.replace(/(시|군|구)$/, "")}</option>)}
+                        {ceilSigunguList.map(s => <option key={s} value={s}>{s.replace(new RegExp(`^${ceilSido}\\s*`), "")}</option>)}
                       </select>
                     ) : (
                       <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">

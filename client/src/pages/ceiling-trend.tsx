@@ -62,7 +62,8 @@ interface StationSuggest {
 
 // ─── 유틸 ──────────────────────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString("ko-KR");
-const shortSigungu = (s: string) => s.replace(/(시|군|구)$/, "");
+const stripSidoPrefix = (s: string, sido: string) =>
+  sido ? s.replace(new RegExp(`^${sido}\\s*`), "") : s;
 
 function toLabel(yyyymmdd: string): string {
   if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd;
@@ -536,7 +537,7 @@ export default function CeilingTrendPage() {
                     data-testid="select-sigungu"
                   >
                     <option value="">전체</option>
-                    {sigunguList.map(s => <option key={s} value={s}>{shortSigungu(s)}</option>)}
+                    {sigunguList.map(s => <option key={s} value={s}>{stripSidoPrefix(s, selectedSido)}</option>)}
                   </select>
                 ) : (
                   <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
