@@ -655,7 +655,7 @@ export default function CeilingTrendPage() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={340}>
-              <ComposedChart data={chartData} margin={{ top: 30, right: 90, left: 12, bottom: 20 }}>
+              <ComposedChart data={chartData} margin={{ top: 30, right: 8, left: 12, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="label"
@@ -712,7 +712,7 @@ export default function CeilingTrendPage() {
                       stroke={f.ceilingColor}
                       strokeDasharray="6 3"
                       strokeWidth={1.5}
-                      label={{ value: `${f.label} ${fmt(Number(val))}원`, position: "insideRight", fontSize: 9, fill: f.ceilingColor, dx: 8 }}
+                      label={{ value: `${f.label} ${fmt(Number(val))}원`, position: "insideTopRight", fontSize: 9, fill: f.ceilingColor, dy: -6 }}
                     />
                   );
                 })}
