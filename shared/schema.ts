@@ -217,7 +217,7 @@ export type UserSatisfaction = typeof userSatisfactions.$inferSelect;
 // ─── 주간공급가격 (Oil Weekly Supply Prices) ─────────────────────────────────
 export const oilWeeklySupplyPrices = pgTable("oil_weekly_supply_prices", {
   id: serial("id").primaryKey(),
-  weekStart: varchar("week_start", { length: 8 }).notNull(),
+  week: varchar("week", { length: 8 }).notNull(),
   company: varchar("company", { length: 50 }).notNull(),
   premiumGasoline: numeric("premium_gasoline", { precision: 10, scale: 2 }),
   gasoline: numeric("gasoline", { precision: 10, scale: 2 }),
@@ -225,7 +225,7 @@ export const oilWeeklySupplyPrices = pgTable("oil_weekly_supply_prices", {
   kerosene: numeric("kerosene", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
-  weekCompanyIdx: uniqueIndex("oil_weekly_supply_week_company_idx").on(table.weekStart, table.company),
+  weekCompanyIdx: uniqueIndex("oil_weekly_supply_week_company_idx").on(table.week, table.company),
 }));
 
 export const insertOilWeeklySupplyPriceSchema = createInsertSchema(oilWeeklySupplyPrices).omit({ id: true, createdAt: true });

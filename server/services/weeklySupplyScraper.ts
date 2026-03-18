@@ -6,7 +6,7 @@ const CHROMIUM_PATH =
 const TARGET_COMPANIES = ["SK에너지", "GS칼텍스", "HD현대오일뱅크", "S-OIL"];
 
 export interface WeeklySupplyRow {
-  weekStart: string;
+  week: string;
   company: string;
   premiumGasoline: number | null;
   gasoline: number | null;
@@ -25,25 +25,24 @@ function parsePrice(val: string | undefined): number | null {
 function getMostRecentWeekKey(): string {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const yy = String(kst.getUTCFullYear()).slice(2);
+  const yyyy = String(kst.getUTCFullYear());
   const mm = String(kst.getUTCMonth() + 1).padStart(2, "0");
-  const day = kst.getUTCDay();
   const date = kst.getUTCDate();
   const firstOfMonth = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), 1));
   const firstDay = firstOfMonth.getUTCDay();
   const firstMonOfWeek1 = firstDay === 0 ? -5 : firstDay <= 1 ? 1 - firstDay + 1 : 1 - firstDay + 8;
   const weekNum = Math.ceil((date - firstMonOfWeek1 + 1) / 7);
   const ww = String(Math.max(1, weekNum)).padStart(2, "0");
-  return `${yy}${mm}${ww}`;
+  return `${yyyy}${mm}${ww}`;
 }
 
 function deriveWeekKey(periodText: string): string | null {
   const match = periodText.match(/(\d{2})년\s*(\d{2})월\s*(\d+)주/);
   if (!match) return null;
-  const yy = match[1];
+  const yyyy = String(2000 + parseInt(match[1], 10));
   const mm = match[2].padStart(2, "0");
   const ww = match[3].padStart(2, "0");
-  return `${yy}${mm}${ww}`;
+  return `${yyyy}${mm}${ww}`;
 }
 
 export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
@@ -190,7 +189,7 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
       if (!TARGET_COMPANIES.includes(companyName)) continue;
 
       results.push({
-        weekStart,
+        week: weekStart,
         company: companyName,
         premiumGasoline: parsePrice(row[1]),
         gasoline: parsePrice(row[2]),

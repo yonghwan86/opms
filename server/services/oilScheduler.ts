@@ -438,7 +438,7 @@ export async function runWeeklySupplyJob(): Promise<void> {
       return;
     }
     const insertRows = rows.map(r => ({
-      weekStart: r.weekStart,
+      week: r.week,
       company: r.company,
       premiumGasoline: r.premiumGasoline != null ? String(r.premiumGasoline) : null,
       gasoline: r.gasoline != null ? String(r.gasoline) : null,
@@ -450,8 +450,10 @@ export async function runWeeklySupplyJob(): Promise<void> {
     await storage.saveOilCollectionLog({ jobType, status: "success", rawCount: rows.length, analysisDurationMs: durationMs });
     console.log(`[WeeklySupplyScheduler] 수집 완료: ${rows.length}건 (${durationMs}ms)`);
 
-    const weekStart = rows[0]?.weekStart ?? "";
-    const pushBody = `${weekStart.slice(0, 4)}-${weekStart.slice(4, 6)}-${weekStart.slice(6, 8)} 주간 공급가격 데이터가 업데이트되었습니다.`;
+    const wk = rows[0]?.week ?? "";
+    const pushBody = wk.length === 8
+      ? `${wk.slice(0, 4)}년 ${wk.slice(4, 6)}월 ${parseInt(wk.slice(6, 8))}주 공급가격 데이터가 업데이트되었습니다.`
+      : `${wk} 주간 공급가격 데이터가 업데이트되었습니다.`;
     const allSubs = await storage.getAllPushSubscriptions();
     if (allSubs.length > 0) {
       const payload = { title: "주간공급가격 업데이트", body: pushBody, icon: "/icon-192.png", url: "/oil-prices" };

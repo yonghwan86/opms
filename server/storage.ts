@@ -1593,7 +1593,7 @@ export class PostgresStorage implements IStorage {
         .insert(oilWeeklySupplyPrices)
         .values(row)
         .onConflictDoUpdate({
-          target: [oilWeeklySupplyPrices.weekStart, oilWeeklySupplyPrices.company],
+          target: [oilWeeklySupplyPrices.week, oilWeeklySupplyPrices.company],
           set: {
             premiumGasoline: row.premiumGasoline,
             gasoline: row.gasoline,
@@ -1607,19 +1607,19 @@ export class PostgresStorage implements IStorage {
 
   async getWeeklySupplyPrices(limitWeeks = 10): Promise<OilWeeklySupplyPrice[]> {
     const recentWeeks = await db
-      .selectDistinct({ weekStart: oilWeeklySupplyPrices.weekStart })
+      .selectDistinct({ week: oilWeeklySupplyPrices.week })
       .from(oilWeeklySupplyPrices)
-      .orderBy(desc(oilWeeklySupplyPrices.weekStart))
+      .orderBy(desc(oilWeeklySupplyPrices.week))
       .limit(limitWeeks);
 
     if (recentWeeks.length === 0) return [];
 
-    const weekStarts = recentWeeks.map(r => r.weekStart);
+    const weeks = recentWeeks.map(r => r.week);
     return db
       .select()
       .from(oilWeeklySupplyPrices)
-      .where(inArray(oilWeeklySupplyPrices.weekStart, weekStarts))
-      .orderBy(desc(oilWeeklySupplyPrices.weekStart), asc(oilWeeklySupplyPrices.company));
+      .where(inArray(oilWeeklySupplyPrices.week, weeks))
+      .orderBy(desc(oilWeeklySupplyPrices.week), asc(oilWeeklySupplyPrices.company));
   }
 }
 
