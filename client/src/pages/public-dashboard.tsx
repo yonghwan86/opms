@@ -930,7 +930,7 @@ export default function PublicDashboardPage() {
                         const combinedLabel = `최고가: ${activeFuels.map(f => `${f.label} ${fmt(Number(selectedCeiling[f.key]))}원`).join(', ')}`;
                         return activeFuels.map((f, i) => (
                           <ReferenceLine key={f.key} y={Number(selectedCeiling[f.key])} stroke={f.ceilingColor} strokeDasharray="6 3" strokeWidth={1.5}
-                            label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 6 } : undefined} />
+                            label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 18 } : undefined} />
                         ));
                       })()}
                       {/* 공표일 수직선 */}
