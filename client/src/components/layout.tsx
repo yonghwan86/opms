@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
-  Bell, BellOff, Upload, Eye, DatabaseZap, Search, SmilePlus, Globe
+  Bell, BellOff, Upload, Eye, DatabaseZap, Search, SmilePlus, Globe, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { label: "대시보드", href: "/", icon: LayoutDashboard },
   { label: "공개 대시보드", href: "/public", icon: Globe, devOnly: true },
   { label: "유가 분석", href: "/oil-prices", icon: Fuel },
+  { label: "최고가격제 변동추이", href: "/ceiling-trend", icon: TrendingUp },
   { label: "주유소 가격 검색", href: "/station-search", icon: Search },
   { label: "유가 CSV 업로드", href: "/oil-prices/upload", icon: Upload, masterOnly: true },
   { label: "본부 권한", href: "/region-permissions", icon: MapPin, masterOnly: true },
@@ -48,6 +49,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/public": "공개 대시보드",
   "/oil-prices": "유가 분석",
   "/station-search": "주유소 가격 검색",
+  "/ceiling-trend": "최고가격제 변동추이",
   "/oil-prices/upload": "유가 CSV 업로드",
   "/region-permissions": "본부 권한",
   "/users": "사용자 관리",

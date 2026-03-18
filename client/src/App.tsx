@@ -21,6 +21,7 @@ import OilCollectionLogsPage from "@/pages/oil-collection-logs";
 import StationSearchPage from "@/pages/station-search";
 import SatisfactionLogPage from "@/pages/satisfaction-log";
 import PublicDashboardPage from "@/pages/public-dashboard";
+import CeilingTrendPage from "@/pages/ceiling-trend";
 import NotFound from "@/pages/not-found";
 
 function LoadingScreen() {
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/logs/oil-collection" component={() => <ProtectedRoute component={OilCollectionLogsPage} masterOnly />} />
       <Route path="/station-search" component={() => <ProtectedRoute component={StationSearchPage} />} />
       <Route path="/logs/satisfaction" component={() => <ProtectedRoute component={SatisfactionLogPage} masterOnly />} />
+      <Route path="/ceiling-trend" component={() => <ProtectedRoute component={CeilingTrendPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

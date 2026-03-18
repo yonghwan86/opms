@@ -1,0 +1,643 @@
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Layout } from "@/components/layout";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ComposedChart, Line, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer,
+} from "recharts";
+import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// ─── 타입 ─────────────────────────────────────────────────────────────────────
+interface CeilingPrice {
+  id: number;
+  gasoline: string | null;
+  diesel: string | null;
+  kerosene: string | null;
+  effectiveDate: string;
+  note: string | null;
+}
+
+interface TrendRow {
+  date: string;
+  gasolineAvg: number | null;
+  dieselAvg: number | null;
+  keroseneAvg: number | null;
+  gasolineAbove: number;
+  gasolineBelow: number;
+  dieselAbove: number;
+  dieselBelow: number;
+  keroseneAbove: number;
+  keroseneBelow: number;
+}
+
+interface StationRow {
+  date: string;
+  gasoline: number | null;
+  diesel: number | null;
+  kerosene: number | null;
+}
+
+interface StationSuggest {
+  stationId: string;
+  stationName: string;
+  region: string;
+}
+
+// ─── 유틸 ──────────────────────────────────────────────────────────────────────
+const fmt = (n: number) => n.toLocaleString("ko-KR");
+
+function toLabel(yyyymmdd: string): string {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd;
+  return `${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+}
+
+// ─── 도 목록 ──────────────────────────────────────────────────────────────────
+const SIDO_LIST = [
+  "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종시",
+  "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+];
+
+// ─── 유종 설정 ─────────────────────────────────────────────────────────────────
+const FUEL_CONFIG = [
+  { key: "gasoline", label: "휘발유", dot: "bg-amber-400", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
+  { key: "diesel",   label: "경유",   dot: "bg-green-500", stroke: "#22c55e", ceilingColor: "#16a34a", stationStroke: "#8b5cf6", stationKey: "stationDsl" },
+  { key: "kerosene", label: "등유",   dot: "bg-sky-400",   stroke: "#38bdf8", ceilingColor: "#0284c7", stationStroke: "#ec4899", stationKey: "stationKero" },
+] as const;
+
+type FuelKey = "gasoline" | "diesel" | "kerosene";
+
+// ─── 커스텀 툴팁 ───────────────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label, fuels, stationName, stationData, ceilingDate }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+
+  const isPublishDay = label === ceilingDate;
+  const activeFuelConf = FUEL_CONFIG.filter(f => fuels[f.key]);
+
+  // 누계일 계산 (stationData에서)
+  const stationAbove: Record<string, number> = {};
+  const stationBelow: Record<string, number> = {};
+  if (stationName && stationData?.length) {
+    const currentDateStr = d.dateRaw;
+    FUEL_CONFIG.forEach(f => {
+      if (!fuels[f.key]) return;
+      let above = 0; let below = 0;
+      for (const row of stationData) {
+        if (row.date > currentDateStr) break;
+        const stVal = row[f.key];
+        const ceilVal = d[`ceiling_${f.key}`];
+        if (stVal != null && ceilVal != null) {
+          if (stVal > ceilVal) above++;
+          else below++;
+        }
+      }
+      stationAbove[f.key] = above;
+      stationBelow[f.key] = below;
+    });
+  }
+
+  const aboveVal = fuels.gasoline ? (d.gasolineAbove ?? 0) :
+                   fuels.diesel   ? (d.dieselAbove ?? 0) :
+                   (d.keroseneAbove ?? 0);
+  const belowVal = fuels.gasoline ? (d.gasolineBelow ?? 0) :
+                   fuels.diesel   ? (d.dieselBelow ?? 0) :
+                   (d.keroseneBelow ?? 0);
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[190px]">
+      <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">
+        {label}{isPublishDay ? " ★공표일" : ""}
+      </p>
+
+      {stationName && (
+        <div className="mb-1.5 pb-1.5 border-b border-gray-100">
+          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[160px]">{stationName}</p>
+          {activeFuelConf.map(f => {
+            const stVal = d[f.stationKey];
+            if (stVal == null) return null;
+            return (
+              <div key={f.key} className="flex justify-between">
+                <span style={{ color: f.stationStroke }} className="text-[10px]">● {f.label}</span>
+                <span style={{ color: f.stationStroke }} className="font-bold">{fmt(stVal)}원</span>
+              </div>
+            );
+          })}
+          <div className="flex gap-2 mt-1">
+            <span className="flex items-center gap-0.5 text-red-500 font-bold text-[10px]">
+              <TrendingUp className="w-3 h-3" />초과 {stationAbove[activeFuelConf[0]?.key ?? "gasoline"] ?? 0}일
+            </span>
+            <span className="flex items-center gap-0.5 text-blue-500 font-bold text-[10px]">
+              <TrendingDown className="w-3 h-3" />이하 {stationBelow[activeFuelConf[0]?.key ?? "gasoline"] ?? 0}일
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-0.5 mb-1.5">
+        {fuels.gasoline && d.gasolineAvg != null && (
+          <div className="flex justify-between gap-3">
+            <span className="text-amber-600">● 휘발유 평균</span>
+            <span className="font-semibold text-gray-800">{fmt(d.gasolineAvg)}원</span>
+          </div>
+        )}
+        {fuels.diesel && d.dieselAvg != null && (
+          <div className="flex justify-between gap-3">
+            <span className="text-green-600">● 경유 평균</span>
+            <span className="font-semibold text-gray-800">{fmt(d.dieselAvg)}원</span>
+          </div>
+        )}
+        {fuels.kerosene && d.keroseneAvg != null && (
+          <div className="flex justify-between gap-3">
+            <span className="text-sky-500">● 등유 평균</span>
+            <span className="font-semibold text-gray-800">{fmt(d.keroseneAvg)}원</span>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-1 border-t border-gray-100 flex justify-between gap-1">
+        <span className="flex items-center gap-1 text-red-500 font-bold text-[10px]">
+          <TrendingUp className="w-3 h-3" />{fmt(aboveVal)}개 초과
+        </span>
+        <span className="flex items-center gap-1 text-blue-500 font-bold text-[10px]">
+          <TrendingDown className="w-3 h-3" />{fmt(belowVal)}개 이하
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── 주유소 검색 드롭다운 ──────────────────────────────────────────────────────
+function StationSearch({ value, onChange, onSelect, sido }: {
+  value: string;
+  onChange: (v: string) => void;
+  onSelect: (station: { stationId: string; stationName: string }) => void;
+  sido: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { data: suggestions = [] } = useQuery<StationSuggest[]>({
+    queryKey: ["/api/public/stations/suggest", value, sido],
+    queryFn: () => {
+      if (value.trim().length < 1) return Promise.resolve([]);
+      const params = new URLSearchParams({ q: value });
+      if (sido) params.set("sido", sido);
+      return fetch(`/api/public/stations/suggest?${params}`).then(r => r.json());
+    },
+    enabled: value.trim().length >= 1,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative flex-1 min-w-[200px]">
+      <p className="text-[10px] text-gray-400 mb-0.5 font-medium">
+        주유소 검색 <span className="text-gray-300">(선택된 유종 개별 추이 오버레이)</span>
+      </p>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+        <input
+          type="text"
+          value={value}
+          onChange={e => { onChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="주유소 이름 검색..."
+          className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          data-testid="input-station-search"
+        />
+      </div>
+      {open && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {suggestions.map(s => (
+            <button
+              key={s.stationId}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex justify-between items-center"
+              onClick={() => { onSelect(s); onChange(s.stationName); setOpen(false); }}
+            >
+              <span className="font-medium text-gray-800 truncate">{s.stationName}</span>
+              <span className="text-gray-400 ml-2 flex-shrink-0 text-[10px]">{s.region}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 메인 ─────────────────────────────────────────────────────────────────────
+export default function CeilingTrendPage() {
+  const [fuels, setFuels] = useState<Record<FuelKey, boolean>>({
+    gasoline: true, diesel: true, kerosene: false,
+  });
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedSido, setSelectedSido] = useState("");
+  const [selectedSigungu, setSelectedSigungu] = useState("");
+  const [showDateMenu, setShowDateMenu] = useState(false);
+  const [showSidoMenu, setShowSidoMenu] = useState(false);
+  const [stationSearch, setStationSearch] = useState("");
+  const [selectedStation, setSelectedStation] = useState<{ stationId: string; stationName: string } | null>(null);
+
+  const dateRef = useRef<HTMLDivElement>(null);
+  const sidoRef = useRef<HTMLDivElement>(null);
+
+  // 전체 최고가격제 목록
+  const { data: allCeilings = [], isLoading: ceilingsLoading } = useQuery<CeilingPrice[]>({
+    queryKey: ["/api/public/ceiling-prices/all"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 선택일 초기화 (최신)
+  useEffect(() => {
+    if (allCeilings.length && !selectedDate) {
+      setSelectedDate(allCeilings[0].effectiveDate);
+    }
+  }, [allCeilings, selectedDate]);
+
+  // 선택된 공표일의 최고가격 데이터
+  const selectedCeiling = useMemo(
+    () => allCeilings.find(c => c.effectiveDate === selectedDate) ?? null,
+    [allCeilings, selectedDate],
+  );
+
+  // 시군구 목록 (sido 변경 시)
+  const { data: sigunguList = [] } = useQuery<string[]>({
+    queryKey: ["/api/public/stations/subregions", selectedSido],
+    queryFn: () => selectedSido
+      ? fetch(`/api/public/stations/subregions?sido=${encodeURIComponent(selectedSido)}`).then(r => r.json())
+      : Promise.resolve([]),
+    enabled: !!selectedSido,
+    staleTime: 60_000,
+  });
+
+  // 트렌드 데이터
+  const { data: trendData = [], isLoading: trendLoading } = useQuery<TrendRow[]>({
+    queryKey: ["/api/public/ceiling-trend", selectedDate, selectedSido, selectedSigungu],
+    queryFn: () => {
+      if (!selectedDate) return Promise.resolve([]);
+      const params = new URLSearchParams({ effectiveDate: selectedDate });
+      if (selectedSido) params.set("sido", selectedSido);
+      if (selectedSigungu) params.set("sigungu", selectedSigungu);
+      return fetch(`/api/public/ceiling-trend?${params}`).then(r => r.json());
+    },
+    enabled: !!selectedDate,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // 주유소 개별 데이터
+  const { data: stationData = [] } = useQuery<StationRow[]>({
+    queryKey: ["/api/public/ceiling-trend/station", selectedDate, selectedStation?.stationId],
+    queryFn: () => {
+      if (!selectedDate || !selectedStation) return Promise.resolve([]);
+      const params = new URLSearchParams({ effectiveDate: selectedDate, stationId: selectedStation.stationId });
+      return fetch(`/api/public/ceiling-trend/station?${params}`).then(r => r.json());
+    },
+    enabled: !!selectedDate && !!selectedStation,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // 차트 데이터 병합
+  const chartData = useMemo(() => {
+    const stationMap = new Map<string, StationRow>(stationData.map(r => [r.date, r]));
+    const cGas = selectedCeiling?.gasoline ? Number(selectedCeiling.gasoline) : 0;
+    const cDiesel = selectedCeiling?.diesel ? Number(selectedCeiling.diesel) : 0;
+    const cKero = selectedCeiling?.kerosene ? Number(selectedCeiling.kerosene) : 0;
+
+    return trendData.map(row => {
+      const st = stationMap.get(row.date);
+      return {
+        ...row,
+        label: toLabel(row.date),
+        dateRaw: row.date,
+        stationGas: st?.gasoline ?? null,
+        stationDsl: st?.diesel ?? null,
+        stationKero: st?.kerosene ?? null,
+        ceiling_gasoline: cGas || null,
+        ceiling_diesel: cDiesel || null,
+        ceiling_kerosene: cKero || null,
+      };
+    });
+  }, [trendData, stationData, selectedCeiling]);
+
+  // 공표일 X축 레이블 (날짜 → MM-DD)
+  const ceilingLabel = selectedDate ? toLabel(selectedDate.replace(/-/g, "")) : "";
+
+  // YAxis 도메인
+  const allPrices = chartData.flatMap(d => [
+    fuels.gasoline ? d.gasolineAvg : null,
+    fuels.diesel ? d.dieselAvg : null,
+    fuels.kerosene ? d.keroseneAvg : null,
+    fuels.gasoline && selectedStation ? d.stationGas : null,
+    fuels.diesel && selectedStation ? d.stationDsl : null,
+    fuels.kerosene && selectedStation ? d.stationKero : null,
+  ].filter((v): v is number => v != null));
+  const ceilingPrices = [
+    fuels.gasoline && selectedCeiling?.gasoline ? Number(selectedCeiling.gasoline) : null,
+    fuels.diesel && selectedCeiling?.diesel ? Number(selectedCeiling.diesel) : null,
+    fuels.kerosene && selectedCeiling?.kerosene ? Number(selectedCeiling.kerosene) : null,
+  ].filter((v): v is number => v != null);
+  const allVals = [...allPrices, ...ceilingPrices].filter(Boolean);
+  const yMin = allVals.length ? Math.floor((Math.min(...allVals) - 30) / 10) * 10 : 1000;
+  const yMax = allVals.length ? Math.ceil((Math.max(...allVals) + 30) / 10) * 10 : 2200;
+
+  // 외부 클릭 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dateRef.current && !dateRef.current.contains(e.target as Node)) setShowDateMenu(false);
+      if (sidoRef.current && !sidoRef.current.contains(e.target as Node)) setShowSidoMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const toggleFuel = (f: FuelKey) => setFuels(p => ({ ...p, [f]: !p[f] }));
+
+  return (
+    <Layout>
+      <div className="max-w-[1200px] mx-auto p-4 md:p-6 space-y-4">
+        {/* 페이지 헤더 */}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
+            <ShieldCheck className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-base md:text-lg font-bold text-foreground">최고가격제 이후 변동추이</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">석유 최고가격 공표 전후 4주(28일) 구간 유가 추이</p>
+          </div>
+        </div>
+
+        {/* 필터 패널 */}
+        <div className="bg-card rounded-xl border border-border shadow-sm px-4 py-3">
+          <div className="flex flex-wrap gap-3 items-end">
+
+            {/* 공표일 선택 */}
+            <div ref={dateRef} className="relative">
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">공표일</p>
+              <button
+                onClick={() => setShowDateMenu(p => !p)}
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg"
+                data-testid="button-select-date"
+              >
+                {selectedDate || "선택 중..."} <ChevronDown className="w-3 h-3" />
+              </button>
+              {showDateMenu && (
+                <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[160px] max-h-48 overflow-y-auto">
+                  {ceilingsLoading
+                    ? <p className="text-xs text-muted-foreground px-3 py-2">로딩 중...</p>
+                    : allCeilings.map(c => (
+                      <button
+                        key={c.id}
+                        className={cn(
+                          "w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center justify-between gap-2",
+                          c.effectiveDate === selectedDate && "bg-primary/10 font-semibold text-primary",
+                        )}
+                        onClick={() => { setSelectedDate(c.effectiveDate); setShowDateMenu(false); }}
+                      >
+                        <span>{c.effectiveDate}</span>
+                        {c.note && <span className="text-muted-foreground text-[10px] truncate max-w-[80px]">{c.note}</span>}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-8 bg-border" />
+
+            {/* 시도 선택 */}
+            <div ref={sidoRef} className="relative">
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시도</p>
+              <button
+                onClick={() => setShowSidoMenu(p => !p)}
+                className="flex items-center gap-1.5 border border-border text-xs text-foreground px-3 py-1.5 rounded-lg"
+                data-testid="button-select-sido"
+              >
+                {selectedSido || "전국"} <ChevronDown className="w-3 h-3" />
+              </button>
+              {showSidoMenu && (
+                <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[110px] max-h-64 overflow-y-auto">
+                  <button
+                    className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", !selectedSido && "font-semibold text-primary")}
+                    onClick={() => { setSelectedSido(""); setSelectedSigungu(""); setShowSidoMenu(false); }}
+                  >
+                    전국
+                  </button>
+                  {SIDO_LIST.map(s => (
+                    <button
+                      key={s}
+                      className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", selectedSido === s && "font-semibold text-primary")}
+                      onClick={() => { setSelectedSido(s); setSelectedSigungu(""); setShowSidoMenu(false); }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 시군구 선택 */}
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시군구</p>
+              {selectedSido && sigunguList.length > 0 ? (
+                <select
+                  value={selectedSigungu}
+                  onChange={e => setSelectedSigungu(e.target.value)}
+                  className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background appearance-none pr-7 cursor-pointer"
+                  data-testid="select-sigungu"
+                >
+                  <option value="">전체</option>
+                  {sigunguList.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              ) : (
+                <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
+                  전체 <ChevronDown className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            <div className="w-px h-8 bg-border" />
+
+            {/* 주유소 검색 */}
+            <StationSearch
+              value={stationSearch}
+              onChange={v => { setStationSearch(v); if (!v.trim()) setSelectedStation(null); }}
+              onSelect={s => setSelectedStation(s)}
+              sido={selectedSido}
+            />
+          </div>
+        </div>
+
+        {/* 선택된 최고가격 표시 */}
+        {selectedCeiling && (
+          <div className="flex flex-wrap gap-3">
+            {FUEL_CONFIG.map(f => {
+              const val = selectedCeiling[f.key];
+              return val ? (
+                <div key={f.key} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+                  <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", f.dot)} />
+                  <span className="text-xs text-muted-foreground">{f.label} 최고가:</span>
+                  <span className="text-xs font-bold text-foreground">{fmt(Number(val))}원</span>
+                </div>
+              ) : null;
+            })}
+          </div>
+        )}
+
+        {/* 차트 카드 */}
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
+              <p className="text-xs text-muted-foreground mt-0.5">수평 점선: 최고가격 기준</p>
+            </div>
+            {/* 유종 토글 */}
+            <div className="flex gap-1.5 flex-wrap">
+              {FUEL_CONFIG.map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => toggleFuel(f.key)}
+                  data-testid={`button-fuel-${f.key}`}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all",
+                    fuels[f.key]
+                      ? "border-border text-foreground bg-card font-medium shadow-sm"
+                      : "border-border/50 text-muted-foreground bg-muted/30",
+                  )}
+                >
+                  <span className={cn("w-2 h-2 rounded-full", f.dot, !fuels[f.key] && "opacity-30")} />
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {trendLoading ? (
+            <div className="space-y-2 py-10">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-60 w-full" />
+            </div>
+          ) : trendData.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+              {selectedDate ? "해당 기간의 데이터가 없습니다." : "공표일을 선택하세요."}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={340}>
+              <ComposedChart data={chartData} margin={{ top: 10, right: 90, left: 12, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }}
+                  tickLine={false}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  interval={3}
+                  height={32}
+                  tickMargin={8}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }}
+                  tickFormatter={v => `${fmt(v)}원`}
+                  domain={[yMin, yMax]}
+                  tickCount={7}
+                  width={72}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  content={
+                    <CustomTooltip
+                      fuels={fuels}
+                      stationName={selectedStation?.stationName}
+                      stationData={stationData}
+                      ceilingDate={ceilingLabel}
+                    />
+                  }
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(v: string) => {
+                    if (v === "stationGas") return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
+                    if (v === "stationDsl") return `${selectedStation?.stationName ?? "주유소"} (경유)`;
+                    if (v === "stationKero") return `${selectedStation?.stationName ?? "주유소"} (등유)`;
+                    if (v === "gasolineAvg") return "휘발유 평균";
+                    if (v === "dieselAvg") return "경유 평균";
+                    if (v === "keroseneAvg") return "등유 평균";
+                    return v;
+                  }}
+                />
+
+                {/* 최고가격 수평 기준선 */}
+                {selectedCeiling && FUEL_CONFIG.filter(f => fuels[f.key]).map(f => {
+                  const val = selectedCeiling[f.key];
+                  if (!val) return null;
+                  return (
+                    <ReferenceLine
+                      key={f.key}
+                      y={Number(val)}
+                      stroke={f.ceilingColor}
+                      strokeDasharray="6 3"
+                      strokeWidth={1.5}
+                      label={{ value: `${f.label} ${fmt(Number(val))}원`, position: "insideRight", fontSize: 9, fill: f.ceilingColor, dx: 8 }}
+                    />
+                  );
+                })}
+
+                {/* 공표일 수직선 */}
+                {ceilingLabel && (
+                  <ReferenceLine
+                    x={ceilingLabel}
+                    stroke="#3b82f6"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{ value: "공표일", position: "top", fontSize: 10, fill: "#3b82f6" }}
+                  />
+                )}
+
+                {/* 평균 추이 라인 */}
+                {fuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasolineAvg" connectNulls />}
+                {fuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} dot={false} name="dieselAvg"   connectNulls />}
+                {fuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} dot={false} name="keroseneAvg" connectNulls />}
+
+                {/* 주유소 개별 라인 (오버레이) */}
+                {selectedStation && fuels.gasoline && (
+                  <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationGas"  connectNulls />
+                )}
+                {selectedStation && fuels.diesel && (
+                  <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationDsl"  connectNulls />
+                )}
+                {selectedStation && fuels.kerosene && (
+                  <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationKero" connectNulls />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* 범례 설명바 */}
+          <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground items-center">
+            <span className="flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-red-500" />
+              <span className="text-red-500 font-bold">빨간색 ↑</span> = 최고가보다 비싼 업체 수
+            </span>
+            <span className="w-px h-4 bg-border" />
+            <span className="flex items-center gap-1.5">
+              <TrendingDown className="w-3.5 h-3.5 text-blue-500" />
+              <span className="text-blue-500 font-bold">파란색 ↓</span> = 최고가보다 싼 업체 수
+            </span>
+            <span className="w-px h-4 bg-border" />
+            <span>주유소 검색 시: 최고가 초과/미만 누계 횟수</span>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+}

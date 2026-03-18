@@ -17,6 +17,27 @@ import {
   type InsertOilCollectionLog, type OilCollectionLog,
 } from "@shared/schema";
 
+// ─── 최고가격제 변동추이 타입 ──────────────────────────────────────────────────
+export interface CeilingTrendRow {
+  date: string;
+  gasolineAvg: number | null;
+  dieselAvg: number | null;
+  keroseneAvg: number | null;
+  gasolineAbove: number;
+  gasolineBelow: number;
+  dieselAbove: number;
+  dieselBelow: number;
+  keroseneAbove: number;
+  keroseneBelow: number;
+}
+
+export interface StationTrendRow {
+  date: string;
+  gasoline: number | null;
+  diesel: number | null;
+  kerosene: number | null;
+}
+
 // ─── 시/도 전체명 → 오피넷 축약명 매핑 ────────────────────────────────────────
 const SIDO_ABBREV: Record<string, string> = {
   '서울특별시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천',
@@ -179,7 +200,10 @@ export interface IStorage {
 
   // 석유 최고가격제
   getCeilingPrices(): Promise<OilCeilingPrices[]>;
+  getAllCeilingPrices(): Promise<OilCeilingPrices[]>;
   setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices>;
+  getCeilingTrendData(effectiveDate: string, sido?: string, sigungu?: string): Promise<CeilingTrendRow[]>;
+  getStationCeilingTrend(effectiveDate: string, stationId: string): Promise<StationTrendRow[]>;
 
   // 유가 수집 이력 로그
   saveOilCollectionLog(log: InsertOilCollectionLog): Promise<void>;
@@ -194,6 +218,7 @@ export interface IStorage {
   searchStations(params: { name: string; sido?: string; region?: string }): Promise<StationSearchRow[]>;
   getStationSubregions(sido: string): Promise<string[]>;
   suggestStations(params: { q: string; sido?: string; region?: string }): Promise<string[]>;
+  suggestStationsDetailed(params: { q: string; sido?: string; region?: string }): Promise<{ stationId: string; stationName: string; region: string }[]>;
 }
 
 export interface StationSearchRow {
@@ -1158,9 +1183,91 @@ export class PostgresStorage implements IStorage {
   async getCeilingPrices(): Promise<OilCeilingPrices[]> {
     return db.select().from(oilCeilingPrices).orderBy(desc(oilCeilingPrices.createdAt)).limit(2);
   }
+  async getAllCeilingPrices(): Promise<OilCeilingPrices[]> {
+    return db.select().from(oilCeilingPrices).orderBy(desc(oilCeilingPrices.effectiveDate));
+  }
   async setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices> {
     const [row] = await db.insert(oilCeilingPrices).values(data).returning();
     return row;
+  }
+
+  async getCeilingTrendData(effectiveDate: string, sido?: string, sigungu?: string): Promise<CeilingTrendRow[]> {
+    const d = new Date(effectiveDate);
+    const startD = new Date(d); startD.setDate(startD.getDate() - 14);
+    const endD = new Date(d); endD.setDate(endD.getDate() + 14);
+    const toYYYYMMDD = (dt: Date) =>
+      `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
+    const startDate = toYYYYMMDD(startD);
+    const endDate = toYYYYMMDD(endD);
+
+    const ceilingRow = await db.select().from(oilCeilingPrices)
+      .where(eq(oilCeilingPrices.effectiveDate, effectiveDate))
+      .limit(1);
+    if (!ceilingRow.length) return [];
+    const ceiling = ceilingRow[0];
+    const cGas = ceiling.gasoline ? Number(ceiling.gasoline) : 0;
+    const cDiesel = ceiling.diesel ? Number(ceiling.diesel) : 0;
+    const cKero = ceiling.kerosene ? Number(ceiling.kerosene) : 0;
+
+    const sidoCond = sido ? sql` AND r.sido = ${sido}` : sql``;
+    const sigunguCond = sigungu ? sql` AND r.region LIKE ${'%' + sigungu + '%'}` : sql``;
+
+    const result = await db.execute(
+      sql`SELECT
+            r.date,
+            ROUND(AVG(CASE WHEN r.gasoline > 0 THEN r.gasoline END))::int AS gasoline_avg,
+            ROUND(AVG(CASE WHEN r.diesel > 0 THEN r.diesel END))::int AS diesel_avg,
+            ROUND(AVG(CASE WHEN r.kerosene > 0 THEN r.kerosene END))::int AS kerosene_avg,
+            COUNT(CASE WHEN r.gasoline > ${cGas} THEN 1 END)::int AS gasoline_above,
+            COUNT(CASE WHEN r.gasoline > 0 AND r.gasoline <= ${cGas} THEN 1 END)::int AS gasoline_below,
+            COUNT(CASE WHEN r.diesel > ${cDiesel} THEN 1 END)::int AS diesel_above,
+            COUNT(CASE WHEN r.diesel > 0 AND r.diesel <= ${cDiesel} THEN 1 END)::int AS diesel_below,
+            COUNT(CASE WHEN r.kerosene > ${cKero} THEN 1 END)::int AS kerosene_above,
+            COUNT(CASE WHEN r.kerosene > 0 AND r.kerosene <= ${cKero} THEN 1 END)::int AS kerosene_below
+          FROM oil_price_raw r
+          WHERE r.date BETWEEN ${startDate} AND ${endDate}${sidoCond}${sigunguCond}
+          GROUP BY r.date
+          ORDER BY r.date`
+    );
+    return (result.rows as any[]).map(row => ({
+      date: row.date as string,
+      gasolineAvg: row.gasoline_avg != null ? Number(row.gasoline_avg) : null,
+      dieselAvg: row.diesel_avg != null ? Number(row.diesel_avg) : null,
+      keroseneAvg: row.kerosene_avg != null ? Number(row.kerosene_avg) : null,
+      gasolineAbove: Number(row.gasoline_above) || 0,
+      gasolineBelow: Number(row.gasoline_below) || 0,
+      dieselAbove: Number(row.diesel_above) || 0,
+      dieselBelow: Number(row.diesel_below) || 0,
+      keroseneAbove: Number(row.kerosene_above) || 0,
+      keroseneBelow: Number(row.kerosene_below) || 0,
+    }));
+  }
+
+  async getStationCeilingTrend(effectiveDate: string, stationId: string): Promise<StationTrendRow[]> {
+    const d = new Date(effectiveDate);
+    const startD = new Date(d); startD.setDate(startD.getDate() - 14);
+    const endD = new Date(d); endD.setDate(endD.getDate() + 14);
+    const toYYYYMMDD = (dt: Date) =>
+      `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
+    const startDate = toYYYYMMDD(startD);
+    const endDate = toYYYYMMDD(endD);
+
+    const result = await db.execute(
+      sql`SELECT date,
+            CASE WHEN gasoline > 0 THEN gasoline END AS gasoline,
+            CASE WHEN diesel > 0 THEN diesel END AS diesel,
+            CASE WHEN kerosene > 0 THEN kerosene END AS kerosene
+          FROM oil_price_raw
+          WHERE station_id = ${stationId}
+            AND date BETWEEN ${startDate} AND ${endDate}
+          ORDER BY date`
+    );
+    return (result.rows as any[]).map(row => ({
+      date: row.date as string,
+      gasoline: row.gasoline != null ? Number(row.gasoline) : null,
+      diesel: row.diesel != null ? Number(row.diesel) : null,
+      kerosene: row.kerosene != null ? Number(row.kerosene) : null,
+    }));
   }
 
   // ── 유가 수집 이력 로그 ────────────────────────────────────────────────────
@@ -1240,6 +1347,28 @@ export class PostgresStorage implements IStorage {
       LIMIT 15
     `);
     return (result.rows as any[]).map(r => r.station_name as string);
+  }
+
+  async suggestStationsDetailed(params: { q: string; sido?: string; region?: string }): Promise<{ stationId: string; stationName: string; region: string }[]> {
+    const { q, sido, region } = params;
+    const filterCond = region
+      ? sql` AND region = ${region}`
+      : sido
+        ? sql` AND sido = ${sido}`
+        : sql``;
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (station_name) station_id, station_name, region
+      FROM oil_price_raw
+      WHERE station_name ILIKE ${'%' + q + '%'}
+      ${filterCond}
+      ORDER BY station_name
+      LIMIT 15
+    `);
+    return (result.rows as any[]).map(r => ({
+      stationId: r.station_id as string,
+      stationName: r.station_name as string,
+      region: r.region as string,
+    }));
   }
 
   async getStationSubregions(sido: string): Promise<string[]> {

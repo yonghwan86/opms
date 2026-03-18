@@ -1401,6 +1401,68 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/public/stations/suggest?q=&sido= — 주유소 자동완성 (공개)
+  app.get("/api/public/stations/suggest", async (req, res) => {
+    try {
+      const { q, sido } = req.query as Record<string, string>;
+      if (!q || q.trim().length < 1) return res.json([]);
+      const rows = await storage.suggestStationsDetailed({ q: q.trim(), sido: sido || undefined });
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/public/stations/subregions?sido= — 시도별 세부지역 (공개)
+  app.get("/api/public/stations/subregions", async (req, res) => {
+    try {
+      const { sido } = req.query as Record<string, string>;
+      if (!sido) return res.json([]);
+      const rows = await storage.getStationSubregions(sido);
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/public/ceiling-prices/all — 전체 목록
+  app.get("/api/public/ceiling-prices/all", async (_req, res) => {
+    try {
+      const rows = await storage.getAllCeilingPrices();
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "석유 최고가격제 전체 목록 조회 실패" });
+    }
+  });
+
+  // GET /api/public/ceiling-trend?effectiveDate=YYYY-MM-DD&sido=&sigungu=
+  app.get("/api/public/ceiling-trend", async (req, res) => {
+    try {
+      const { effectiveDate, sido, sigungu } = req.query as Record<string, string>;
+      if (!effectiveDate) return res.status(400).json({ message: "effectiveDate 필수" });
+      const rows = await storage.getCeilingTrendData(
+        effectiveDate,
+        sido || undefined,
+        sigungu || undefined,
+      );
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "최고가격제 변동추이 조회 실패" });
+    }
+  });
+
+  // GET /api/public/ceiling-trend/station?effectiveDate=YYYY-MM-DD&stationId=
+  app.get("/api/public/ceiling-trend/station", async (req, res) => {
+    try {
+      const { effectiveDate, stationId } = req.query as Record<string, string>;
+      if (!effectiveDate || !stationId) return res.status(400).json({ message: "effectiveDate, stationId 필수" });
+      const rows = await storage.getStationCeilingTrend(effectiveDate, stationId);
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "주유소 최고가격제 추이 조회 실패" });
+    }
+  });
+
   // GET /api/public/fuel-stats?region=충북+청주시
   app.get("/api/public/fuel-stats", async (req, res) => {
     try {

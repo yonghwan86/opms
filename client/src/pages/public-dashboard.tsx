@@ -1,15 +1,15 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ComposedChart, Line, BarChart, Bar,
+  ComposedChart, Line, BarChart, Bar, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Minus, Globe, Fuel, BarChart2, ShieldCheck,
-  MapPin, Loader2,
+  MapPin, Loader2, Search, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -89,6 +89,101 @@ interface FuelStats { date: string; averages: { gasoline: number; diesel: number
 interface RegionalAvg { sido: string; avgPrice: number; avgDiesel: number | null; }
 interface DomesticHistory { date: string; gasoline: number; diesel: number; }
 interface CeilingPrice { id: number; gasoline: string | null; diesel: string | null; kerosene: string | null; effectiveDate: string; note: string | null; }
+interface CeilingTrendRow { date: string; gasolineAvg: number | null; dieselAvg: number | null; keroseneAvg: number | null; gasolineAbove: number; gasolineBelow: number; dieselAbove: number; dieselBelow: number; keroseneAbove: number; keroseneBelow: number; }
+interface StationRow { date: string; gasoline: number | null; diesel: number | null; kerosene: number | null; }
+interface StationSuggest { stationId: string; stationName: string; region: string; }
+
+// ─── 최고가 유종 설정 ─────────────────────────────────────────────────────────
+const CEIL_FUEL_CONFIG = [
+  { key: "gasoline" as const, label: "휘발유", dot: "bg-amber-400", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
+  { key: "diesel"   as const, label: "경유",   dot: "bg-green-500", stroke: "#22c55e", ceilingColor: "#16a34a", stationStroke: "#8b5cf6", stationKey: "stationDsl" },
+  { key: "kerosene" as const, label: "등유",   dot: "bg-sky-400",   stroke: "#38bdf8", ceilingColor: "#0284c7", stationStroke: "#ec4899", stationKey: "stationKero" },
+];
+
+const SIDO_LIST = ["서울","부산","대구","인천","광주","대전","울산","세종시","경기","강원","충북","충남","전북","전남","경북","경남","제주"];
+
+function toLabel8(d: string) { return d.length === 8 ? `${d.slice(4,6)}-${d.slice(6,8)}` : d; }
+
+// ─── 최고가격제 툴팁 ──────────────────────────────────────────────────────────
+function CeilTooltip({ active, payload, label, fuels, stationName, ceilingLabel }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  const isPublish = label === ceilingLabel;
+  const activeFuels = CEIL_FUEL_CONFIG.filter(f => fuels[f.key]);
+  const aboveVal = fuels.gasoline ? (d.gasolineAbove ?? 0) : fuels.diesel ? (d.dieselAbove ?? 0) : (d.keroseneAbove ?? 0);
+  const belowVal = fuels.gasoline ? (d.gasolineBelow ?? 0) : fuels.diesel ? (d.dieselBelow ?? 0) : (d.keroseneBelow ?? 0);
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[185px]">
+      <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">{label}{isPublish ? " ★공표일" : ""}</p>
+      {stationName && (
+        <div className="mb-1.5 pb-1.5 border-b border-gray-100">
+          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[160px]">{stationName}</p>
+          {activeFuels.map(f => {
+            const stVal = d[f.stationKey];
+            if (stVal == null) return null;
+            return <div key={f.key} className="flex justify-between"><span style={{color:f.stationStroke}} className="text-[10px]">● {f.label}</span><span style={{color:f.stationStroke}} className="font-bold">{fmt(stVal)}원</span></div>;
+          })}
+        </div>
+      )}
+      <div className="space-y-0.5 mb-1.5">
+        {fuels.gasoline && d.gasolineAvg != null && <div className="flex justify-between gap-3"><span className="text-amber-600">● 휘발유 평균</span><span className="font-semibold text-gray-800">{fmt(d.gasolineAvg)}원</span></div>}
+        {fuels.diesel && d.dieselAvg != null && <div className="flex justify-between gap-3"><span className="text-green-600">● 경유 평균</span><span className="font-semibold text-gray-800">{fmt(d.dieselAvg)}원</span></div>}
+        {fuels.kerosene && d.keroseneAvg != null && <div className="flex justify-between gap-3"><span className="text-sky-500">● 등유 평균</span><span className="font-semibold text-gray-800">{fmt(d.keroseneAvg)}원</span></div>}
+      </div>
+      <div className="pt-1 border-t border-gray-100 flex justify-between gap-1">
+        <span className="flex items-center gap-1 text-red-500 font-bold text-[10px]"><TrendingUp className="w-3 h-3" />{fmt(aboveVal)}개 초과</span>
+        <span className="flex items-center gap-1 text-blue-500 font-bold text-[10px]"><TrendingDown className="w-3 h-3" />{fmt(belowVal)}개 이하</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── 주유소 검색 인라인 컴포넌트 ─────────────────────────────────────────────
+function PubStationSearch({ value, onChange, onSelect, sido }: {
+  value: string; onChange: (v: string) => void;
+  onSelect: (s: StationSuggest) => void; sido: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { data: suggestions = [] } = useQuery<StationSuggest[]>({
+    queryKey: ["/api/public/stations/suggest", value, sido],
+    queryFn: () => {
+      if (value.trim().length < 1) return Promise.resolve([]);
+      const p = new URLSearchParams({ q: value });
+      if (sido) p.set("sido", sido);
+      return fetch(`/api/public/stations/suggest?${p}`).then(r => r.json());
+    },
+    enabled: value.trim().length >= 1,
+    staleTime: 30_000,
+  });
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+  return (
+    <div ref={ref} className="relative flex-1 min-w-[180px]">
+      <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(개별 추이 오버레이)</span></p>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+        <input type="text" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
+          placeholder="주유소 이름 검색..." className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
+      </div>
+      {open && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+          {suggestions.map(s => (
+            <button key={s.stationId} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex justify-between items-center"
+              onClick={() => { onSelect(s); onChange(s.stationName); setOpen(false); }}>
+              <span className="font-medium text-gray-800 truncate">{s.stationName}</span>
+              <span className="text-gray-400 ml-2 flex-shrink-0 text-[10px]">{s.region}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString("ko-KR");
@@ -168,6 +263,19 @@ export default function PublicDashboardPage() {
 
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
+  const [chartTab, setChartTab] = useState<'intl' | 'regional' | 'ceiling'>('intl');
+
+  // 최고가격제 탭 상태
+  const [ceilFuels, setCeilFuels] = useState({ gasoline: true, diesel: true, kerosene: false });
+  const [ceilDate, setCeilDate] = useState("");
+  const [ceilSido, setCeilSido] = useState("");
+  const [ceilSigungu, setCeilSigungu] = useState("");
+  const [ceilDateMenu, setCeilDateMenu] = useState(false);
+  const [ceilSidoMenu, setCeilSidoMenu] = useState(false);
+  const [ceilStationSearch, setCeilStationSearch] = useState("");
+  const [ceilStation, setCeilStation] = useState<StationSuggest | null>(null);
+  const ceilDateRef = useRef<HTMLDivElement>(null);
+  const ceilSidoRef = useRef<HTMLDivElement>(null);
 
   const { data: wtiRes, isLoading: wtiLoading } = useQuery<WtiResponse>({
     queryKey: ["/api/public/wti"],
@@ -229,6 +337,103 @@ export default function PublicDashboardPage() {
   const vals = sortedRegional.map(r => regionalTab === 'diesel' ? (r.avgDiesel ?? 0) : r.avgPrice).filter(Boolean);
   const domMin = vals.length ? Math.min(...vals) - 15 : 0;
   const domMax = vals.length ? Math.max(...vals) + 8 : 100;
+
+  // 최고가격제 전체 목록 (공표일 선택용)
+  const { data: allCeilings = [], isLoading: allCeilingsLoading } = useQuery<CeilingPrice[]>({
+    queryKey: ["/api/public/ceiling-prices/all"],
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // ceilDate 초기화 (최신 공표일)
+  useEffect(() => {
+    if (allCeilings.length && !ceilDate && chartTab === 'ceiling') {
+      setCeilDate(allCeilings[0].effectiveDate);
+    }
+  }, [allCeilings, ceilDate, chartTab]);
+
+  const selectedCeiling = useMemo(
+    () => allCeilings.find(c => c.effectiveDate === ceilDate) ?? null,
+    [allCeilings, ceilDate],
+  );
+
+  // 시군구 목록
+  const { data: ceilSigunguList = [] } = useQuery<string[]>({
+    queryKey: ["/api/public/stations/subregions", ceilSido],
+    queryFn: () => ceilSido ? fetch(`/api/public/stations/subregions?sido=${encodeURIComponent(ceilSido)}`).then(r => r.json()) : Promise.resolve([]),
+    enabled: !!ceilSido,
+    staleTime: 60_000,
+  });
+
+  // 트렌드 데이터
+  const { data: ceilTrendData = [], isLoading: ceilTrendLoading } = useQuery<CeilingTrendRow[]>({
+    queryKey: ["/api/public/ceiling-trend", ceilDate, ceilSido, ceilSigungu],
+    queryFn: () => {
+      if (!ceilDate) return Promise.resolve([]);
+      const p = new URLSearchParams({ effectiveDate: ceilDate });
+      if (ceilSido) p.set("sido", ceilSido);
+      if (ceilSigungu) p.set("sigungu", ceilSigungu);
+      return fetch(`/api/public/ceiling-trend?${p}`).then(r => r.json());
+    },
+    enabled: !!ceilDate && chartTab === 'ceiling',
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // 주유소 개별 데이터
+  const { data: ceilStationData = [] } = useQuery<StationRow[]>({
+    queryKey: ["/api/public/ceiling-trend/station", ceilDate, ceilStation?.stationId],
+    queryFn: () => {
+      if (!ceilDate || !ceilStation) return Promise.resolve([]);
+      const p = new URLSearchParams({ effectiveDate: ceilDate, stationId: ceilStation.stationId });
+      return fetch(`/api/public/ceiling-trend/station?${p}`).then(r => r.json());
+    },
+    enabled: !!ceilDate && !!ceilStation,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // 차트 데이터 병합 (최고가격제 탭)
+  const ceilChartData = useMemo(() => {
+    const stMap = new Map<string, StationRow>(ceilStationData.map(r => [r.date, r]));
+    return ceilTrendData.map(row => {
+      const st = stMap.get(row.date);
+      return {
+        ...row,
+        label: toLabel8(row.date),
+        stationGas:  st?.gasoline ?? null,
+        stationDsl:  st?.diesel ?? null,
+        stationKero: st?.kerosene ?? null,
+      };
+    });
+  }, [ceilTrendData, ceilStationData]);
+
+  const ceilLabel = ceilDate ? toLabel8(ceilDate.replace(/-/g, "")) : "";
+
+  // YAxis 도메인 (최고가격제)
+  const ceilAllPrices = ceilChartData.flatMap(d => [
+    ceilFuels.gasoline ? d.gasolineAvg : null,
+    ceilFuels.diesel   ? d.dieselAvg   : null,
+    ceilFuels.kerosene ? d.keroseneAvg : null,
+    ceilFuels.gasoline && ceilStation ? d.stationGas  : null,
+    ceilFuels.diesel   && ceilStation ? d.stationDsl  : null,
+    ceilFuels.kerosene && ceilStation ? d.stationKero : null,
+  ].filter((v): v is number => v != null));
+  const ceilPriceVals = [
+    ceilFuels.gasoline && selectedCeiling?.gasoline ? Number(selectedCeiling.gasoline) : null,
+    ceilFuels.diesel   && selectedCeiling?.diesel   ? Number(selectedCeiling.diesel)   : null,
+    ceilFuels.kerosene && selectedCeiling?.kerosene ? Number(selectedCeiling.kerosene) : null,
+  ].filter((v): v is number => v != null);
+  const ceilYVals = [...ceilAllPrices, ...ceilPriceVals];
+  const ceilYMin = ceilYVals.length ? Math.floor((Math.min(...ceilYVals) - 30) / 10) * 10 : 1000;
+  const ceilYMax = ceilYVals.length ? Math.ceil((Math.max(...ceilYVals) + 30) / 10) * 10 : 2200;
+
+  // 외부 클릭 닫기 (최고가격제 탭 드롭다운)
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ceilDateRef.current && !ceilDateRef.current.contains(e.target as Node)) setCeilDateMenu(false);
+      if (ceilSidoRef.current && !ceilSidoRef.current.contains(e.target as Node)) setCeilSidoMenu(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -388,111 +593,290 @@ export default function PublicDashboardPage() {
           </MetricCard>
         </div>
 
-        {/* ── 중단 2열: 유가 연동분석(2/3) + 지역별 순위(1/3) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+        {/* ── 차트 섹션 (3탭) ── */}
+        <Card className="border border-border bg-card">
+          {/* 탭 헤더 */}
+          <div className="px-4 pt-3 pb-0 border-b border-border flex items-center gap-1 flex-wrap">
+            {([
+              { id: 'intl', label: '국제-국내 연동' },
+              { id: 'regional', label: '지역별 순위' },
+              { id: 'ceiling', label: '최고가격제 변동추이' },
+            ] as const).map(t => (
+              <button key={t.id} onClick={() => setChartTab(t.id)}
+                className={cn(
+                  "text-xs px-3 py-2 font-medium border-b-2 transition-colors -mb-px",
+                  chartTab === t.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}>
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-          {/* 국제-국내 유가 연동분석 (2/3) */}
-          <Card className="border border-border bg-card lg:col-span-2">
-            <div className="px-5 pt-3 pb-0">
-              <div className="flex flex-col gap-1 pb-2 border-b border-border">
-                <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
-                <p className="text-xs md:text-sm text-muted-foreground">WTI 국제 유가 vs 국내 평균 유가</p>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 mb-1 leading-relaxed">
-                ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-              </p>
-            </div>
-            <div className="px-2 pb-2 pt-1">
-              <ResponsiveContainer width="100%" height={340}>
-                <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
-                    tickLine={false}
-                    axisLine={{ stroke: "#e5e7eb" }}
-                    interval={Math.max(0, Math.floor(chartData.length / 6) - 1)}
-                    height={36}
-                    padding={{ left: 24, right: 24 }}
-                    tickMargin={10}
-                  />
-                  <YAxis yAxisId="wti" orientation="left"
-                    tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
-                    tickFormatter={v => `$${v}`} domain={["auto", "auto"]} tickCount={6} width={56} axisLine={false} tickLine={false}
-                  />
-                  <YAxis yAxisId="domestic" orientation="right"
-                    tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
-                    tickFormatter={v => `${fmt(v)}원`} domain={["auto", "auto"]} tickCount={6} width={64} axisLine={false} tickLine={false}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="circle" iconSize={10}
-                    formatter={(val) => val === "wti" ? "WTI (국제)" : val === "gasoline" ? "휘발유" : "경유"}
-                  />
-                  <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
-                  <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
-                  <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          {/* 지역별 평균 유가 순위 (1/3) */}
-          <Card className="border border-border bg-card flex flex-col">
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {regionalTab === 'diesel' ? "경유" : "휘발유"}{" "}
-                  {isGeoLoading ? "위치 확인 중" : geoRegion ? `${geoRegion} 시/군/구별` : "시/도별"} 평균
+          {/* 탭 1: 국제-국내 연동 */}
+          {chartTab === 'intl' && (
+            <div>
+              <div className="px-5 pt-3 pb-0">
+                <div className="flex flex-col gap-1 pb-2">
+                  <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
+                  <p className="text-xs text-muted-foreground">WTI 국제 유가 vs 국내 평균 유가</p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-1 leading-relaxed">
+                  ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
                 </p>
               </div>
-              <div className="flex gap-1">
-                {(['gasoline', 'diesel'] as const).map(tab => (
-                  <button key={tab} onClick={() => setRegionalTab(tab)}
-                    className={cn("text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
-                      regionalTab === tab
-                        ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    )}>
-                    {tab === 'gasoline' ? '휘발유' : '경유'}
-                  </button>
-                ))}
+              <div className="px-2 pb-3 pt-1">
+                <ResponsiveContainer width="100%" height={340}>
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis dataKey="label"
+                      tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
+                      tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
+                      interval={Math.max(0, Math.floor(chartData.length / 6) - 1)}
+                      height={36} padding={{ left: 24, right: 24 }} tickMargin={10}
+                    />
+                    <YAxis yAxisId="wti" orientation="left"
+                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
+                      tickFormatter={v => `$${v}`} domain={["auto", "auto"]} tickCount={6} width={56} axisLine={false} tickLine={false}
+                    />
+                    <YAxis yAxisId="domestic" orientation="right"
+                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
+                      tickFormatter={v => `${fmt(v)}원`} domain={["auto", "auto"]} tickCount={6} width={64} axisLine={false} tickLine={false}
+                    />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="circle" iconSize={10}
+                      formatter={(val) => val === "wti" ? "WTI (국제)" : val === "gasoline" ? "휘발유" : "경유"}
+                    />
+                    <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
+                    <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
+                    <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </div>
-            <div className="px-3 pt-3 pb-2">
-              {regionalLoading || isGeoLoading ? (
-                <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-              ) : sortedRegional.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={Math.max(340, sortedRegional.length * 28 + 20)}>
-                  <BarChart data={sortedRegional} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                    <XAxis type="number" domain={[domMin, domMax]}
-                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
-                      tickFormatter={v => fmt(v)} tickLine={false} axisLine={false} tickCount={4}
-                    />
-                    <YAxis type="category" dataKey="sido"
-                      tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
-                      width={52} tickLine={false} axisLine={false}
-                      tickFormatter={(v: string) => v.includes(' ') ? v.split(' ').slice(1).join(' ') : v}
-                    />
-                    <Tooltip
-                      formatter={(v: any) => [`${fmt(Number(v))}원`, regionalTab === 'diesel' ? "평균 경유" : "평균 휘발유"]}
-                      labelFormatter={(label: string) => label.includes(' ') ? label.split(' ').slice(1).join(' ') : label}
-                      contentStyle={{ fontSize: 13 }}
-                    />
-                    <Bar dataKey={regionalTab === 'diesel' ? "avgDiesel" : "avgPrice"}
-                      fill={regionalTab === 'diesel' ? "#22c55e" : "#facc15"}
-                      radius={[0, 4, 4, 0]} barSize={20}
-                      label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+          )}
+
+          {/* 탭 2: 지역별 순위 */}
+          {chartTab === 'regional' && (
+            <div>
+              <div className="px-5 py-3 flex items-center justify-between flex-shrink-0">
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {regionalTab === 'diesel' ? "경유" : "휘발유"}{" "}
+                    {isGeoLoading ? "위치 확인 중" : geoRegion ? `${geoRegion} 시/군/구별` : "시/도별"} 평균
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  {(['gasoline', 'diesel'] as const).map(tab => (
+                    <button key={tab} onClick={() => setRegionalTab(tab)}
+                      className={cn("text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
+                        regionalTab === tab
+                          ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      )}>
+                      {tab === 'gasoline' ? '휘발유' : '경유'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="px-3 pb-3">
+                {regionalLoading || isGeoLoading ? (
+                  <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+                ) : sortedRegional.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={Math.max(340, sortedRegional.length * 28 + 20)}>
+                    <BarChart data={sortedRegional} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                      <XAxis type="number" domain={[domMin, domMax]}
+                        tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
+                        tickFormatter={v => fmt(v)} tickLine={false} axisLine={false} tickCount={4}
+                      />
+                      <YAxis type="category" dataKey="sido"
+                        tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
+                        width={52} tickLine={false} axisLine={false}
+                        tickFormatter={(v: string) => v.includes(' ') ? v.split(' ').slice(1).join(' ') : v}
+                      />
+                      <Tooltip
+                        formatter={(v: any) => [`${fmt(Number(v))}원`, regionalTab === 'diesel' ? "평균 경유" : "평균 휘발유"]}
+                        labelFormatter={(label: string) => label.includes(' ') ? label.split(' ').slice(1).join(' ') : label}
+                        contentStyle={{ fontSize: 13 }}
+                      />
+                      <Bar dataKey={regionalTab === 'diesel' ? "avgDiesel" : "avgPrice"}
+                        fill={regionalTab === 'diesel' ? "#22c55e" : "#facc15"}
+                        radius={[0, 4, 4, 0]} barSize={20}
+                        label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
-          </Card>
-        </div>
+          )}
+
+          {/* 탭 3: 최고가격제 변동추이 */}
+          {chartTab === 'ceiling' && (
+            <div className="p-4 space-y-3">
+              {/* 필터 */}
+              <div className="flex flex-wrap gap-3 items-end">
+                {/* 공표일 */}
+                <div ref={ceilDateRef} className="relative">
+                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">공표일</p>
+                  <button onClick={() => setCeilDateMenu(p => !p)}
+                    className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg">
+                    {ceilDate || "선택 중..."} <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {ceilDateMenu && (
+                    <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[160px] max-h-48 overflow-y-auto">
+                      {allCeilingsLoading
+                        ? <p className="text-xs text-muted-foreground px-3 py-2">로딩 중...</p>
+                        : allCeilings.map(c => (
+                          <button key={c.id} onClick={() => { setCeilDate(c.effectiveDate); setCeilDateMenu(false); }}
+                            className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center justify-between gap-2",
+                              c.effectiveDate === ceilDate && "bg-primary/10 font-semibold text-primary")}>
+                            <span>{c.effectiveDate}</span>
+                            {c.note && <span className="text-muted-foreground text-[10px] truncate max-w-[80px]">{c.note}</span>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-px h-8 bg-border" />
+
+                {/* 시도 */}
+                <div ref={ceilSidoRef} className="relative">
+                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시도</p>
+                  <button onClick={() => setCeilSidoMenu(p => !p)}
+                    className="flex items-center gap-1.5 border border-border text-xs text-foreground px-3 py-1.5 rounded-lg">
+                    {ceilSido || "전국"} <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {ceilSidoMenu && (
+                    <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg min-w-[110px] max-h-64 overflow-y-auto">
+                      <button className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", !ceilSido && "font-semibold text-primary")}
+                        onClick={() => { setCeilSido(""); setCeilSigungu(""); setCeilSidoMenu(false); }}>전국</button>
+                      {SIDO_LIST.map(s => (
+                        <button key={s} className={cn("w-full text-left px-3 py-2 text-xs hover:bg-muted", ceilSido === s && "font-semibold text-primary")}
+                          onClick={() => { setCeilSido(s); setCeilSigungu(""); setCeilSidoMenu(false); }}>{s}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 시군구 */}
+                <div>
+                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시군구</p>
+                  {ceilSido && ceilSigunguList.length > 0 ? (
+                    <select value={ceilSigungu} onChange={e => setCeilSigungu(e.target.value)}
+                      className="border border-border text-xs text-foreground px-3 py-1.5 rounded-lg bg-background">
+                      <option value="">전체</option>
+                      {ceilSigunguList.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <button disabled className="flex items-center gap-1.5 border border-border/50 text-xs text-muted-foreground px-3 py-1.5 rounded-lg bg-muted/30">
+                      전체 <ChevronDown className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="w-px h-8 bg-border" />
+
+                {/* 주유소 검색 */}
+                <PubStationSearch
+                  value={ceilStationSearch}
+                  onChange={v => { setCeilStationSearch(v); if (!v.trim()) setCeilStation(null); }}
+                  onSelect={s => setCeilStation(s)}
+                  sido={ceilSido}
+                />
+
+                {/* 유종 토글 */}
+                <div className="flex gap-1.5 ml-auto">
+                  {CEIL_FUEL_CONFIG.map(f => (
+                    <button key={f.key}
+                      onClick={() => setCeilFuels(p => ({ ...p, [f.key]: !p[f.key] }))}
+                      className={cn("flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all",
+                        ceilFuels[f.key]
+                          ? "border-border text-foreground bg-card font-medium shadow-sm"
+                          : "border-border/50 text-muted-foreground bg-muted/30")}>
+                      <span className={cn("w-2 h-2 rounded-full", f.dot, !ceilFuels[f.key] && "opacity-30")} />
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 차트 */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
+                    <p className="text-xs text-muted-foreground">수평 점선: 최고가격 기준</p>
+                  </div>
+                </div>
+                {ceilTrendLoading ? (
+                  <div className="space-y-2 py-8"><Skeleton className="h-4 w-full" /><Skeleton className="h-60 w-full" /></div>
+                ) : ceilChartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                    {ceilDate ? "해당 기간의 데이터가 없습니다." : "공표일을 선택하세요."}
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <ComposedChart data={ceilChartData} margin={{ top: 10, right: 90, left: 12, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                      <XAxis dataKey="label"
+                        tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}
+                        tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
+                        interval={3} height={32} tickMargin={8}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}
+                        tickFormatter={v => `${fmt(v)}원`}
+                        domain={[ceilYMin, ceilYMax]} tickCount={7} width={72} axisLine={false} tickLine={false}
+                      />
+                      <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} ceilingLabel={ceilLabel} />} />
+                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8}
+                        formatter={(v: string) => {
+                          if (v === "stationGas")  return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
+                          if (v === "stationDsl")  return `${ceilStation?.stationName ?? "주유소"} (경유)`;
+                          if (v === "stationKero") return `${ceilStation?.stationName ?? "주유소"} (등유)`;
+                          if (v === "gasolineAvg") return "휘발유 평균";
+                          if (v === "dieselAvg")   return "경유 평균";
+                          if (v === "keroseneAvg") return "등유 평균";
+                          return v;
+                        }}
+                      />
+                      {/* 최고가 기준선 */}
+                      {selectedCeiling && CEIL_FUEL_CONFIG.filter(f => ceilFuels[f.key]).map(f => {
+                        const val = selectedCeiling[f.key];
+                        if (!val) return null;
+                        return <ReferenceLine key={f.key} y={Number(val)} stroke={f.ceilingColor} strokeDasharray="6 3" strokeWidth={1.5}
+                          label={{ value: `${f.label} ${fmt(Number(val))}원`, position: "insideRight", fontSize: 9, fill: f.ceilingColor, dx: 8 }} />;
+                      })}
+                      {/* 공표일 수직선 */}
+                      {ceilLabel && <ReferenceLine x={ceilLabel} stroke="#3b82f6" strokeDasharray="4 4" strokeWidth={1.5}
+                        label={{ value: "공표일", position: "top", fontSize: 10, fill: "#3b82f6" }} />}
+                      {/* 평균 라인 */}
+                      {ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasolineAvg" connectNulls />}
+                      {ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} dot={false} name="dieselAvg"   connectNulls />}
+                      {ceilFuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} dot={false} name="keroseneAvg" connectNulls />}
+                      {/* 주유소 오버레이 */}
+                      {ceilStation && ceilFuels.gasoline  && <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationGas"  connectNulls />}
+                      {ceilStation && ceilFuels.diesel    && <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationDsl"  connectNulls />}
+                      {ceilStation && ceilFuels.kerosene  && <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationKero" connectNulls />}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                )}
+                <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground items-center">
+                  <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-bold">빨간색 ↑</span> = 최고가보다 비싼 업체 수</span>
+                  <span className="w-px h-4 bg-border" />
+                  <span className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-blue-500" /><span className="text-blue-500 font-bold">파란색 ↓</span> = 최고가보다 싼 업체 수</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* 푸터 */}
         <div className="text-center text-xs text-muted-foreground py-4 border-t border-border">
