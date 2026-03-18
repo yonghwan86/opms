@@ -202,10 +202,10 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
 
       <div className="pt-1 border-t border-gray-100 flex justify-between gap-1">
         <span className="flex items-center gap-1 text-red-500 font-bold text-[10px]">
-          <TrendingUp className="w-3 h-3" />{fmt(aboveVal)}업체 초과
+          <TrendingUp className="w-3 h-3" />{fmt(aboveVal)}업체
         </span>
         <span className="flex items-center gap-1 text-blue-500 font-bold text-[10px]">
-          <TrendingDown className="w-3 h-3" />{fmt(belowVal)}업체 이하
+          <TrendingDown className="w-3 h-3" />{fmt(belowVal)}업체
         </span>
       </div>
     </div>
