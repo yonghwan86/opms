@@ -411,7 +411,13 @@ export default function CeilingTrendPage() {
 
   // CSV 다운로드
   const todayStr = new Date().toISOString().slice(0, 10);
-  const csvPeriodLabel = selectedDate ? `${selectedDate} ~ ${todayStr}` : "";
+  const csvStartDate = useMemo(() => {
+    if (!selectedDate) return "";
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }, [selectedDate]);
+  const csvPeriodLabel = csvStartDate ? `${csvStartDate} ~ ${todayStr}` : "";
 
   const handleDownloadCsv = async () => {
     if (!selectedDate) return;

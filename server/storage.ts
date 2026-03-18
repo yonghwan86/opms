@@ -1312,6 +1312,9 @@ export class PostgresStorage implements IStorage {
   }): Promise<CeilingStationExportRow[]> {
     const { effectiveDate, role, headquartersId, teamId } = params;
     const effectiveDateStr = effectiveDate.replace(/-/g, '');
+    const nextDay = new Date(effectiveDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDayStr = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
     const today = new Date();
     const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
@@ -1363,7 +1366,7 @@ export class PostgresStorage implements IStorage {
             FROM oil_price_raw
             WHERE date = ${effectiveDateStr}${bRegionCond}
           ) b ON b.station_id = r.station_id
-          WHERE r.date BETWEEN ${effectiveDateStr} AND ${todayStr}${regionCond}
+          WHERE r.date BETWEEN ${nextDayStr} AND ${todayStr}${regionCond}
           ORDER BY r.date, r.station_name`
     );
     return (result.rows as any[]).map(row => ({
