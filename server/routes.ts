@@ -1451,6 +1451,67 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/ceiling-trend/export?effectiveDate=YYYY-MM-DD  (인증 필요, CSV 반환)
+  app.get("/api/ceiling-trend/export", requireAuth, async (req, res) => {
+    try {
+      const { effectiveDate } = req.query as Record<string, string>;
+      if (!effectiveDate) return res.status(400).json({ message: "effectiveDate 필수" });
+      const sess = (req as any).session;
+      const role = sess?.role ?? 'GUEST';
+      const headquartersId = sess?.headquartersId ?? null;
+      const teamId = sess?.teamId ?? null;
+
+      const rows = await storage.getCeilingStationsForExport({ effectiveDate, role, headquartersId, teamId });
+
+      const csvEscape = (v: string | null | undefined) => {
+        if (v == null) return '';
+        const s = String(v);
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+      };
+      const fmt = (v: number | null) => v != null ? String(v) : '';
+
+      const header = [
+        '날짜', '주유소ID', '주유소명', '지역', '시도', '브랜드', '셀프여부',
+        '휘발유 차이금액', '경유 차이금액', '등유 차이금액',
+        '휘발유 공표일가격', '경유 공표일가격', '등유 공표일가격',
+        '휘발유 해당일가격', '경유 해당일가격', '등유 해당일가격',
+        '휘발유 최고가', '경유 최고가', '등유 최고가',
+      ].join(',');
+
+      const dataRows = rows.map(r => [
+        r.date,
+        r.stationId,
+        csvEscape(r.stationName),
+        csvEscape(r.region),
+        csvEscape(r.sido),
+        csvEscape(r.brand),
+        r.isSelf ? '셀프' : '일반',
+        fmt(r.gasDiff),
+        fmt(r.dieselDiff),
+        fmt(r.keroDiff),
+        fmt(r.baseGasoline),
+        fmt(r.baseDiesel),
+        fmt(r.baseKerosene),
+        fmt(r.gasoline),
+        fmt(r.diesel),
+        fmt(r.kerosene),
+        fmt(r.ceilingGasoline),
+        fmt(r.ceilingDiesel),
+        fmt(r.ceilingKerosene),
+      ].join(','));
+
+      const csv = '\uFEFF' + header + '\n' + dataRows.join('\n');
+      const filename = `최고가격제_변동추이_${effectiveDate}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+      res.send(csv);
+    } catch (e) {
+      console.error("ceiling-trend export error:", e);
+      res.status(500).json({ message: "CSV 내보내기 실패" });
+    }
+  });
+
   // GET /api/public/ceiling-trend/station?effectiveDate=YYYY-MM-DD&stationId=
   app.get("/api/public/ceiling-trend/station", async (req, res) => {
     try {

@@ -7,8 +7,19 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 interface CeilingPrice {
@@ -31,6 +42,9 @@ interface TrendRow {
   dieselBelow: number;
   keroseneAbove: number;
   keroseneBelow: number;
+  baseGas: number | null;
+  baseDiesel: number | null;
+  baseKerosene: number | null;
 }
 
 interface StationRow {
@@ -70,7 +84,22 @@ const FUEL_CONFIG = [
 type FuelKey = "gasoline" | "diesel" | "kerosene";
 
 // ─── 커스텀 툴팁 ───────────────────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label, fuels, stationName, stationData, ceilingDate }: any) {
+function DiffBadge({ val, base }: { val: number | null; base: number | null }) {
+  if (val == null || base == null) return null;
+  const diff = val - base;
+  if (diff === 0) return null;
+  const isUp = diff > 0;
+  return (
+    <span
+      className={isUp ? "text-red-500" : "text-blue-500"}
+      style={{ fontSize: 9, marginLeft: 2, fontWeight: 700 }}
+    >
+      ({isUp ? "↑" : "↓"}{Math.abs(diff).toLocaleString("ko-KR")}원)
+    </span>
+  );
+}
+
+function CustomTooltip({ active, payload, label, fuels, stationName, stationData, ceilingDate, effectiveDateRaw }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
@@ -78,7 +107,10 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
   const isPublishDay = label === ceilingDate;
   const activeFuelConf = FUEL_CONFIG.filter(f => fuels[f.key]);
 
-  // 누계일 계산 (stationData에서)
+  // 공표일 주유소 기준가격 (해당 주유소의 공표일 실제가격)
+  const stationBaseRow = stationData?.find((r: StationRow) => r.date === effectiveDateRaw);
+
+  // 누계일 계산: 공표일 주유소 가격 기준
   const stationAbove: Record<string, number> = {};
   const stationBelow: Record<string, number> = {};
   if (stationName && stationData?.length) {
@@ -86,12 +118,12 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
     FUEL_CONFIG.forEach(f => {
       if (!fuels[f.key]) return;
       let above = 0; let below = 0;
+      const baseVal = stationBaseRow?.[f.key as keyof StationRow] as number | null;
       for (const row of stationData) {
         if (row.date > currentDateStr) break;
-        const stVal = row[f.key];
-        const ceilVal = d[`ceiling_${f.key}`];
-        if (stVal != null && ceilVal != null) {
-          if (stVal > ceilVal) above++;
+        const stVal = row[f.key as keyof StationRow] as number | null;
+        if (stVal != null && baseVal != null) {
+          if (stVal > baseVal) above++;
           else below++;
         }
       }
@@ -108,21 +140,24 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
                    (d.keroseneBelow ?? 0);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[190px]">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[200px]">
       <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">
         {label}{isPublishDay ? " ★공표일" : ""}
       </p>
 
       {stationName && (
         <div className="mb-1.5 pb-1.5 border-b border-gray-100">
-          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[160px]">{stationName}</p>
+          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[170px]">{stationName}</p>
           {activeFuelConf.map(f => {
-            const stVal = d[f.stationKey];
+            const stVal = d[f.stationKey] as number | null;
             if (stVal == null) return null;
+            const base = stationBaseRow?.[f.key as keyof StationRow] as number | null;
             return (
-              <div key={f.key} className="flex justify-between">
+              <div key={f.key} className="flex justify-between items-center">
                 <span style={{ color: f.stationStroke }} className="text-[10px]">● {f.label}</span>
-                <span style={{ color: f.stationStroke }} className="font-bold">{fmt(stVal)}원</span>
+                <span style={{ color: f.stationStroke }} className="font-bold">
+                  {fmt(stVal)}원<DiffBadge val={stVal} base={base} />
+                </span>
               </div>
             );
           })}
@@ -139,21 +174,27 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
 
       <div className="space-y-0.5 mb-1.5">
         {fuels.gasoline && d.gasolineAvg != null && (
-          <div className="flex justify-between gap-3">
+          <div className="flex justify-between items-center gap-3">
             <span className="text-amber-600">● 휘발유 평균</span>
-            <span className="font-semibold text-gray-800">{fmt(d.gasolineAvg)}원</span>
+            <span className="font-semibold text-gray-800">
+              {fmt(d.gasolineAvg)}원<DiffBadge val={d.gasolineAvg} base={d.baseGas} />
+            </span>
           </div>
         )}
         {fuels.diesel && d.dieselAvg != null && (
-          <div className="flex justify-between gap-3">
+          <div className="flex justify-between items-center gap-3">
             <span className="text-green-600">● 경유 평균</span>
-            <span className="font-semibold text-gray-800">{fmt(d.dieselAvg)}원</span>
+            <span className="font-semibold text-gray-800">
+              {fmt(d.dieselAvg)}원<DiffBadge val={d.dieselAvg} base={d.baseDiesel} />
+            </span>
           </div>
         )}
         {fuels.kerosene && d.keroseneAvg != null && (
-          <div className="flex justify-between gap-3">
+          <div className="flex justify-between items-center gap-3">
             <span className="text-sky-500">● 등유 평균</span>
-            <span className="font-semibold text-gray-800">{fmt(d.keroseneAvg)}원</span>
+            <span className="font-semibold text-gray-800">
+              {fmt(d.keroseneAvg)}원<DiffBadge val={d.keroseneAvg} base={d.baseKerosene} />
+            </span>
           </div>
         )}
       </div>
@@ -236,6 +277,8 @@ function StationSearch({ value, onChange, onSelect, sido }: {
 
 // ─── 메인 ─────────────────────────────────────────────────────────────────────
 export default function CeilingTrendPage() {
+  const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [fuels, setFuels] = useState<Record<FuelKey, boolean>>({
     gasoline: true, diesel: true, kerosene: false,
   });
@@ -246,6 +289,7 @@ export default function CeilingTrendPage() {
   const [showSidoMenu, setShowSidoMenu] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
   const [selectedStation, setSelectedStation] = useState<{ stationId: string; stationName: string } | null>(null);
+  const [showMobileAlert, setShowMobileAlert] = useState(false);
 
   const dateRef = useRef<HTMLDivElement>(null);
   const sidoRef = useRef<HTMLDivElement>(null);
@@ -324,6 +368,9 @@ export default function CeilingTrendPage() {
         ceiling_gasoline: cGas || null,
         ceiling_diesel: cDiesel || null,
         ceiling_kerosene: cKero || null,
+        baseGas: row.baseGas,
+        baseDiesel: row.baseDiesel,
+        baseKerosene: row.baseKerosene,
       };
     });
   }, [trendData, stationData, selectedCeiling]);
@@ -360,6 +407,31 @@ export default function CeilingTrendPage() {
   }, []);
 
   const toggleFuel = (f: FuelKey) => setFuels(p => ({ ...p, [f]: !p[f] }));
+
+  // CSV 다운로드
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const csvPeriodLabel = selectedDate ? `${selectedDate} ~ ${todayStr}` : "";
+
+  const handleDownloadCsv = async () => {
+    if (!selectedDate) return;
+    if (isMobile) { setShowMobileAlert(true); return; }
+    try {
+      const params = new URLSearchParams({ effectiveDate: selectedDate });
+      const resp = await fetch(`/api/ceiling-trend/export?${params}`, { credentials: "include" });
+      if (!resp.ok) { toast({ title: "다운로드 실패", description: "서버 오류가 발생했습니다.", variant: "destructive" }); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `최고가격제_변동추이_${selectedDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "다운로드 실패", description: "네트워크 오류가 발생했습니다.", variant: "destructive" });
+    }
+  };
 
   return (
     <Layout>
@@ -472,6 +544,30 @@ export default function CeilingTrendPage() {
               onSelect={s => setSelectedStation(s)}
               sido={selectedSido}
             />
+
+            <div className="w-px h-8 bg-border hidden md:block" />
+
+            {/* CSV 다운로드 버튼 */}
+            <div className="flex flex-col items-start gap-0.5">
+              <p className="text-[10px] text-muted-foreground font-medium">데이터 내보내기</p>
+              <button
+                onClick={handleDownloadCsv}
+                disabled={!selectedDate}
+                data-testid="button-csv-download"
+                className={cn(
+                  "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all font-medium",
+                  selectedDate
+                    ? "border-indigo-500 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900"
+                    : "border-border/50 text-muted-foreground bg-muted/30 cursor-not-allowed",
+                )}
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV 다운로드
+              </button>
+              {csvPeriodLabel && (
+                <p className="text-[9px] text-muted-foreground">{csvPeriodLabel}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -531,7 +627,7 @@ export default function CeilingTrendPage() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={340}>
-              <ComposedChart data={chartData} margin={{ top: 10, right: 90, left: 12, bottom: 20 }}>
+              <ComposedChart data={chartData} margin={{ top: 30, right: 90, left: 12, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="label"
@@ -558,6 +654,7 @@ export default function CeilingTrendPage() {
                       stationName={selectedStation?.stationName}
                       stationData={stationData}
                       ceilingDate={ceilingLabel}
+                      effectiveDateRaw={selectedDate ? selectedDate.replace(/-/g, "") : ""}
                     />
                   }
                 />
@@ -626,18 +723,33 @@ export default function CeilingTrendPage() {
           <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground items-center">
             <span className="flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-red-500 font-bold">빨간색 ↑</span> = 최고가보다 비싼 업체 수
+              <span className="text-red-500 font-bold">빨간색 ↑</span> = 공표일 평균보다 비싼 업체 수
             </span>
             <span className="w-px h-4 bg-border" />
             <span className="flex items-center gap-1.5">
               <TrendingDown className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-blue-500 font-bold">파란색 ↓</span> = 최고가보다 싼 업체 수
+              <span className="text-blue-500 font-bold">파란색 ↓</span> = 공표일 평균보다 싼 업체 수
             </span>
             <span className="w-px h-4 bg-border" />
-            <span>주유소 검색 시: 최고가 초과/미만 누계 횟수</span>
+            <span>주유소 검색 시: 공표일 해당 주유소가격 초과/이하 누계 횟수</span>
           </div>
         </div>
       </div>
+
+      {/* 모바일 다운로드 안내 AlertDialog */}
+      <AlertDialog open={showMobileAlert} onOpenChange={setShowMobileAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>CSV 다운로드</AlertDialogTitle>
+            <AlertDialogDescription>
+              CSV 파일 다운로드는 PC 버전에서 이용해 주시기 바랍니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowMobileAlert(false)}>확인</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

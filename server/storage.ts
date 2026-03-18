@@ -29,6 +29,31 @@ export interface CeilingTrendRow {
   dieselBelow: number;
   keroseneAbove: number;
   keroseneBelow: number;
+  baseGas: number | null;
+  baseDiesel: number | null;
+  baseKerosene: number | null;
+}
+
+export interface CeilingStationExportRow {
+  date: string;
+  stationId: string;
+  stationName: string;
+  region: string;
+  sido: string;
+  brand: string | null;
+  isSelf: boolean;
+  gasoline: number | null;
+  diesel: number | null;
+  kerosene: number | null;
+  baseGasoline: number | null;
+  baseDiesel: number | null;
+  baseKerosene: number | null;
+  gasDiff: number | null;
+  dieselDiff: number | null;
+  keroDiff: number | null;
+  ceilingGasoline: number | null;
+  ceilingDiesel: number | null;
+  ceilingKerosene: number | null;
 }
 
 export interface StationTrendRow {
@@ -204,6 +229,7 @@ export interface IStorage {
   setCeilingPrices(data: InsertOilCeilingPrices): Promise<OilCeilingPrices>;
   getCeilingTrendData(effectiveDate: string, sido?: string, sigungu?: string): Promise<CeilingTrendRow[]>;
   getStationCeilingTrend(effectiveDate: string, stationId: string): Promise<StationTrendRow[]>;
+  getCeilingStationsForExport(params: { effectiveDate: string; role: string; headquartersId?: number | null; teamId?: number | null }): Promise<CeilingStationExportRow[]>;
 
   // 유가 수집 이력 로그
   saveOilCollectionLog(log: InsertOilCollectionLog): Promise<void>;
@@ -1199,31 +1225,36 @@ export class PostgresStorage implements IStorage {
       `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
     const startDate = toYYYYMMDD(startD);
     const endDate = toYYYYMMDD(endD);
-
-    const ceilingRow = await db.select().from(oilCeilingPrices)
-      .where(eq(oilCeilingPrices.effectiveDate, effectiveDate))
-      .limit(1);
-    if (!ceilingRow.length) return [];
-    const ceiling = ceilingRow[0];
-    const cGas = ceiling.gasoline ? Number(ceiling.gasoline) : 0;
-    const cDiesel = ceiling.diesel ? Number(ceiling.diesel) : 0;
-    const cKero = ceiling.kerosene ? Number(ceiling.kerosene) : 0;
+    const effectiveDateStr = effectiveDate.replace(/-/g, '');
 
     const sidoCond = sido ? sql` AND r.sido = ${sido}` : sql``;
     const sigunguCond = sigungu ? sql` AND r.region LIKE ${'%' + sigungu + '%'}` : sql``;
+    const bSidoCond = sido ? sql` AND sido = ${sido}` : sql``;
+    const bSigunguCond = sigungu ? sql` AND region LIKE ${'%' + sigungu + '%'}` : sql``;
 
     const result = await db.execute(
-      sql`SELECT
+      sql`WITH baseline AS (
+            SELECT
+              ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END))::int AS base_gas,
+              ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END))::int    AS base_diesel,
+              ROUND(AVG(CASE WHEN kerosene > 0 THEN kerosene END))::int AS base_kero
+            FROM oil_price_raw
+            WHERE date = ${effectiveDateStr}${bSidoCond}${bSigunguCond}
+          )
+          SELECT
             r.date,
             ROUND(AVG(CASE WHEN r.gasoline > 0 THEN r.gasoline END))::int AS gasoline_avg,
-            ROUND(AVG(CASE WHEN r.diesel > 0 THEN r.diesel END))::int AS diesel_avg,
+            ROUND(AVG(CASE WHEN r.diesel > 0 THEN r.diesel END))::int    AS diesel_avg,
             ROUND(AVG(CASE WHEN r.kerosene > 0 THEN r.kerosene END))::int AS kerosene_avg,
-            COUNT(CASE WHEN r.gasoline > ${cGas} THEN 1 END)::int AS gasoline_above,
-            COUNT(CASE WHEN r.gasoline > 0 AND r.gasoline <= ${cGas} THEN 1 END)::int AS gasoline_below,
-            COUNT(CASE WHEN r.diesel > ${cDiesel} THEN 1 END)::int AS diesel_above,
-            COUNT(CASE WHEN r.diesel > 0 AND r.diesel <= ${cDiesel} THEN 1 END)::int AS diesel_below,
-            COUNT(CASE WHEN r.kerosene > ${cKero} THEN 1 END)::int AS kerosene_above,
-            COUNT(CASE WHEN r.kerosene > 0 AND r.kerosene <= ${cKero} THEN 1 END)::int AS kerosene_below
+            COUNT(CASE WHEN r.gasoline > (SELECT base_gas     FROM baseline) THEN 1 END)::int AS gasoline_above,
+            COUNT(CASE WHEN r.gasoline > 0 AND r.gasoline <= (SELECT base_gas     FROM baseline) THEN 1 END)::int AS gasoline_below,
+            COUNT(CASE WHEN r.diesel   > (SELECT base_diesel  FROM baseline) THEN 1 END)::int AS diesel_above,
+            COUNT(CASE WHEN r.diesel   > 0 AND r.diesel   <= (SELECT base_diesel  FROM baseline) THEN 1 END)::int AS diesel_below,
+            COUNT(CASE WHEN r.kerosene > (SELECT base_kero    FROM baseline) THEN 1 END)::int AS kerosene_above,
+            COUNT(CASE WHEN r.kerosene > 0 AND r.kerosene <= (SELECT base_kero    FROM baseline) THEN 1 END)::int AS kerosene_below,
+            (SELECT base_gas     FROM baseline) AS base_gas,
+            (SELECT base_diesel  FROM baseline) AS base_diesel,
+            (SELECT base_kero    FROM baseline) AS base_kero
           FROM oil_price_raw r
           WHERE r.date BETWEEN ${startDate} AND ${endDate}${sidoCond}${sigunguCond}
           GROUP BY r.date
@@ -1240,6 +1271,9 @@ export class PostgresStorage implements IStorage {
       dieselBelow: Number(row.diesel_below) || 0,
       keroseneAbove: Number(row.kerosene_above) || 0,
       keroseneBelow: Number(row.kerosene_below) || 0,
+      baseGas: row.base_gas != null ? Number(row.base_gas) : null,
+      baseDiesel: row.base_diesel != null ? Number(row.base_diesel) : null,
+      baseKerosene: row.base_kero != null ? Number(row.base_kero) : null,
     }));
   }
 
@@ -1267,6 +1301,91 @@ export class PostgresStorage implements IStorage {
       gasoline: row.gasoline != null ? Number(row.gasoline) : null,
       diesel: row.diesel != null ? Number(row.diesel) : null,
       kerosene: row.kerosene != null ? Number(row.kerosene) : null,
+    }));
+  }
+
+  async getCeilingStationsForExport(params: {
+    effectiveDate: string;
+    role: string;
+    headquartersId?: number | null;
+    teamId?: number | null;
+  }): Promise<CeilingStationExportRow[]> {
+    const { effectiveDate, role, headquartersId, teamId } = params;
+    const effectiveDateStr = effectiveDate.replace(/-/g, '');
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+
+    let regionCond = sql``;
+    let bRegionCond = sql``;
+
+    if (role !== 'MASTER' && headquartersId) {
+      const conditions: any[] = [
+        eq(hqTeamRegionPermissions.headquartersId, headquartersId),
+        eq(hqTeamRegionPermissions.enabled, true),
+      ];
+      if (teamId) conditions.push(eq(hqTeamRegionPermissions.teamId, teamId));
+      const perms = await db.select().from(hqTeamRegionPermissions).where(and(...conditions));
+      if (perms.length === 0) return [];
+      const regions = perms.map(p => toOilRegionName(p.doName, p.siName, p.gunName, p.guName)).filter(Boolean);
+      if (regions.length === 0) return [];
+      const regionSqlList = sql.join(regions.map(r => sql`${r}`), sql`, `);
+      regionCond = sql` AND r.region IN (${regionSqlList})`;
+      bRegionCond = sql` AND region IN (${regionSqlList})`;
+    }
+
+    const result = await db.execute(
+      sql`SELECT
+            r.date,
+            r.station_id,
+            r.station_name,
+            r.region,
+            r.sido,
+            r.brand,
+            r.is_self,
+            CASE WHEN r.gasoline  > 0 THEN r.gasoline  END AS gasoline,
+            CASE WHEN r.diesel    > 0 THEN r.diesel    END AS diesel,
+            CASE WHEN r.kerosene  > 0 THEN r.kerosene  END AS kerosene,
+            b.base_gas,
+            b.base_diesel,
+            b.base_kero,
+            CASE WHEN r.gasoline  > 0 AND b.base_gas   IS NOT NULL THEN r.gasoline  - b.base_gas   END AS gas_diff,
+            CASE WHEN r.diesel    > 0 AND b.base_diesel IS NOT NULL THEN r.diesel    - b.base_diesel END AS diesel_diff,
+            CASE WHEN r.kerosene  > 0 AND b.base_kero  IS NOT NULL THEN r.kerosene  - b.base_kero  END AS kero_diff,
+            (SELECT ROUND(gasoline::numeric)::int  FROM oil_ceiling_prices WHERE effective_date = ${effectiveDate} LIMIT 1) AS c_gas,
+            (SELECT ROUND(diesel::numeric)::int    FROM oil_ceiling_prices WHERE effective_date = ${effectiveDate} LIMIT 1) AS c_diesel,
+            (SELECT ROUND(kerosene::numeric)::int  FROM oil_ceiling_prices WHERE effective_date = ${effectiveDate} LIMIT 1) AS c_kero
+          FROM oil_price_raw r
+          LEFT JOIN (
+            SELECT station_id,
+              CASE WHEN gasoline  > 0 THEN gasoline  END AS base_gas,
+              CASE WHEN diesel    > 0 THEN diesel    END AS base_diesel,
+              CASE WHEN kerosene  > 0 THEN kerosene  END AS base_kero
+            FROM oil_price_raw
+            WHERE date = ${effectiveDateStr}${bRegionCond}
+          ) b ON b.station_id = r.station_id
+          WHERE r.date BETWEEN ${effectiveDateStr} AND ${todayStr}${regionCond}
+          ORDER BY r.date, r.station_name`
+    );
+    return (result.rows as any[]).map(row => ({
+      date: String(row.date),
+      stationId: String(row.station_id),
+      stationName: String(row.station_name),
+      region: String(row.region ?? ''),
+      sido: String(row.sido ?? ''),
+      brand: row.brand ? String(row.brand) : null,
+      isSelf: Boolean(row.is_self),
+      gasoline: row.gasoline != null ? Number(row.gasoline) : null,
+      diesel: row.diesel != null ? Number(row.diesel) : null,
+      kerosene: row.kerosene != null ? Number(row.kerosene) : null,
+      baseGasoline: row.base_gas != null ? Number(row.base_gas) : null,
+      baseDiesel: row.base_diesel != null ? Number(row.base_diesel) : null,
+      baseKerosene: row.base_kero != null ? Number(row.base_kero) : null,
+      gasDiff: row.gas_diff != null ? Number(row.gas_diff) : null,
+      dieselDiff: row.diesel_diff != null ? Number(row.diesel_diff) : null,
+      keroDiff: row.kero_diff != null ? Number(row.kero_diff) : null,
+      ceilingGasoline: row.c_gas != null ? Number(row.c_gas) : null,
+      ceilingDiesel: row.c_diesel != null ? Number(row.c_diesel) : null,
+      ceilingKerosene: row.c_kero != null ? Number(row.c_kero) : null,
     }));
   }
 
