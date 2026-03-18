@@ -332,7 +332,7 @@ export default function PublicDashboardPage() {
 
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
-  const [chartTab, setChartTab] = useState<'intl' | 'regional' | 'ceiling'>('intl');
+  const [chartTab, setChartTab] = useState<'intl' | 'regional' | 'ceiling'>('ceiling');
 
   // 최고가격제 탭 상태
   const [ceilFuels, setCeilFuels] = useState({ gasoline: true, diesel: true, kerosene: false });
