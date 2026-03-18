@@ -699,7 +699,7 @@ export default function CeilingTrendPage() {
                       stroke={f.ceilingColor}
                       strokeDasharray="6 3"
                       strokeWidth={1.5}
-                      label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 18 } : undefined}
+                      label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 28 } : undefined}
                     />
                   ));
                 })()}
