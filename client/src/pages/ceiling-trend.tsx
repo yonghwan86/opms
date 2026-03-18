@@ -724,15 +724,15 @@ export default function CeilingTrendPage() {
           <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground items-center">
             <span className="flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-red-500 font-bold">빨간색 ↑</span> = 공표일 평균가격보다 높은 업체 수
+              <span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 공표일 평균가격보다 높은 업체 수
             </span>
             <span className="w-px h-4 bg-border" />
             <span className="flex items-center gap-1.5">
               <TrendingDown className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-blue-500 font-bold">파란색 ↓</span> = 공표일 평균가격보다 낮은 업체 수
+              <span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 공표일 평균가격보다 낮은 업체 수
             </span>
             <span className="w-px h-4 bg-border" />
-            <span>주유소 검색 시: 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
+            <span>주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
           </div>
         </div>
       </div>
