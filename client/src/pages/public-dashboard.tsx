@@ -567,42 +567,25 @@ export default function PublicDashboardPage() {
             {ceilingData.length > 0 ? (() => {
               const cur = ceilingData[0];
               const prev = ceilingData[1];
-              const rows = [
-                { label: "휘발유", cur: cur.gasoline, prev: prev?.gasoline, dotCls: "bg-amber-400" },
-                { label: "경유",   cur: cur.diesel,   prev: prev?.diesel,   dotCls: "bg-green-500" },
-                { label: "등유",   cur: cur.kerosene, prev: prev?.kerosene, dotCls: "bg-sky-400"   },
-              ];
               return (
-                <>
-                  {/* 모바일: 컴팩트 가로 나열 */}
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 md:hidden">
-                    {rows.map(row => {
-                      const curVal = row.cur ? Number(row.cur) : null;
-                      return (
-                        <span key={row.label} className="flex items-center gap-1 text-xs whitespace-nowrap">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${row.dotCls}`} />
-                          <span className="text-muted-foreground">{row.label}</span>
-                          <span className="font-bold text-foreground">{curVal !== null ? fmtPrice(curVal) : "—"}</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                  {/* PC: 기존 레이아웃 */}
-                  <div className="hidden md:block space-y-2">
-                    {rows.map(row => {
-                      const curVal = row.cur ? Number(row.cur) : null;
-                      const prevVal = row.prev ? Number(row.prev) : null;
-                      const diff = curVal !== null && prevVal !== null ? curVal - prevVal : null;
-                      return (
-                        <div key={row.label} className="flex items-center justify-between gap-1">
-                          <span className="text-sm text-muted-foreground w-12 flex-shrink-0">{row.label}</span>
-                          <span className="text-base font-bold text-foreground whitespace-nowrap flex-shrink-0">{curVal !== null ? fmtPrice(curVal) : "—"}</span>
-                          <span className="flex-shrink-0">{diff !== null ? <ChangeChip val={diff} /> : <span className="text-xs text-muted-foreground">—</span>}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
+                <div className="space-y-2">
+                  {[
+                    { label: "휘발유", cur: cur.gasoline, prev: prev?.gasoline },
+                    { label: "경유", cur: cur.diesel, prev: prev?.diesel },
+                    { label: "등유", cur: cur.kerosene, prev: prev?.kerosene },
+                  ].map(row => {
+                    const curVal = row.cur ? Number(row.cur) : null;
+                    const prevVal = row.prev ? Number(row.prev) : null;
+                    const diff = curVal !== null && prevVal !== null ? curVal - prevVal : null;
+                    return (
+                      <div key={row.label} className="flex items-center justify-between gap-1">
+                        <span className="text-xs md:text-sm text-muted-foreground w-10 md:w-12 flex-shrink-0">{row.label}</span>
+                        <span className="text-sm md:text-base font-bold text-foreground whitespace-nowrap flex-shrink-0">{curVal !== null ? fmtPrice(curVal) : "—"}</span>
+                        <span className="flex-shrink-0">{diff !== null ? <ChangeChip val={diff} /> : <span className="text-xs text-muted-foreground">—</span>}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               );
             })() : <p className="text-sm text-muted-foreground">데이터 없음</p>}
           </MetricCard>
