@@ -150,9 +150,9 @@ export function CeilingTrendPage() {
           <p className="text-xs text-gray-400 mt-0.5">석유 최고가격 공표 전후 4주(28일) 구간 유가 추이</p>
         </div>
 
-        {/* 필터 1행: 공표일 + 시도 + 시군구 */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 space-y-2.5">
-          <div className="flex flex-wrap gap-3 items-center">
+        {/* 필터: 한 줄 (공표일 + 시도 + 시군구 + 주유소 검색) */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+          <div className="flex flex-wrap gap-3 items-end">
             <div>
               <p className="text-[10px] text-gray-400 mb-0.5 font-medium">공표일</p>
               <button className="flex items-center gap-1.5 bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
@@ -168,20 +168,19 @@ export function CeilingTrendPage() {
               <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시군구</p>
               <button className="flex items-center gap-1.5 border border-gray-100 text-xs text-gray-400 px-3 py-1.5 rounded-lg bg-gray-50" disabled>전체 <ChevronDown className="w-3 h-3" /></button>
             </div>
-          </div>
-
-          {/* 필터 2행: 주유소 검색 */}
-          <div>
-            <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(선택된 유종의 개별 가격 추이 오버레이)</span></p>
-            <div className="relative max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => { setSearch(e.target.value); setShowStation(e.target.value.length > 0); }}
-                placeholder="주유소 이름 검색..."
-                className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-              />
+            <div className="w-px h-8 bg-gray-200" />
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(선택된 유종 개별 추이 오버레이)</span></p>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setShowStation(e.target.value.length > 0); }}
+                  placeholder="주유소 이름 검색..."
+                  className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -256,15 +255,15 @@ export function CeilingTrendPage() {
           <div className="mt-2 pt-2.5 border-t border-gray-100 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-gray-500 items-center">
             <span className="flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-red-500 font-bold">빨간색 ↑</span> = 기준가보다 비싼 업체 수
+              <span className="text-red-500 font-bold">빨간색 ↑</span> = 최고가보다 비싼 업체 수
             </span>
             <span className="w-px h-4 bg-gray-200" />
             <span className="flex items-center gap-1.5">
               <TrendingDown className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-blue-500 font-bold">파란색 ↓</span> = 기준가보다 싼 업체 수
+              <span className="text-blue-500 font-bold">파란색 ↓</span> = 최고가보다 싼 업체 수
             </span>
             <span className="w-px h-4 bg-gray-200" />
-            <span className="text-gray-400">주유소 검색 시: 기준가 초과/미만 누계 횟수</span>
+            <span className="text-gray-400">주유소 검색 시: 최고가 초과/미만 누계 횟수</span>
           </div>
         </div>
       </div>
