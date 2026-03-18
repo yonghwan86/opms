@@ -5,8 +5,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogPortal, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Search, ChevronLeft, ChevronRight, LineChart as LineChartIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 interface StationSearchRow {
   date: string;
@@ -80,6 +92,22 @@ export default function StationSearchPage() {
   const [sido, setSido]             = useState("all");
   const [subRegion, setSubRegion]   = useState("all");
   const [fuel, setFuel]             = useState<FuelType>("gasoline");
+  const [graphOpen, setGraphOpen]   = useState(false);
+  const [graphFuels, setGraphFuels] = useState<Set<FuelType>>(new Set<FuelType>(["gasoline", "diesel"]));
+
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+  function toggleGraphFuel(f: FuelType) {
+    setGraphFuels(prev => {
+      const next = new Set(prev);
+      if (next.has(f)) {
+        if (next.size > 1) next.delete(f);
+      } else {
+        next.add(f);
+      }
+      return next;
+    });
+  }
 
   // 자동완성 상태
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -251,6 +279,34 @@ export default function StationSearchPage() {
     }));
   }, [rows]);
 
+  const uniqueStationCount = stationGroups.length;
+  const hasResults = rows.length > 0;
+
+  const chartData = useMemo(() => {
+    if (uniqueStationCount !== 1) return [];
+    const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+    return sorted.map(r => ({
+      date: r.date.slice(4, 6) + "/" + r.date.slice(6, 8),
+      fullDate: r.date,
+      gasoline: r.gasoline,
+      diesel: r.diesel,
+      kerosene: r.kerosene,
+    }));
+  }, [rows, uniqueStationCount]);
+
+  const mobileTicks = useMemo(() => {
+    if (chartData.length <= 4) return chartData.map(d => d.date);
+    const len = chartData.length;
+    const idxs = [0, Math.floor((len - 1) / 3), Math.floor((len - 1) * 2 / 3), len - 1];
+    return idxs.map(i => chartData[i].date);
+  }, [chartData]);
+
+  const FUEL_COLORS: Record<FuelType, string> = {
+    gasoline: "#16a34a",
+    diesel:   "#2563eb",
+    kerosene: "#d97706",
+  };
+
   return (
     <Layout>
       <PageHeader
@@ -332,15 +388,15 @@ export default function StationSearchPage() {
           </Select>
         </div>
 
-        {/* 유종 탭 */}
-        <div className="flex gap-2">
+        {/* 유종 탭 + 그래프 버튼 */}
+        <div className="flex items-center gap-2 flex-nowrap">
           {FUELS.map(f => (
             <button
               key={f.type}
               data-testid={`tab-fuel-${f.type}`}
               onClick={() => setFuel(f.type)}
               className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0",
                 fuel === f.type
                   ? "bg-green-600 text-white"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -349,8 +405,177 @@ export default function StationSearchPage() {
               {f.label}
             </button>
           ))}
+          <div className="w-px h-5 bg-border shrink-0" />
+          <button
+            data-testid="button-graph"
+            disabled={!hasResults}
+            onClick={() => setGraphOpen(true)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors shrink-0",
+              hasResults
+                ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+                : "bg-muted text-muted-foreground opacity-40 cursor-not-allowed",
+            )}
+            title="가격 추이 그래프"
+          >
+            <LineChartIcon className="w-4 h-4" />
+            그래프
+          </button>
         </div>
       </div>
+
+      {/* 가격 추이 그래프 팝업 */}
+      <Dialog open={graphOpen} onOpenChange={setGraphOpen}>
+        <DialogPortal>
+          <DialogOverlay />
+          <DialogPrimitive.Content
+            className={cn(
+              "fixed left-[50%] top-[50%] z-50 w-[95vw] max-w-lg translate-x-[-50%] translate-y-[-50%] border bg-background shadow-xl duration-200",
+              "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+              "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+              "rounded-xl overflow-hidden p-0",
+            )}
+            onPointerDownOutside={e => e.preventDefault()}
+            onInteractOutside={e => e.preventDefault()}
+            onEscapeKeyDown={e => e.preventDefault()}
+          >
+            <div className="px-5 pt-5 pb-3 border-b bg-muted/30">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-[15px] font-bold tracking-tight">가격 추이 그래프 (최근 10일)</DialogTitle>
+                <button
+                  data-testid="button-graph-close"
+                  onClick={() => setGraphOpen(false)}
+                  className="rounded-full p-1.5 hover:bg-muted transition-colors -mr-1"
+                  aria-label="닫기"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="px-5 pt-4 pb-5 space-y-4">
+              {/* 유종 토글 */}
+              <div className="flex gap-2">
+                {FUELS.map(f => (
+                  <button
+                    key={f.type}
+                    data-testid={`graph-fuel-${f.type}`}
+                    onClick={() => toggleGraphFuel(f.type)}
+                    style={{
+                      minHeight: 44,
+                      backgroundColor: graphFuels.has(f.type) ? FUEL_COLORS[f.type] : undefined,
+                    }}
+                    className={cn(
+                      "flex-1 rounded-lg text-sm font-semibold transition-all border",
+                      graphFuels.has(f.type)
+                        ? "text-white border-transparent shadow-sm"
+                        : "bg-muted/60 text-muted-foreground border-border hover:bg-muted",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 차트 or 안내 메시지 */}
+              {uniqueStationCount >= 2 ? (
+                <div className="flex items-center justify-center py-10 text-sm text-muted-foreground text-center px-4">
+                  한 업체만 검색하여 선택하여 주시기 바랍니다.
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+                  데이터가 없습니다.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={chartData} margin={{ top: 10, right: 12, left: 8, bottom: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: "#111827", fontWeight: 700 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "#e5e7eb" }}
+                      ticks={isMobile ? mobileTicks : undefined}
+                      interval={isMobile ? "preserveStartEnd" : 0}
+                      height={32}
+                      tickMargin={8}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
+                      tickFormatter={v => `${Number(v).toLocaleString("ko-KR")}원`}
+                      domain={["auto", "auto"]}
+                      tickCount={5}
+                      width={65}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }: any) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="bg-white border border-border rounded-lg shadow-lg p-3 text-sm space-y-1.5">
+                            <p className="font-bold text-foreground">{label}</p>
+                            {payload.map((p: any) => (
+                              <p key={p.dataKey} className="flex items-center gap-2" style={{ color: p.color }}>
+                                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                                <span className="font-semibold">
+                                  {p.dataKey === "gasoline" ? "휘발유" : p.dataKey === "diesel" ? "경유" : "등유"}:
+                                </span>
+                                <span>{p.value != null ? Number(p.value).toLocaleString("ko-KR") + "원" : "—"}</span>
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
+                      iconType="circle"
+                      iconSize={10}
+                      formatter={(val: string) =>
+                        val === "gasoline" ? "휘발유" : val === "diesel" ? "경유" : "등유"
+                      }
+                    />
+                    {graphFuels.has("gasoline") && (
+                      <Line
+                        type="monotone"
+                        dataKey="gasoline"
+                        stroke={FUEL_COLORS.gasoline}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: FUEL_COLORS.gasoline, strokeWidth: 2, stroke: "#fff" }}
+                        activeDot={{ r: 6, fill: FUEL_COLORS.gasoline, strokeWidth: 2, stroke: "#fff" }}
+                        connectNulls
+                      />
+                    )}
+                    {graphFuels.has("diesel") && (
+                      <Line
+                        type="monotone"
+                        dataKey="diesel"
+                        stroke={FUEL_COLORS.diesel}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: FUEL_COLORS.diesel, strokeWidth: 2, stroke: "#fff" }}
+                        activeDot={{ r: 6, fill: FUEL_COLORS.diesel, strokeWidth: 2, stroke: "#fff" }}
+                        connectNulls
+                      />
+                    )}
+                    {graphFuels.has("kerosene") && (
+                      <Line
+                        type="monotone"
+                        dataKey="kerosene"
+                        stroke={FUEL_COLORS.kerosene}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: FUEL_COLORS.kerosene, strokeWidth: 2, stroke: "#fff" }}
+                        activeDot={{ r: 6, fill: FUEL_COLORS.kerosene, strokeWidth: 2, stroke: "#fff" }}
+                        connectNulls
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </Dialog>
 
       {/* 결과 */}
       <div className="px-4 md:px-6 pb-8">
