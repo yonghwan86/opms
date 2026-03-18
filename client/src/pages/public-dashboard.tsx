@@ -899,12 +899,13 @@ export default function PublicDashboardPage() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={320}>
-                    <ComposedChart data={ceilChartData} margin={{ top: 30, right: 8, left: 12, bottom: 20 }}>
+                    <ComposedChart data={ceilChartData} margin={{ top: 30, right: 8, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                       <XAxis dataKey="label"
                         tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}
                         tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
                         interval={3} height={32} tickMargin={8}
+                        padding={{ left: 0, right: 0 }}
                       />
                       <YAxis
                         tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}

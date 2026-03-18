@@ -655,7 +655,7 @@ export default function CeilingTrendPage() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={340}>
-              <ComposedChart data={chartData} margin={{ top: 30, right: 8, left: 12, bottom: 20 }}>
+              <ComposedChart data={chartData} margin={{ top: 30, right: 8, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="label"
@@ -665,6 +665,7 @@ export default function CeilingTrendPage() {
                   interval={3}
                   height={32}
                   tickMargin={8}
+                  padding={{ left: 0, right: 0 }}
                 />
                 <YAxis
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }}
