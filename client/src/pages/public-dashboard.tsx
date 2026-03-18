@@ -89,7 +89,7 @@ interface FuelStats { date: string; averages: { gasoline: number; diesel: number
 interface RegionalAvg { sido: string; avgPrice: number; avgDiesel: number | null; }
 interface DomesticHistory { date: string; gasoline: number; diesel: number; }
 interface CeilingPrice { id: number; gasoline: string | null; diesel: string | null; kerosene: string | null; effectiveDate: string; note: string | null; }
-interface CeilingTrendRow { date: string; gasolineAvg: number | null; dieselAvg: number | null; keroseneAvg: number | null; gasolineAbove: number; gasolineBelow: number; dieselAbove: number; dieselBelow: number; keroseneAbove: number; keroseneBelow: number; }
+interface CeilingTrendRow { date: string; gasolineAvg: number | null; dieselAvg: number | null; keroseneAvg: number | null; gasolineAbove: number; gasolineBelow: number; dieselAbove: number; dieselBelow: number; keroseneAbove: number; keroseneBelow: number; baseGas: number | null; baseDiesel: number | null; baseKerosene: number | null; }
 interface StationRow { date: string; gasoline: number | null; diesel: number | null; kerosene: number | null; }
 interface StationSuggest { stationId: string; stationName: string; region: string; }
 
@@ -104,36 +104,105 @@ const SIDO_LIST = ["서울","부산","대구","인천","광주","대전","울산
 
 function toLabel8(d: string) { return d.length === 8 ? `${d.slice(4,6)}-${d.slice(6,8)}` : d; }
 
+// ─── DiffBadge ────────────────────────────────────────────────────────────────
+function DiffBadge({ val, base }: { val: number | null; base: number | null }) {
+  if (val == null || base == null) return null;
+  const diff = val - base;
+  if (diff === 0) return <span className="ml-1 text-[9px] text-gray-400 font-normal">±0</span>;
+  const color = diff > 0 ? "text-red-500" : "text-blue-500";
+  const arrow = diff > 0 ? "↑" : "↓";
+  return <span className={`ml-1 text-[9px] font-bold ${color}`}>{arrow}{fmt(Math.abs(diff))}</span>;
+}
+
 // ─── 최고가격제 툴팁 ──────────────────────────────────────────────────────────
-function CeilTooltip({ active, payload, label, fuels, stationName, ceilingLabel }: any) {
+function CeilTooltip({ active, payload, label, fuels, stationName, stationData, ceilingLabel, effectiveDateRaw }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
   const isPublish = label === ceilingLabel;
   const activeFuels = CEIL_FUEL_CONFIG.filter(f => fuels[f.key]);
+
+  // 공표일 주유소 기준가격
+  const stationBaseRow = stationData?.find((r: StationRow) => r.date === effectiveDateRaw);
+
+  // 누계일 계산: 공표일 이후부터 현재 날짜까지
+  const stationAbove: Record<string, number> = {};
+  const stationBelow: Record<string, number> = {};
+  if (stationName && stationData?.length) {
+    const currentDateStr = d.dateRaw;
+    CEIL_FUEL_CONFIG.forEach(f => {
+      if (!fuels[f.key]) return;
+      let above = 0; let below = 0;
+      const baseVal = stationBaseRow?.[f.key as keyof StationRow] as number | null;
+      for (const row of stationData) {
+        if (row.date < effectiveDateRaw) continue;
+        if (row.date > currentDateStr) break;
+        const stVal = row[f.key as keyof StationRow] as number | null;
+        if (stVal != null && baseVal != null) {
+          if (stVal > baseVal) above++;
+          else below++;
+        }
+      }
+      stationAbove[f.key] = above;
+      stationBelow[f.key] = below;
+    });
+  }
+
   const aboveVal = fuels.gasoline ? (d.gasolineAbove ?? 0) : fuels.diesel ? (d.dieselAbove ?? 0) : (d.keroseneAbove ?? 0);
   const belowVal = fuels.gasoline ? (d.gasolineBelow ?? 0) : fuels.diesel ? (d.dieselBelow ?? 0) : (d.keroseneBelow ?? 0);
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[185px]">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[200px]">
       <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">{label}{isPublish ? " ★공표일" : ""}</p>
       {stationName && (
         <div className="mb-1.5 pb-1.5 border-b border-gray-100">
-          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[160px]">{stationName}</p>
+          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[170px]">{stationName}</p>
           {activeFuels.map(f => {
             const stVal = d[f.stationKey];
             if (stVal == null) return null;
-            return <div key={f.key} className="flex justify-between"><span style={{color:f.stationStroke}} className="text-[10px]">● {f.label}</span><span style={{color:f.stationStroke}} className="font-bold">{fmt(stVal)}원</span></div>;
+            const base = stationBaseRow?.[f.key as keyof StationRow] as number | null;
+            return (
+              <div key={f.key} className="flex justify-between items-center">
+                <span style={{ color: f.stationStroke }} className="text-[10px]">● {f.label}</span>
+                <span style={{ color: f.stationStroke }} className="font-bold">
+                  {fmt(stVal)}원<DiffBadge val={stVal} base={base} />
+                </span>
+              </div>
+            );
           })}
+          <div className="flex gap-2 mt-1">
+            <span className="flex items-center gap-0.5 text-red-500 font-bold text-[10px]">
+              <TrendingUp className="w-3 h-3" />초과 {stationAbove[activeFuels[0]?.key ?? "gasoline"] ?? 0}일
+            </span>
+            <span className="flex items-center gap-0.5 text-blue-500 font-bold text-[10px]">
+              <TrendingDown className="w-3 h-3" />이하 {stationBelow[activeFuels[0]?.key ?? "gasoline"] ?? 0}일
+            </span>
+          </div>
         </div>
       )}
       <div className="space-y-0.5 mb-1.5">
-        {fuels.gasoline && d.gasolineAvg != null && <div className="flex justify-between gap-3"><span className="text-amber-600">● 휘발유 평균</span><span className="font-semibold text-gray-800">{fmt(d.gasolineAvg)}원</span></div>}
-        {fuels.diesel && d.dieselAvg != null && <div className="flex justify-between gap-3"><span className="text-green-600">● 경유 평균</span><span className="font-semibold text-gray-800">{fmt(d.dieselAvg)}원</span></div>}
-        {fuels.kerosene && d.keroseneAvg != null && <div className="flex justify-between gap-3"><span className="text-sky-500">● 등유 평균</span><span className="font-semibold text-gray-800">{fmt(d.keroseneAvg)}원</span></div>}
+        {fuels.gasoline && d.gasolineAvg != null && (
+          <div className="flex justify-between items-center gap-3">
+            <span className="text-amber-600">● 휘발유 평균</span>
+            <span className="font-semibold text-gray-800">{fmt(d.gasolineAvg)}원<DiffBadge val={d.gasolineAvg} base={d.baseGas} /></span>
+          </div>
+        )}
+        {fuels.diesel && d.dieselAvg != null && (
+          <div className="flex justify-between items-center gap-3">
+            <span className="text-green-600">● 경유 평균</span>
+            <span className="font-semibold text-gray-800">{fmt(d.dieselAvg)}원<DiffBadge val={d.dieselAvg} base={d.baseDiesel} /></span>
+          </div>
+        )}
+        {fuels.kerosene && d.keroseneAvg != null && (
+          <div className="flex justify-between items-center gap-3">
+            <span className="text-sky-500">● 등유 평균</span>
+            <span className="font-semibold text-gray-800">{fmt(d.keroseneAvg)}원<DiffBadge val={d.keroseneAvg} base={d.baseKerosene} /></span>
+          </div>
+        )}
       </div>
       <div className="pt-1 border-t border-gray-100 flex justify-between gap-1">
-        <span className="flex items-center gap-1 text-red-500 font-bold text-[10px]"><TrendingUp className="w-3 h-3" />{fmt(aboveVal)}개 초과</span>
-        <span className="flex items-center gap-1 text-blue-500 font-bold text-[10px]"><TrendingDown className="w-3 h-3" />{fmt(belowVal)}개 이하</span>
+        <span className="flex items-center gap-1 text-red-500 font-bold text-[10px]"><TrendingUp className="w-3 h-3" />{fmt(aboveVal)}업체</span>
+        <span className="flex items-center gap-1 text-blue-500 font-bold text-[10px]"><TrendingDown className="w-3 h-3" />{fmt(belowVal)}업체</span>
       </div>
     </div>
   );
@@ -398,6 +467,10 @@ export default function PublicDashboardPage() {
       return {
         ...row,
         label: toLabel8(row.date),
+        dateRaw: row.date,
+        baseGas: row.baseGas,
+        baseDiesel: row.baseDiesel,
+        baseKerosene: row.baseKerosene,
         stationGas:  st?.gasoline ?? null,
         stationDsl:  st?.diesel ?? null,
         stationKero: st?.kerosene ?? null,
@@ -823,7 +896,7 @@ export default function PublicDashboardPage() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={320}>
-                    <ComposedChart data={ceilChartData} margin={{ top: 10, right: 90, left: 12, bottom: 20 }}>
+                    <ComposedChart data={ceilChartData} margin={{ top: 30, right: 90, left: 12, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                       <XAxis dataKey="label"
                         tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}
@@ -835,7 +908,7 @@ export default function PublicDashboardPage() {
                         tickFormatter={v => `${fmt(v)}원`}
                         domain={[ceilYMin, ceilYMax]} tickCount={7} width={72} axisLine={false} tickLine={false}
                       />
-                      <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} ceilingLabel={ceilLabel} />} />
+                      <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} stationData={ceilStationData} ceilingLabel={ceilLabel} effectiveDateRaw={ceilDate ? ceilDate.replace(/-/g, "") : ""} />} />
                       <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8}
                         formatter={(v: string) => {
                           if (v === "stationGas")  return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
@@ -868,10 +941,16 @@ export default function PublicDashboardPage() {
                     </ComposedChart>
                   </ResponsiveContainer>
                 )}
-                <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground items-center">
-                  <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-bold">빨간색 ↑</span> = 최고가보다 비싼 업체 수</span>
-                  <span className="w-px h-4 bg-border" />
-                  <span className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-blue-500" /><span className="text-blue-500 font-bold">파란색 ↓</span> = 최고가보다 싼 업체 수</span>
+                <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground items-center">
+                  <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 공표일 평균가격보다 높은 업체 수</span>
+                  <span className="w-px h-4 bg-border hidden sm:block" />
+                  <span className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-blue-500" /><span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 공표일 평균가격보다 낮은 업체 수</span>
+                  {ceilStation && (
+                    <>
+                      <span className="w-px h-4 bg-border hidden sm:block" />
+                      <span className="text-[10px] text-muted-foreground/70">툴팁: 최근 공표일 해당 주유소가격 기준 누계 횟수</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
