@@ -426,7 +426,7 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
   }
 }
 
-async function runWeeklySupplyJob(): Promise<void> {
+export async function runWeeklySupplyJob(): Promise<void> {
   const jobType = "weekly_supply_price";
   const start = Date.now();
   console.log("[WeeklySupplyScheduler] 주간공급가격 수집 시작");

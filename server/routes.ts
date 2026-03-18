@@ -1820,6 +1820,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/oil/weekly-supply/collect — 수동 수집 트리거 (MASTER 전용)
+  app.post("/api/oil/weekly-supply/collect", requireAuth, requireMaster, async (_req, res) => {
+    try {
+      res.json({ ok: true, message: "수집 시작됨 (서버 로그 확인)" });
+      const { runWeeklySupplyJob } = await import("./services/oilScheduler");
+      runWeeklySupplyJob().catch(err => console.error("[WeeklySupply 수동트리거] 오류:", err));
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // ─── 만족도 조사 ────────────────────────────────────────────────────────────
   // GET /api/satisfaction/list — 관리자 전체 조회 (MASTER only)
   app.get("/api/satisfaction/list", requireMaster, async (req, res) => {
