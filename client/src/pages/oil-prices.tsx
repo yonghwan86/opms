@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -89,6 +88,102 @@ function formatPrice(price: number): string {
   return price.toLocaleString("ko-KR") + "원";
 }
 
+// ─── 한국어 달력 ──────────────────────────────────────────────────────────────
+const KR_MONTHS = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+const KR_WEEKDAYS = ["일","월","화","수","목","금","토"];
+
+function KoreanCalendar({
+  dateSet,
+  selected,
+  availableDates,
+  onSelect,
+}: {
+  dateSet: Set<string>;
+  selected: string;
+  availableDates: string[];
+  onSelect: (s: string) => void;
+}) {
+  const years = useMemo(() => {
+    const ys = new Set(availableDates.map(d => parseInt(d.slice(0, 4))));
+    return Array.from(ys).sort((a, b) => b - a);
+  }, [availableDates]);
+
+  const initYear  = selected ? parseInt(selected.slice(0, 4))    : (years[0] ?? new Date().getFullYear());
+  const initMonth = selected ? parseInt(selected.slice(4, 6)) - 1 : new Date().getMonth();
+
+  const [viewYear,  setViewYear]  = useState(initYear);
+  const [viewMonth, setViewMonth] = useState(initMonth);
+
+  const firstDow     = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return (
+    <div className="p-3 w-64 select-none">
+      <div className="flex gap-2 mb-3">
+        <Select value={String(viewYear)} onValueChange={v => setViewYear(Number(v))}>
+          <SelectTrigger className="h-8 text-sm flex-1" data-testid="select-cal-year">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map(y => <SelectItem key={y} value={String(y)}>{y}년</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={String(viewMonth)} onValueChange={v => setViewMonth(Number(v))}>
+          <SelectTrigger className="h-8 text-sm flex-1" data-testid="select-cal-month">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {KR_MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-7 mb-1">
+        {KR_WEEKDAYS.map((w, i) => (
+          <div key={w} className={cn(
+            "text-center text-[11px] font-semibold py-1",
+            i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-muted-foreground"
+          )}>{w}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-y-0.5">
+        {cells.map((day, idx) => {
+          if (day === null) return <div key={idx} />;
+          const mm  = String(viewMonth + 1).padStart(2, "0");
+          const dd  = String(day).padStart(2, "0");
+          const str = `${viewYear}${mm}${dd}`;
+          const available = dateSet.has(str);
+          const isSelected = str === selected;
+          const dow = idx % 7;
+          return (
+            <button
+              key={idx}
+              disabled={!available}
+              onClick={() => available && onSelect(str)}
+              className={cn(
+                "text-center text-sm py-1 rounded-full transition-colors",
+                isSelected
+                  ? "bg-primary text-primary-foreground font-bold"
+                  : available
+                    ? cn("hover:bg-accent cursor-pointer",
+                        dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "")
+                    : "text-muted-foreground/30 cursor-not-allowed"
+              )}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── 날짜 내비게이터 ──────────────────────────────────────────────────────────
 function DateNavigator({
   availableDates,
@@ -107,8 +202,6 @@ function DateNavigator({
   // availableDates는 내림차순(최신→과거)이므로: 과거=index 증가, 최신=index 감소
   const canPrev = currentIndex < availableDates.length - 1;
   const canNext = currentIndex > 0;
-
-  const selectedDate = value ? parseToDate(value) : undefined;
 
   return (
     <div className="flex items-center gap-1" data-testid="date-navigator">
@@ -138,20 +231,11 @@ function DateNavigator({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            defaultMonth={selectedDate}
-            onSelect={(date) => {
-              if (!date) return;
-              const str = toDateString(date);
-              if (dateSet.has(str)) {
-                onChange(str);
-                setOpen(false);
-              }
-            }}
-            disabled={(date) => !dateSet.has(toDateString(date))}
-            initialFocus
+          <KoreanCalendar
+            dateSet={dateSet}
+            selected={value}
+            availableDates={availableDates}
+            onSelect={(str) => { onChange(str); setOpen(false); }}
           />
         </PopoverContent>
       </Popover>
