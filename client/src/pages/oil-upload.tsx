@@ -2,8 +2,9 @@ import { useState, useCallback, useRef } from "react";
 import { Layout, PageHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 
@@ -84,6 +85,179 @@ async function uploadFileChuked(
   if (!finalRes.ok) throw new Error(data.message || "처리 실패");
   onProgress(100);
   return data as FileUploadResult;
+}
+
+const FUEL_TYPE_OPTIONS = [
+  { value: "gasoline", label: "휘발유" },
+  { value: "diesel", label: "경유" },
+  { value: "kerosene", label: "등유" },
+  { value: "premiumGasoline", label: "고급휘발유" },
+];
+
+interface SupplyUploadResult {
+  ok: boolean;
+  savedCount: number;
+  fileName: string;
+}
+
+function SupplyPriceUploadSection() {
+  const [fuelType, setFuelType] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [result, setResult] = useState<SupplyUploadResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setFile(f);
+    setResult(null);
+    setError(null);
+  };
+
+  const handleUpload = async () => {
+    if (!fuelType) {
+      toast({ title: "유종을 선택해주세요.", variant: "destructive" });
+      return;
+    }
+    if (!file) {
+      toast({ title: "CSV 파일을 선택해주세요.", variant: "destructive" });
+      return;
+    }
+
+    setIsPending(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const ab = await file.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+      let binaryStr = "";
+      for (let i = 0; i < bytes.length; i++) binaryStr += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binaryStr);
+
+      const res = await fetch("/api/admin/supply-price/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fuelType, data: base64, fileName: file.name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "업로드 실패");
+
+      setResult(data as SupplyUploadResult);
+      setFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+      toast({ title: "업로드 완료", description: `${data.savedCount}건 저장되었습니다.` });
+    } catch (e: any) {
+      setError(e.message || "업로드 중 오류가 발생했습니다.");
+      toast({ title: "업로드 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Building2 className="w-4 h-4 text-muted-foreground" />
+        <h2 className="text-base font-semibold">정유사 공급가 업로드</h2>
+      </div>
+
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">유종 선택</label>
+              <Select value={fuelType} onValueChange={setFuelType}>
+                <SelectTrigger data-testid="select-fuel-type-supply">
+                  <SelectValue placeholder="유종 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FUEL_TYPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">CSV 파일</label>
+              <div
+                className="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => inputRef.current?.click()}
+                data-testid="dropzone-supply-csv"
+              >
+                <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <span className={cn("text-sm truncate flex-1", file ? "text-foreground" : "text-muted-foreground")}>
+                  {file ? file.name : "파일 선택…"}
+                </span>
+                {file && (
+                  <button
+                    className="ml-1 text-muted-foreground hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); setFile(null); if (inputRef.current) inputRef.current.value = ""; }}
+                    data-testid="button-remove-supply-file"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileChange}
+                data-testid="input-supply-csv-file"
+              />
+            </div>
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={handleUpload}
+            disabled={isPending || !fuelType || !file}
+            data-testid="button-upload-supply-csv"
+          >
+            {isPending ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />업로드 중...</>
+            ) : (
+              <><Upload className="w-4 h-4 mr-2" />공급가 업로드</>
+            )}
+          </Button>
+
+          {result && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                <span className="font-semibold">{result.savedCount}건</span> 저장 완료 ({result.fileName})
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 border border-destructive/30">
+              <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-muted/30">
+        <CardContent className="p-4 space-y-2">
+          <p className="text-sm font-medium">공급가 업로드 안내</p>
+          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+            <li>오피넷 → 유가정보 → 정유사 공급가 → 회사별 공급가격에서 CSV 다운로드</li>
+            <li>형식: <code className="bg-muted px-1 rounded text-[11px]">기간,SK에너지,GS칼텍스,HD현대오일뱅크,S-OIL</code></li>
+            <li>유종별로 개별 업로드하세요. 같은 주차·회사 데이터는 해당 유종만 덮어씁니다.</li>
+            <li>파일 인코딩은 EUC-KR 또는 UTF-8 모두 지원합니다.</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function OilUploadPage() {
@@ -313,6 +487,12 @@ export default function OilUploadPage() {
             </ul>
           </CardContent>
         </Card>
+
+        {/* 구분선 */}
+        <div className="border-t border-border pt-2" />
+
+        {/* 정유사 공급가 업로드 */}
+        <SupplyPriceUploadSection />
       </div>
     </Layout>
   );

@@ -249,6 +249,7 @@ export interface IStorage {
 
   // 주간공급가격
   upsertWeeklySupplyPrices(rows: InsertOilWeeklySupplyPrice[]): Promise<void>;
+  upsertWeeklySupplyFuelColumn(rows: { week: string; company: string; price: number | null }[], fuelType: 'premiumGasoline' | 'gasoline' | 'diesel' | 'kerosene'): Promise<number>;
   getWeeklySupplyPrices(limitWeeks?: number): Promise<OilWeeklySupplyPrice[]>;
 }
 
@@ -1603,6 +1604,39 @@ export class PostgresStorage implements IStorage {
           },
         });
     }
+  }
+
+  async upsertWeeklySupplyFuelColumn(
+    rows: { week: string; company: string; price: number | null }[],
+    fuelType: 'premiumGasoline' | 'gasoline' | 'diesel' | 'kerosene'
+  ): Promise<number> {
+    if (rows.length === 0) return 0;
+    for (const row of rows) {
+      const insertValues: InsertOilWeeklySupplyPrice = {
+        week: row.week,
+        company: row.company,
+        premiumGasoline: fuelType === 'premiumGasoline' ? row.price : null,
+        gasoline: fuelType === 'gasoline' ? row.price : null,
+        diesel: fuelType === 'diesel' ? row.price : null,
+        kerosene: fuelType === 'kerosene' ? row.price : null,
+      };
+      let setObj: Record<string, unknown>;
+      switch (fuelType) {
+        case 'premiumGasoline': setObj = { premiumGasoline: row.price, createdAt: new Date() }; break;
+        case 'gasoline': setObj = { gasoline: row.price, createdAt: new Date() }; break;
+        case 'diesel': setObj = { diesel: row.price, createdAt: new Date() }; break;
+        case 'kerosene': setObj = { kerosene: row.price, createdAt: new Date() }; break;
+        default: setObj = { createdAt: new Date() };
+      }
+      await db
+        .insert(oilWeeklySupplyPrices)
+        .values(insertValues)
+        .onConflictDoUpdate({
+          target: [oilWeeklySupplyPrices.week, oilWeeklySupplyPrices.company],
+          set: setObj as any,
+        });
+    }
+    return rows.length;
   }
 
   async getWeeklySupplyPrices(limitWeeks = 10): Promise<OilWeeklySupplyPrice[]> {

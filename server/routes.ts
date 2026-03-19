@@ -1831,6 +1831,99 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/admin/supply-price/upload — Opinet 공급가 CSV 업로드 (MASTER 전용)
+  app.post("/api/admin/supply-price/upload", requireAuth, requireMaster, async (req, res) => {
+    try {
+      const iconv = await import("iconv-lite");
+      const { fuelType, data: base64Data, fileName } = req.body as {
+        fuelType: string;
+        data: string;
+        fileName?: string;
+      };
+
+      const validFuelTypes = ["premiumGasoline", "gasoline", "diesel", "kerosene"];
+      if (!fuelType || !validFuelTypes.includes(fuelType)) {
+        return res.status(400).json({ message: "fuelType은 premiumGasoline|gasoline|diesel|kerosene 중 하나여야 합니다." });
+      }
+      if (!base64Data) {
+        return res.status(400).json({ message: "data(base64)가 필요합니다." });
+      }
+
+      // base64 → Buffer → EUC-KR or UTF-8 디코딩
+      const buf = Buffer.from(base64Data, "base64");
+      let csvText: string;
+      try {
+        csvText = iconv.default.decode(buf, "EUC-KR");
+        if (!csvText.includes("년") && !csvText.includes("주")) {
+          csvText = buf.toString("utf-8");
+        }
+      } catch {
+        csvText = buf.toString("utf-8");
+      }
+
+      const COMPANIES = ["SK에너지", "GS칼텍스", "HD현대오일뱅크", "S-OIL"];
+
+      // CSV 파싱: 기간,SK에너지,GS칼텍스,HD현대오일뱅크,S-OIL
+      function parseWeekKey(periodText: string): string | null {
+        const m = periodText.match(/(\d{2})년\s*(\d{2})월\s*(\d+)주/);
+        if (!m) return null;
+        return `${2000 + parseInt(m[1])}${m[2].padStart(2, "0")}${m[3].padStart(2, "0")}`;
+      }
+
+      const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        return res.status(400).json({ message: "CSV 데이터가 부족합니다. 헤더 포함 최소 2행 필요." });
+      }
+
+      // 헤더 파싱
+      const headers = lines[0].split(",").map(h => h.trim());
+      const periodIdx = headers.findIndex(h => h.includes("기간") || h.includes("기준"));
+      if (periodIdx === -1) {
+        return res.status(400).json({ message: "CSV 헤더에서 기간 컬럼을 찾을 수 없습니다." });
+      }
+
+      // 회사 컬럼 인덱스 매핑
+      const companyColMap: Record<string, number> = {};
+      for (const company of COMPANIES) {
+        const idx = headers.findIndex(h => h.trim() === company);
+        if (idx !== -1) companyColMap[company] = idx;
+      }
+
+      const upsertRows: { week: string; company: string; price: number | null }[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim());
+        const rawPeriod = cols[periodIdx] ?? "";
+        const weekKey = parseWeekKey(rawPeriod);
+        if (!weekKey) continue;
+
+        for (const company of COMPANIES) {
+          const colIdx = companyColMap[company];
+          if (colIdx === undefined) continue;
+          const raw = cols[colIdx] ?? "";
+          const cleaned = raw.replace(/,/g, "").trim();
+          const price = cleaned === "" || cleaned === "-" ? null : parseFloat(cleaned);
+          upsertRows.push({ week: weekKey, company, price: isNaN(price as number) ? null : price });
+        }
+      }
+
+      if (upsertRows.length === 0) {
+        return res.status(400).json({ message: "파싱된 데이터가 없습니다. CSV 형식을 확인해주세요." });
+      }
+
+      const savedCount = await storage.upsertWeeklySupplyFuelColumn(
+        upsertRows,
+        fuelType as 'premiumGasoline' | 'gasoline' | 'diesel' | 'kerosene'
+      );
+
+      console.log(`[SupplyPriceUpload] ${fileName ?? "unknown"} → fuelType=${fuelType}, ${savedCount}행 저장`);
+      res.json({ ok: true, savedCount, fileName: fileName ?? "unknown" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "서버 오류";
+      console.error("[SupplyPriceUpload] 오류:", e);
+      res.status(500).json({ message: msg });
+    }
+  });
+
   // ─── 만족도 조사 ────────────────────────────────────────────────────────────
   // GET /api/satisfaction/list — 관리자 전체 조회 (MASTER only)
   app.get("/api/satisfaction/list", requireMaster, async (req, res) => {
