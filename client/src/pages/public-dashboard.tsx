@@ -399,7 +399,7 @@ export default function PublicDashboardPage() {
       ...domesticHistory.map(d => `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`),
       ...(wtiRes?.history ?? []).map(h => h.date),
     ]);
-    return Array.from(allDates).sort().map(date => ({
+    return Array.from(allDates).sort().slice(-90).map(date => ({
       date, label: date.slice(5),
       wti: wtiMap.get(date) ?? null,
       gasoline: domMap.get(date)?.gasoline ?? null,

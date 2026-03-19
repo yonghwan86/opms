@@ -454,7 +454,7 @@ export default function DashboardPage() {
   }, [regionalHistory]);
 
   const displayChartData = useMemo(() =>
-    isMobile ? chartData.slice(-7) : chartData,
+    isMobile ? chartData.slice(-7) : chartData.slice(-90),
   [isMobile, chartData]);
 
   const displayRegionalChartData = useMemo(() =>
