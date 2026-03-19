@@ -844,7 +844,7 @@ export class PostgresStorage implements IStorage {
       .selectDistinct({ date: oilPriceRaw.date })
       .from(oilPriceRaw)
       .orderBy(desc(oilPriceRaw.date))
-      .limit(60);
+      .limit(365);
     return result.map(r => r.date);
   }
 

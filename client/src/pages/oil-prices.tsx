@@ -608,7 +608,7 @@ function StationTable({ type, stations, fuelType }: { type: AnalysisType; statio
             <th className="hidden md:table-cell text-center py-2.5 px-3 font-medium w-16">셀프</th>
             <th className="text-left py-2.5 px-1.5 md:px-3 font-medium">지역</th>
             <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">현재가</th>
-            <th className="hidden md:table-cell text-right py-2.5 px-3 font-medium w-24">상한가</th>
+            <th className="hidden md:table-cell text-right py-2.5 px-3 font-medium w-24">최고가</th>
             <th className="text-right py-2.5 px-1.5 md:px-3 font-medium w-20 md:w-24">초과</th>
           </tr>
         </thead>
