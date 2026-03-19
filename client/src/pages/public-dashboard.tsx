@@ -236,7 +236,7 @@ function PubStationSearch({ value, onChange, onSelect, onSearch, sido }: {
     else { onSearch(null); }
   };
   return (
-    <div ref={ref} className="relative min-w-[180px] max-w-[260px]">
+    <div ref={ref} className="relative w-full md:w-auto md:min-w-[180px] md:max-w-[260px]">
       <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(선택된 유종 개별 추이 오버레이)</span></p>
       <div className="flex items-center gap-1.5">
         <div className="relative flex-1">
@@ -982,7 +982,7 @@ export default function PublicDashboardPage() {
                   {ceilStation && (
                     <>
                       <span className="w-px h-4 bg-border hidden sm:block" />
-                      <span className="text-[10px] text-muted-foreground/70">툴팁: 최근 공표일 해당 주유소가격 기준 누계 횟수</span>
+                      <span className="text-[10px] text-muted-foreground/70">주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
                     </>
                   )}
                   <span className="hidden md:inline text-muted-foreground/50 ml-auto">· 오피넷데이터 활용</span>
