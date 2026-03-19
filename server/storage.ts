@@ -265,9 +265,9 @@ export interface StationSearchRow {
   gasoline: number | null;
   diesel: number | null;
   kerosene: number | null;
-  ceilingGasoline: number | null;
-  ceilingDiesel: number | null;
-  ceilingKerosene: number | null;
+  supplyGasoline: number | null;
+  supplyDiesel: number | null;
+  supplyKerosene: number | null;
 }
 
 // ─── PostgreSQL 구현체 ─────────────────────────────────────────────────────────
@@ -1519,13 +1519,7 @@ export class PostgresStorage implements IStorage {
         ? sql` AND sido = ${sido}`
         : sql``;
     const result = await db.execute(sql`
-      WITH latest_ceiling AS (
-        SELECT gasoline, diesel, kerosene
-        FROM oil_ceiling_prices
-        ORDER BY created_at DESC
-        LIMIT 1
-      ),
-      matching AS (
+      WITH matching AS (
         SELECT DISTINCT station_id
         FROM oil_price_raw
         WHERE station_name ILIKE ${'%' + name + '%'}
@@ -1536,36 +1530,41 @@ export class PostgresStorage implements IStorage {
         FROM oil_price_raw
         WHERE station_id IN (SELECT station_id FROM matching)
         ORDER BY date DESC
-        LIMIT 10
+        LIMIT 20
       )
       SELECT
         r.date, r.station_id, r.station_name, r.brand, r.is_self,
         r.address, r.region, r.sido,
         r.gasoline, r.diesel, r.kerosene,
-        c.gasoline AS ceiling_gasoline,
-        c.diesel   AS ceiling_diesel,
-        c.kerosene AS ceiling_kerosene
+        w.gasoline AS supply_gasoline,
+        w.diesel   AS supply_diesel,
+        w.kerosene AS supply_kerosene
       FROM oil_price_raw r
-      CROSS JOIN latest_ceiling c
+      LEFT JOIN oil_weekly_supply_prices w
+        ON w.week = (
+          TO_CHAR(TO_DATE(r.date, 'YYYYMMDD'), 'YYYYMM') ||
+          LPAD(CEIL(EXTRACT(DAY FROM TO_DATE(r.date, 'YYYYMMDD')) / 7.0)::text, 2, '0')
+        )
+        AND w.company = r.brand
       WHERE r.station_id IN (SELECT station_id FROM matching)
         AND r.date IN (SELECT date FROM latest_dates)
       ORDER BY r.date DESC, r.station_name
     `);
     return (result.rows as any[]).map(row => ({
-      date:            row.date,
-      stationId:       row.station_id,
-      stationName:     row.station_name,
-      brand:           row.brand ?? null,
-      isSelf:          row.is_self,
-      address:         row.address ?? null,
-      region:          row.region,
-      sido:            row.sido,
-      gasoline:        row.gasoline != null ? Number(row.gasoline) : null,
-      diesel:          row.diesel   != null ? Number(row.diesel)   : null,
-      kerosene:        row.kerosene != null ? Number(row.kerosene) : null,
-      ceilingGasoline: row.ceiling_gasoline != null ? Number(row.ceiling_gasoline) : null,
-      ceilingDiesel:   row.ceiling_diesel   != null ? Number(row.ceiling_diesel)   : null,
-      ceilingKerosene: row.ceiling_kerosene != null ? Number(row.ceiling_kerosene) : null,
+      date:           row.date,
+      stationId:      row.station_id,
+      stationName:    row.station_name,
+      brand:          row.brand ?? null,
+      isSelf:         row.is_self,
+      address:        row.address ?? null,
+      region:         row.region,
+      sido:           row.sido,
+      gasoline:       row.gasoline != null ? Number(row.gasoline) : null,
+      diesel:         row.diesel   != null ? Number(row.diesel)   : null,
+      kerosene:       row.kerosene != null ? Number(row.kerosene) : null,
+      supplyGasoline: row.supply_gasoline != null ? Number(row.supply_gasoline) : null,
+      supplyDiesel:   row.supply_diesel   != null ? Number(row.supply_diesel)   : null,
+      supplyKerosene: row.supply_kerosene != null ? Number(row.supply_kerosene) : null,
     }));
   }
 

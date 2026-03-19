@@ -32,9 +32,9 @@ interface StationSearchRow {
   gasoline: number | null;
   diesel: number | null;
   kerosene: number | null;
-  ceilingGasoline: number | null;
-  ceilingDiesel: number | null;
-  ceilingKerosene: number | null;
+  supplyGasoline: number | null;
+  supplyDiesel: number | null;
+  supplyKerosene: number | null;
 }
 
 const SIDO_LIST = [
@@ -253,16 +253,16 @@ export default function StationSearchPage() {
   const loading = enabled && (isLoading || isFetching);
 
   function getPrice(row: StationSearchRow): number | null { return row[fuel]; }
-  function getCeiling(row: StationSearchRow): number | null {
-    if (fuel === "gasoline") return row.ceilingGasoline;
-    if (fuel === "diesel")   return row.ceilingDiesel;
-    return row.ceilingKerosene;
+  function getSupply(row: StationSearchRow): number | null {
+    if (fuel === "gasoline") return row.supplyGasoline;
+    if (fuel === "diesel")   return row.supplyDiesel;
+    return row.supplyKerosene;
   }
   function getExcess(row: StationSearchRow): number | null {
     const p = getPrice(row);
-    const c = getCeiling(row);
-    if (p == null || c == null) return null;
-    return p - c;
+    const s = getSupply(row);
+    if (p == null || s == null) return null;
+    return p - s;
   }
 
   const fuelLabel = FUELS.find(f => f.type === fuel)?.label ?? "";
@@ -311,7 +311,7 @@ export default function StationSearchPage() {
     <Layout>
       <PageHeader
         title="주유소 가격 검색"
-        subtitle="주유소 상호명으로 최근 10일 유가 이력을 조회합니다"
+        subtitle="주유소 상호명으로 최근 20일 유가 이력을 조회합니다"
       />
 
       <div className="px-4 md:px-6 pt-2 pb-4 space-y-3">
@@ -442,7 +442,7 @@ export default function StationSearchPage() {
           >
             <div className="px-5 pt-5 pb-3 border-b bg-muted/30">
               <div className="flex items-center justify-between">
-                <DialogTitle className="text-[15px] font-bold tracking-tight">가격 추이 그래프 (최근 10일)</DialogTitle>
+                <DialogTitle className="text-[15px] font-bold tracking-tight">가격 추이 그래프 (최근 20일)</DialogTitle>
                 <button
                   data-testid="button-graph-close"
                   onClick={() => setGraphOpen(false)}
@@ -616,9 +616,9 @@ export default function StationSearchPage() {
                     현재가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
                   <th className="py-3 px-2 text-right whitespace-nowrap">
-                    최고가격제<span className="text-[10px] ml-0.5">({fuelLabel})</span>
+                    공급가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap">초과</th>
+                  <th className="py-3 px-2 text-right whitespace-nowrap">마진</th>
                 </tr>
               </thead>
               <tbody>
@@ -630,9 +630,9 @@ export default function StationSearchPage() {
                       </tr>
                     )}
                     {group.rows.map((row, rowIdx) => {
-                      const price   = getPrice(row);
-                      const ceiling = getCeiling(row);
-                      const excess  = getExcess(row);
+                      const price  = getPrice(row);
+                      const supply = getSupply(row);
+                      const excess = getExcess(row);
                       return (
                         <tr
                           key={`${row.stationId}-${row.date}`}
@@ -666,14 +666,14 @@ export default function StationSearchPage() {
                               : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="py-2.5 px-2 text-right whitespace-nowrap text-muted-foreground">
-                            {formatPrice(ceiling)}
+                            {formatPrice(supply)}
                           </td>
                           <td className="py-2.5 px-2 text-right font-semibold whitespace-nowrap">
                             {excess == null
                               ? <span className="text-muted-foreground">—</span>
-                              : excess > 0
-                                ? <span className="text-red-500">+{excess.toLocaleString("ko-KR")}원</span>
-                                : <span className="text-muted-foreground">{excess.toLocaleString("ko-KR")}원</span>}
+                              : <span className="text-amber-600 dark:text-amber-400">
+                                  {excess > 0 ? "+" : ""}{excess.toLocaleString("ko-KR")}원
+                                </span>}
                           </td>
                         </tr>
                       );
@@ -684,7 +684,7 @@ export default function StationSearchPage() {
             </table>
           </div>
           <div className="px-4 py-2 text-xs text-muted-foreground border-t bg-muted/20">
-            총 {stationGroups.length}개 업체 · 최근 10일 데이터 기준
+            총 {stationGroups.length}개 업체 · 최근 20일 데이터 기준
           </div>
           </div>
           {tableScroll.canLeft && (
