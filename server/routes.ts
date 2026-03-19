@@ -1841,9 +1841,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         fileName?: string;
       };
 
-      const validFuelTypes = ["premiumGasoline", "gasoline", "diesel", "kerosene"];
-      if (!fuelType || !validFuelTypes.includes(fuelType)) {
-        return res.status(400).json({ message: "fuelType은 premiumGasoline|gasoline|diesel|kerosene 중 하나여야 합니다." });
+      const validFuelTypes: ('gasoline' | 'diesel' | 'kerosene')[] = ["gasoline", "diesel", "kerosene"];
+      if (!fuelType || !(validFuelTypes as string[]).includes(fuelType)) {
+        return res.status(400).json({ message: "fuelType은 gasoline|diesel|kerosene 중 하나여야 합니다." });
       }
       if (!base64Data) {
         return res.status(400).json({ message: "data(base64)가 필요합니다." });
@@ -1912,7 +1912,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const savedCount = await storage.upsertWeeklySupplyFuelColumn(
         upsertRows,
-        fuelType as 'premiumGasoline' | 'gasoline' | 'diesel' | 'kerosene'
+        fuelType as 'gasoline' | 'diesel' | 'kerosene'
       );
 
       console.log(`[SupplyPriceUpload] ${fileName ?? "unknown"} → fuelType=${fuelType}, ${savedCount}행 저장`);

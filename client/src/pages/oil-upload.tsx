@@ -91,7 +91,6 @@ const FUEL_TYPE_OPTIONS = [
   { value: "gasoline", label: "휘발유" },
   { value: "diesel", label: "경유" },
   { value: "kerosene", label: "등유" },
-  { value: "premiumGasoline", label: "고급휘발유" },
 ];
 
 interface SupplyUploadResult {
