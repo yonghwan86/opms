@@ -401,8 +401,9 @@ export default function PublicDashboardPage() {
       ...domesticHistory.map(d => `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`),
       ...(wtiRes?.history ?? []).map(h => h.date),
     ]);
+    const days = isMobile ? 7 : 90;
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 90);
+    cutoff.setDate(cutoff.getDate() - days);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
     return Array.from(allDates).sort().filter(d => d >= cutoffStr).map(date => ({
       date, label: date.slice(5),
@@ -410,7 +411,7 @@ export default function PublicDashboardPage() {
       gasoline: domMap.get(date)?.gasoline ?? null,
       diesel: domMap.get(date)?.diesel ?? null,
     }));
-  }, [wtiRes, domesticHistory]);
+  }, [wtiRes, domesticHistory, isMobile]);
 
   const wti = wtiRes?.current;
   const avg = fuelStats?.averages;
