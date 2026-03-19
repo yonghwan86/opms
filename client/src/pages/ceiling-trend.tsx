@@ -701,13 +701,15 @@ export default function CeilingTrendPage() {
                   iconType="circle"
                   iconSize={8}
                   formatter={(v: string) => {
-                    if (v === "stationGas") return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
-                    if (v === "stationDsl") return `${selectedStation?.stationName ?? "주유소"} (경유)`;
-                    if (v === "stationKero") return `${selectedStation?.stationName ?? "주유소"} (등유)`;
-                    if (v === "gasolineAvg") return "휘발유 지역평균";
-                    if (v === "dieselAvg") return "경유 지역평균";
-                    if (v === "keroseneAvg") return "등유 지역평균";
-                    return v;
+                    const isStation = v.startsWith("station");
+                    const label =
+                      v === "stationGas"  ? `${selectedStation?.stationName ?? "주유소"} (휘발유)` :
+                      v === "stationDsl"  ? `${selectedStation?.stationName ?? "주유소"} (경유)` :
+                      v === "stationKero" ? `${selectedStation?.stationName ?? "주유소"} (등유)` :
+                      v === "gasolineAvg" ? "휘발유 지역평균" :
+                      v === "dieselAvg"   ? "경유 지역평균" :
+                      v === "keroseneAvg" ? "등유 지역평균" : v;
+                    return <span style={{ color: isStation ? '#111827' : '#9ca3af', fontWeight: isStation ? 700 : 400 }}>{label}</span>;
                   }}
                 />
 
