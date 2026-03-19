@@ -1531,24 +1531,38 @@ export class PostgresStorage implements IStorage {
         WHERE station_id IN (SELECT station_id FROM matching)
         ORDER BY date DESC
         LIMIT 20
-      )
-      SELECT
-        r.date, r.station_id, r.station_name, r.brand, r.is_self,
-        r.address, r.region, r.sido,
-        r.gasoline, r.diesel, r.kerosene,
-        w.gasoline AS supply_gasoline,
-        w.diesel   AS supply_diesel,
-        w.kerosene AS supply_kerosene
-      FROM oil_price_raw r
-      LEFT JOIN oil_weekly_supply_prices w
-        ON w.week = (
+      ),
+      week_supply_avg AS (
+        SELECT week,
+          ROUND(AVG(gasoline::numeric)) AS avg_gasoline,
+          ROUND(AVG(diesel::numeric))   AS avg_diesel,
+          ROUND(AVG(kerosene::numeric)) AS avg_kerosene
+        FROM oil_weekly_supply_prices
+        GROUP BY week
+      ),
+      price_rows AS (
+        SELECT r.*,
           TO_CHAR(TO_DATE(r.date, 'YYYYMMDD'), 'YYYYMM') ||
           LPAD(CEIL(EXTRACT(DAY FROM TO_DATE(r.date, 'YYYYMMDD')) / 7.0)::text, 2, '0')
-        )
-        AND w.company = r.brand
-      WHERE r.station_id IN (SELECT station_id FROM matching)
-        AND r.date IN (SELECT date FROM latest_dates)
-      ORDER BY r.date DESC, r.station_name
+          AS week_key
+        FROM oil_price_raw r
+        WHERE r.station_id IN (SELECT station_id FROM matching)
+          AND r.date IN (SELECT date FROM latest_dates)
+      )
+      SELECT
+        pr.date, pr.station_id, pr.station_name, pr.brand, pr.is_self,
+        pr.address, pr.region, pr.sido,
+        pr.gasoline, pr.diesel, pr.kerosene,
+        COALESCE(w.gasoline::numeric, wa.avg_gasoline) AS supply_gasoline,
+        COALESCE(w.diesel::numeric,   wa.avg_diesel)   AS supply_diesel,
+        COALESCE(w.kerosene::numeric, wa.avg_kerosene) AS supply_kerosene
+      FROM price_rows pr
+      LEFT JOIN oil_weekly_supply_prices w
+        ON w.week = pr.week_key
+        AND w.company = pr.brand
+      LEFT JOIN week_supply_avg wa
+        ON wa.week = pr.week_key
+      ORDER BY pr.date DESC, pr.station_name
     `);
     return (result.rows as any[]).map(row => ({
       date:           row.date,
