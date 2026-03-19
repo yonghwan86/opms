@@ -447,8 +447,21 @@ export async function runWeeklySupplyJob(): Promise<void> {
     }));
     await storage.upsertWeeklySupplyPrices(insertRows);
     const durationMs = Date.now() - start;
-    await storage.saveOilCollectionLog({ jobType, status: "success", rawCount: rows.length, analysisDurationMs: durationMs });
-    console.log(`[WeeklySupplyScheduler] 수집 완료: ${rows.length}건 (${durationMs}ms)`);
+
+    // 유종별 수집 완료 여부 검증
+    const hasGasoline = rows.some(r => r.gasoline !== null || r.premiumGasoline !== null);
+    const hasDiesel = rows.some(r => r.diesel !== null);
+    const hasKerosene = rows.some(r => r.kerosene !== null);
+    const missingFuels = [!hasGasoline && "휘발유", !hasDiesel && "경유", !hasKerosene && "등유"].filter(Boolean);
+    const collectionStatus = missingFuels.length === 0 ? "success" : "partial";
+
+    if (missingFuels.length > 0) {
+      console.warn(`[WeeklySupplyScheduler] 일부 유종 수집 미완: [${missingFuels.join(", ")}] — partial 처리`);
+      await sendMasterPush("주간공급가격 수집 일부 미완", `수집 미완 유종: ${missingFuels.join(", ")} (나머지는 저장됨)`);
+    }
+
+    await storage.saveOilCollectionLog({ jobType, status: collectionStatus, rawCount: rows.length, analysisDurationMs: durationMs });
+    console.log(`[WeeklySupplyScheduler] 수집 완료: ${rows.length}건 (${durationMs}ms, ${collectionStatus})`);
 
     const wk = rows[0]?.week ?? "";
     const pushBody = wk.length === 8
