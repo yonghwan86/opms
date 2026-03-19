@@ -95,9 +95,9 @@ interface StationSuggest { stationId: string; stationName: string; region: strin
 
 // ─── 최고가 유종 설정 ─────────────────────────────────────────────────────────
 const CEIL_FUEL_CONFIG = [
-  { key: "gasoline" as const, label: "휘발유", dot: "bg-yellow-500", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
-  { key: "diesel"   as const, label: "경유",   dot: "bg-green-500", stroke: "#22c55e", ceilingColor: "#16a34a", stationStroke: "#8b5cf6", stationKey: "stationDsl" },
-  { key: "kerosene" as const, label: "등유",   dot: "bg-sky-400",   stroke: "#38bdf8", ceilingColor: "#0284c7", stationStroke: "#ec4899", stationKey: "stationKero" },
+  { key: "gasoline" as const, label: "휘발유", dot: "bg-yellow-500", stroke: "#6366f1", ceilingColor: "#eab308", stationStroke: "#eab308", stationKey: "stationGas" },
+  { key: "diesel"   as const, label: "경유",   dot: "bg-green-500", stroke: "#8b5cf6", ceilingColor: "#22c55e", stationStroke: "#22c55e", stationKey: "stationDsl" },
+  { key: "kerosene" as const, label: "등유",   dot: "bg-sky-400",   stroke: "#ec4899", ceilingColor: "#38bdf8", stationStroke: "#38bdf8", stationKey: "stationKero" },
 ];
 
 const SIDO_LIST = ["서울","부산","대구","인천","광주","대전","울산","세종시","경기","강원","충북","충남","전북","전남","경북","경남","제주"];
@@ -967,13 +967,13 @@ export default function PublicDashboardPage() {
                       {ceilLabel && <ReferenceLine x={ceilLabel} stroke="#3b82f6" strokeDasharray="4 4" strokeWidth={1.5}
                         label={{ value: "공표일", position: "top", fontSize: 10, fill: "#3b82f6" }} />}
                       {/* 평균 라인 (점선, showCeilAvg 시에만) */}
-                      {showCeilAvg && ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
-                      {showCeilAvg && ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
-                      {showCeilAvg && ceilFuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="keroseneAvg" connectNulls />}
+                      {showCeilAvg && ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#6366f1" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
+                      {showCeilAvg && ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#8b5cf6" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
+                      {showCeilAvg && ceilFuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#ec4899" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="keroseneAvg" connectNulls />}
                       {/* 주유소 오버레이 (실선) */}
-                      {ceilStation && ceilFuels.gasoline  && <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} dot={false} name="stationGas"  connectNulls />}
-                      {ceilStation && ceilFuels.diesel    && <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} dot={false} name="stationDsl"  connectNulls />}
-                      {ceilStation && ceilFuels.kerosene  && <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} dot={false} name="stationKero" connectNulls />}
+                      {ceilStation && ceilFuels.gasoline  && <Line type="monotone" dataKey="stationGas"  stroke="#eab308" strokeWidth={2} dot={false} name="stationGas"  connectNulls />}
+                      {ceilStation && ceilFuels.diesel    && <Line type="monotone" dataKey="stationDsl"  stroke="#22c55e" strokeWidth={2} dot={false} name="stationDsl"  connectNulls />}
+                      {ceilStation && ceilFuels.kerosene  && <Line type="monotone" dataKey="stationKero" stroke="#38bdf8" strokeWidth={2} dot={false} name="stationKero" connectNulls />}
                     </ComposedChart>
                   </ResponsiveContainer>
                 )}
