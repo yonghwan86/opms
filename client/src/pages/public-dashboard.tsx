@@ -236,7 +236,7 @@ function PubStationSearch({ value, onChange, onSelect, onSearch, sido }: {
     else { onSearch(null); }
   };
   return (
-    <div ref={ref} className="relative w-full md:w-auto md:min-w-[180px] md:max-w-[260px]">
+    <div ref={ref} className="relative w-full md:flex-1 md:min-w-[200px] md:max-w-[450px]">
       <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(선택된 유종 개별 추이 오버레이)</span></p>
       <div className="flex items-center gap-1.5">
         <div className="relative flex-1">
