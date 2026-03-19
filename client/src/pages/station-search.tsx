@@ -301,6 +301,19 @@ export default function StationSearchPage() {
     return idxs.map(i => chartData[i].date);
   }, [chartData]);
 
+  const pcTicks = useMemo(() => {
+    if (chartData.length <= 5) return chartData.map(d => d.date);
+    const len = chartData.length;
+    const idxs = [
+      0,
+      Math.round((len - 1) / 4),
+      Math.round((len - 1) / 2),
+      Math.round((len - 1) * 3 / 4),
+      len - 1,
+    ];
+    return [...new Set(idxs)].map(i => chartData[i].date);
+  }, [chartData]);
+
   const FUEL_COLORS: Record<FuelType, string> = {
     gasoline: "#eab308",
     diesel:   "#22c55e",
@@ -496,8 +509,8 @@ export default function StationSearchPage() {
                       tick={{ fontSize: 11, fill: "#111827", fontWeight: 700 }}
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
-                      ticks={isMobile ? mobileTicks : undefined}
-                      interval={isMobile ? "preserveStartEnd" : 3}
+                      ticks={isMobile ? mobileTicks : pcTicks}
+                      interval={isMobile ? "preserveStartEnd" : "preserveStartEnd"}
                       height={32}
                       tickMargin={8}
                     />
