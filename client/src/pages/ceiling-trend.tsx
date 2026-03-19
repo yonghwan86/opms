@@ -68,9 +68,9 @@ const SIDO_LIST = [
 
 // ─── 유종 설정 ─────────────────────────────────────────────────────────────────
 const FUEL_CONFIG = [
-  { key: "gasoline", label: "휘발유", dot: "bg-yellow-500", stroke: "#6366f1", ceilingColor: "#d97706", stationStroke: "#eab308", stationKey: "stationGas" },
-  { key: "diesel",   label: "경유",   dot: "bg-green-500", stroke: "#8b5cf6", ceilingColor: "#16a34a", stationStroke: "#22c55e", stationKey: "stationDsl" },
-  { key: "kerosene", label: "등유",   dot: "bg-sky-400",   stroke: "#ec4899", ceilingColor: "#0284c7", stationStroke: "#38bdf8", stationKey: "stationKero" },
+  { key: "gasoline", label: "휘발유", dot: "bg-yellow-500", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
+  { key: "diesel",   label: "경유",   dot: "bg-green-500", stroke: "#22c55e", ceilingColor: "#16a34a", stationStroke: "#8b5cf6", stationKey: "stationDsl" },
+  { key: "kerosene", label: "등유",   dot: "bg-sky-400",   stroke: "#38bdf8", ceilingColor: "#0284c7", stationStroke: "#ec4899", stationKey: "stationKero" },
 ] as const;
 
 type FuelKey = "gasoline" | "diesel" | "kerosene";
@@ -300,7 +300,7 @@ export default function CeilingTrendPage() {
   const [showSidoMenu, setShowSidoMenu] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
   const [selectedStation, setSelectedStation] = useState<{ stationId: string; stationName: string } | null>(null);
-  const [showAvg, setShowAvg] = useState(false);
+  const [showAvg, setShowAvg] = useState(true);
 
   const dateRef = useRef<HTMLDivElement>(null);
   const sidoRef = useRef<HTMLDivElement>(null);
@@ -739,19 +739,19 @@ export default function CeilingTrendPage() {
                 )}
 
                 {/* 평균 추이 라인 (점선, showAvg 시에만) */}
-                {showAvg && fuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#6366f1" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
-                {showAvg && fuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#8b5cf6" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
-                {showAvg && fuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#ec4899" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="keroseneAvg" connectNulls />}
+                {showAvg && fuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
+                {showAvg && fuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
+                {showAvg && fuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="keroseneAvg" connectNulls />}
 
                 {/* 주유소 개별 라인 (실선, 오버레이) */}
                 {selectedStation && fuels.gasoline && (
-                  <Line type="monotone" dataKey="stationGas"  stroke="#eab308" strokeWidth={2} dot={false} name="stationGas"  connectNulls />
+                  <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} dot={false} name="stationGas"  connectNulls />
                 )}
                 {selectedStation && fuels.diesel && (
-                  <Line type="monotone" dataKey="stationDsl"  stroke="#22c55e" strokeWidth={2} dot={false} name="stationDsl"  connectNulls />
+                  <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} dot={false} name="stationDsl"  connectNulls />
                 )}
                 {selectedStation && fuels.kerosene && (
-                  <Line type="monotone" dataKey="stationKero" stroke="#38bdf8" strokeWidth={2} dot={false} name="stationKero" connectNulls />
+                  <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} dot={false} name="stationKero" connectNulls />
                 )}
               </ComposedChart>
             </ResponsiveContainer>

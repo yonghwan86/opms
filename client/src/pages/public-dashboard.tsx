@@ -355,7 +355,7 @@ export default function PublicDashboardPage() {
   const [ceilSidoMenu, setCeilSidoMenu] = useState(false);
   const [ceilStationSearch, setCeilStationSearch] = useState("");
   const [ceilStation, setCeilStation] = useState<StationSuggest | null>(null);
-  const [showCeilAvg, setShowCeilAvg] = useState(false);
+  const [showCeilAvg, setShowCeilAvg] = useState(true);
   const ceilDateRef = useRef<HTMLDivElement>(null);
   const ceilSidoRef = useRef<HTMLDivElement>(null);
 
@@ -682,22 +682,24 @@ export default function PublicDashboardPage() {
         {/* ── 차트 섹션 (3탭) ── */}
         <Card className="border border-border bg-card">
           {/* 탭 헤더 */}
-          <div className="px-4 pt-3 pb-0 border-b border-border flex items-center gap-1 flex-wrap">
-            {([
-              { id: 'intl', label: '국제-국내 연동' },
-              { id: 'regional', label: '지역별 순위' },
-              { id: 'ceiling', label: '최고가격제 변동추이' },
-            ] as const).map(t => (
-              <button key={t.id} onClick={() => setChartTab(t.id)}
-                className={cn(
-                  "text-xs px-3 py-2 font-medium border-b-2 transition-colors -mb-px",
-                  chartTab === t.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}>
-                {t.label}
-              </button>
-            ))}
+          <div className="px-4 pt-3 pb-3 border-b border-border">
+            <div className="flex items-center gap-1 flex-wrap bg-muted rounded-lg p-1">
+              {([
+                { id: 'intl', label: '국제-국내 연동' },
+                { id: 'regional', label: '지역별 순위' },
+                { id: 'ceiling', label: '최고가격제 변동추이' },
+              ] as const).map(t => (
+                <button key={t.id} onClick={() => setChartTab(t.id)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 font-medium rounded-md transition-colors",
+                    chartTab === t.id
+                      ? "bg-background text-foreground shadow-sm border border-border"
+                      : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80",
+                  )}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* 탭 1: 국제-국내 연동 */}
