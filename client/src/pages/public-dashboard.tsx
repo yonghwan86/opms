@@ -680,10 +680,10 @@ export default function PublicDashboardPage() {
         </div>
 
         {/* ── 차트 섹션 (2/3 + 1/3 그리드) ── */}
-        <div className="grid grid-cols-3 gap-4 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
 
-          {/* 왼쪽 2/3: 2탭 차트 (국제-국내 연동 / 최고가격제 변동추이) */}
-          <div className="col-span-2 flex flex-col">
+          {/* 왼쪽 2/3 (모바일: 전체폭): 2탭 차트 (국제-국내 연동 / 최고가격제 변동추이) */}
+          <div className="col-span-1 md:col-span-2 flex flex-col">
           <Card className="flex-1 border border-border bg-card">
           {/* 탭 헤더 */}
           <div className="px-4 pt-3 pb-3 border-b border-border">
