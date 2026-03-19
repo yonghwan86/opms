@@ -183,19 +183,19 @@ function CeilTooltip({ active, payload, label, fuels, stationName, stationData, 
       <div className="space-y-0.5 mb-1.5">
         {fuels.gasoline && d.gasolineAvg != null && (
           <div className="flex justify-between items-center gap-3">
-            <span className="text-amber-600">● 휘발유 평균</span>
+            <span style={{ color: '#eab308' }}>● 휘발유 평균</span>
             <span className="font-semibold text-gray-800">{fmt(d.gasolineAvg)}원<DiffBadge val={d.gasolineAvg} base={d.baseGas} /></span>
           </div>
         )}
         {fuels.diesel && d.dieselAvg != null && (
           <div className="flex justify-between items-center gap-3">
-            <span className="text-green-600">● 경유 평균</span>
+            <span style={{ color: '#22c55e' }}>● 경유 평균</span>
             <span className="font-semibold text-gray-800">{fmt(d.dieselAvg)}원<DiffBadge val={d.dieselAvg} base={d.baseDiesel} /></span>
           </div>
         )}
         {fuels.kerosene && d.keroseneAvg != null && (
           <div className="flex justify-between items-center gap-3">
-            <span className="text-sky-500">● 등유 평균</span>
+            <span style={{ color: '#38bdf8' }}>● 등유 평균</span>
             <span className="font-semibold text-gray-800">{fmt(d.keroseneAvg)}원<DiffBadge val={d.keroseneAvg} base={d.baseKerosene} /></span>
           </div>
         )}
@@ -680,11 +680,11 @@ export default function PublicDashboardPage() {
         </div>
 
         {/* ── 차트 섹션 (2/3 + 1/3 그리드) ── */}
-        <div className="grid grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-3 gap-4 items-stretch">
 
           {/* 왼쪽 2/3: 2탭 차트 (국제-국내 연동 / 최고가격제 변동추이) */}
-          <div className="col-span-2">
-          <Card className="border border-border bg-card">
+          <div className="col-span-2 flex flex-col">
+          <Card className="flex-1 border border-border bg-card">
           {/* 탭 헤더 */}
           <div className="px-4 pt-3 pb-3 border-b border-border">
             <div className="inline-flex items-center gap-1 bg-muted rounded-lg p-1">
@@ -889,13 +889,15 @@ export default function PublicDashboardPage() {
                       <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} stationData={ceilStationData} ceilingLabel={ceilLabel} effectiveDateRaw={ceilDate ? ceilDate.replace(/-/g, "") : ""} />} />
                       <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8}
                         formatter={(v: string) => {
-                          if (v === "stationGas")  return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
-                          if (v === "stationDsl")  return `${ceilStation?.stationName ?? "주유소"} (경유)`;
-                          if (v === "stationKero") return `${ceilStation?.stationName ?? "주유소"} (등유)`;
-                          if (v === "gasolineAvg") return "휘발유 평균";
-                          if (v === "dieselAvg")   return "경유 평균";
-                          if (v === "keroseneAvg") return "등유 평균";
-                          return v;
+                          const isStation = v.startsWith("station");
+                          const label =
+                            v === "stationGas"  ? `${ceilStation?.stationName ?? "주유소"} (휘발유)` :
+                            v === "stationDsl"  ? `${ceilStation?.stationName ?? "주유소"} (경유)` :
+                            v === "stationKero" ? `${ceilStation?.stationName ?? "주유소"} (등유)` :
+                            v === "gasolineAvg" ? "휘발유 평균" :
+                            v === "dieselAvg"   ? "경유 평균" :
+                            v === "keroseneAvg" ? "등유 평균" : v;
+                          return <span style={{ color: isStation ? '#111827' : '#9ca3af', fontWeight: isStation ? 700 : 400 }}>{label}</span>;
                         }}
                       />
                       {/* 최고가 기준선 */}
@@ -936,9 +938,9 @@ export default function PublicDashboardPage() {
           </div>
 
           {/* 오른쪽 1/3: 지역별 순위 */}
-          <div className="col-span-1">
-            <Card className="border border-border bg-card">
-              <div className="px-4 pt-3 pb-3 border-b border-border flex items-center justify-between">
+          <div className="col-span-1 flex flex-col">
+            <Card className="flex-1 flex flex-col border border-border bg-card">
+              <div className="px-4 pt-3 pb-3 border-b border-border flex items-center justify-between flex-shrink-0">
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -959,13 +961,13 @@ export default function PublicDashboardPage() {
                   ))}
                 </div>
               </div>
-              <div className="px-3 pb-3 pt-3">
+              <div className="flex-1 min-h-0 px-3 pb-3 pt-3">
                 {regionalLoading || isGeoLoading ? (
                   <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
                 ) : sortedRegional.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={Math.max(400, sortedRegional.length * 26 + 20)}>
+                  <ResponsiveContainer width="100%" height={Math.max(460, sortedRegional.length * 26 + 20)}>
                     <BarChart data={sortedRegional} layout="vertical" margin={{ top: 4, right: 48, left: 4, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                       <XAxis type="number" domain={[domMin, domMax]}
