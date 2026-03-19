@@ -302,16 +302,10 @@ export default function StationSearchPage() {
   }, [chartData]);
 
   const pcTicks = useMemo(() => {
-    if (chartData.length <= 5) return chartData.map(d => d.date);
     const len = chartData.length;
-    const idxs = [
-      0,
-      Math.round((len - 1) / 4),
-      Math.round((len - 1) / 2),
-      Math.round((len - 1) * 3 / 4),
-      len - 1,
-    ];
-    return [...new Set(idxs)].map(i => chartData[i].date);
+    if (len === 0) return [];
+    const idxs = [...new Set([0, 3, 7, 11, 15, len - 1].filter(i => i < len))];
+    return idxs.map(i => chartData[i].date);
   }, [chartData]);
 
   const FUEL_COLORS: Record<FuelType, string> = {
