@@ -344,7 +344,7 @@ export default function PublicDashboardPage() {
 
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
-  const [chartTab, setChartTab] = useState<'intl' | 'regional' | 'ceiling'>('ceiling');
+  const [chartTab, setChartTab] = useState<'intl' | 'ceiling'>('ceiling');
 
   // 최고가격제 탭 상태
   const [ceilFuels, setCeilFuels] = useState({ gasoline: true, diesel: true, kerosene: false });
@@ -679,14 +679,17 @@ export default function PublicDashboardPage() {
           </MetricCard>
         </div>
 
-        {/* ── 차트 섹션 (3탭) ── */}
-        <Card className="border border-border bg-card">
+        {/* ── 차트 섹션 (2/3 + 1/3 그리드) ── */}
+        <div className="grid grid-cols-3 gap-4 items-start">
+
+          {/* 왼쪽 2/3: 2탭 차트 (국제-국내 연동 / 최고가격제 변동추이) */}
+          <div className="col-span-2">
+          <Card className="border border-border bg-card">
           {/* 탭 헤더 */}
           <div className="px-4 pt-3 pb-3 border-b border-border">
             <div className="inline-flex items-center gap-1 bg-muted rounded-lg p-1">
               {([
                 { id: 'intl', label: '국제-국내 연동' },
-                { id: 'regional', label: '지역별 순위' },
                 { id: 'ceiling', label: '최고가격제 변동추이' },
               ] as const).map(t => (
                 <button key={t.id} onClick={() => setChartTab(t.id)}
@@ -745,66 +748,7 @@ export default function PublicDashboardPage() {
             </div>
           )}
 
-          {/* 탭 2: 지역별 순위 */}
-          {chartTab === 'regional' && (
-            <div>
-              <div className="px-5 py-3 flex items-center justify-between flex-shrink-0">
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">지역별 평균 유가 순위</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {regionalTab === 'diesel' ? "경유" : "휘발유"}{" "}
-                    {isGeoLoading ? "위치 확인 중" : geoRegion ? `${geoRegion} 시/군/구별` : "시/도별"} 평균
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  {(['gasoline', 'diesel'] as const).map(tab => (
-                    <button key={tab} onClick={() => setRegionalTab(tab)}
-                      className={cn("text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
-                        regionalTab === tab
-                          ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      )}>
-                      {tab === 'gasoline' ? '휘발유' : '경유'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="px-3 pb-3">
-                {regionalLoading || isGeoLoading ? (
-                  <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-                ) : sortedRegional.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={Math.max(340, sortedRegional.length * 28 + 20)}>
-                    <BarChart data={sortedRegional} layout="vertical" margin={{ top: 4, right: 50, left: 4, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                      <XAxis type="number" domain={[domMin, domMax]}
-                        tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
-                        tickFormatter={v => fmt(v)} tickLine={false} axisLine={false} tickCount={4}
-                      />
-                      <YAxis type="category" dataKey="sido"
-                        tick={{ fontSize: 13, fill: "#374151", fontWeight: 600 }}
-                        width={52} tickLine={false} axisLine={false}
-                        tickFormatter={(v: string) => v.includes(' ') ? v.split(' ').slice(1).join(' ') : v}
-                      />
-                      <Tooltip
-                        formatter={(v: any) => [`${fmt(Number(v))}원`, regionalTab === 'diesel' ? "평균 경유" : "평균 휘발유"]}
-                        labelFormatter={(label: string) => label.includes(' ') ? label.split(' ').slice(1).join(' ') : label}
-                        contentStyle={{ fontSize: 13 }}
-                      />
-                      <Bar dataKey={regionalTab === 'diesel' ? "avgDiesel" : "avgPrice"}
-                        fill={regionalTab === 'diesel' ? "#22c55e" : "#facc15"}
-                        radius={[0, 4, 4, 0]} barSize={20}
-                        label={{ position: "right", fontSize: 13, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 탭 3: 최고가격제 변동추이 */}
+          {/* 탭 2: 최고가격제 변동추이 */}
           {chartTab === 'ceiling' && (
             <div className="p-4 space-y-3">
               {/* 필터 */}
@@ -989,6 +933,68 @@ export default function PublicDashboardPage() {
             </div>
           )}
         </Card>
+          </div>
+
+          {/* 오른쪽 1/3: 지역별 순위 */}
+          <div className="col-span-1">
+            <Card className="border border-border bg-card">
+              <div className="px-4 pt-3 pb-3 border-b border-border flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {regionalTab === 'diesel' ? "경유" : "휘발유"}{" "}
+                    {isGeoLoading ? "위치 확인 중" : geoRegion ? `${geoRegion} 시/군/구별` : "시/도별"} 평균
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  {(['gasoline', 'diesel'] as const).map(tab => (
+                    <button key={tab} onClick={() => setRegionalTab(tab)}
+                      className={cn("text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
+                        regionalTab === tab
+                          ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      )}>
+                      {tab === 'gasoline' ? '휘발유' : '경유'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="px-3 pb-3 pt-3">
+                {regionalLoading || isGeoLoading ? (
+                  <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+                ) : sortedRegional.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={Math.max(400, sortedRegional.length * 26 + 20)}>
+                    <BarChart data={sortedRegional} layout="vertical" margin={{ top: 4, right: 48, left: 4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                      <XAxis type="number" domain={[domMin, domMax]}
+                        tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}
+                        tickFormatter={v => fmt(v)} tickLine={false} axisLine={false} tickCount={3}
+                      />
+                      <YAxis type="category" dataKey="sido"
+                        tick={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
+                        width={48} tickLine={false} axisLine={false}
+                        tickFormatter={(v: string) => v.includes(' ') ? v.split(' ').slice(1).join(' ') : v}
+                      />
+                      <Tooltip
+                        formatter={(v: any) => [`${fmt(Number(v))}원`, regionalTab === 'diesel' ? "평균 경유" : "평균 휘발유"]}
+                        labelFormatter={(label: string) => label.includes(' ') ? label.split(' ').slice(1).join(' ') : label}
+                        contentStyle={{ fontSize: 12 }}
+                      />
+                      <Bar dataKey={regionalTab === 'diesel' ? "avgDiesel" : "avgPrice"}
+                        fill={regionalTab === 'diesel' ? "#22c55e" : "#facc15"}
+                        radius={[0, 4, 4, 0]} barSize={18}
+                        label={{ position: "right", fontSize: 12, fill: "#0f172a", fontWeight: 800, formatter: (v: number) => `${fmt(v)}` }}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </Card>
+          </div>
+
+        </div>
 
         {/* 푸터 */}
         <div className="text-center text-xs text-muted-foreground py-4 border-t border-border">
