@@ -618,7 +618,7 @@ export default function StationSearchPage() {
                   <th className="py-3 px-2 text-right whitespace-nowrap">
                     공급가<span className="text-[10px] ml-0.5">({fuelLabel})</span>
                   </th>
-                  <th className="py-3 px-2 text-right whitespace-nowrap">마진</th>
+                  <th className="py-3 px-2 text-right whitespace-nowrap">차이</th>
                 </tr>
               </thead>
               <tbody>
