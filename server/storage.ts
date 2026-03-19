@@ -1532,6 +1532,14 @@ export class PostgresStorage implements IStorage {
         ORDER BY date DESC
         LIMIT 20
       ),
+      week_supply_avg AS (
+        SELECT week,
+          ROUND(AVG(gasoline::numeric)) AS avg_gasoline,
+          ROUND(AVG(diesel::numeric))   AS avg_diesel,
+          ROUND(AVG(kerosene::numeric)) AS avg_kerosene
+        FROM oil_weekly_supply_prices
+        GROUP BY week
+      ),
       price_rows AS (
         SELECT r.*,
           TO_CHAR(TO_DATE(r.date, 'YYYYMMDD'), 'YYYYMM') ||
@@ -1545,30 +1553,14 @@ export class PostgresStorage implements IStorage {
         pr.date, pr.station_id, pr.station_name, pr.brand, pr.is_self,
         pr.address, pr.region, pr.sido,
         pr.gasoline, pr.diesel, pr.kerosene,
-        COALESCE(w.gasoline::numeric, avg_w.avg_gasoline) AS supply_gasoline,
-        COALESCE(w.diesel::numeric,   avg_w.avg_diesel)   AS supply_diesel,
-        COALESCE(w.kerosene::numeric, avg_w.avg_kerosene) AS supply_kerosene
+        COALESCE(w.gasoline::numeric, wa.avg_gasoline) AS supply_gasoline,
+        COALESCE(w.diesel::numeric,   wa.avg_diesel)   AS supply_diesel,
+        COALESCE(w.kerosene::numeric, wa.avg_kerosene) AS supply_kerosene
       FROM price_rows pr
-      LEFT JOIN LATERAL (
-        SELECT gasoline, diesel, kerosene
-        FROM oil_weekly_supply_prices
-        WHERE company = pr.brand
-          AND week <= pr.week_key
-        ORDER BY week DESC
-        LIMIT 1
-      ) w ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT
-          ROUND(AVG(gasoline::numeric)) AS avg_gasoline,
-          ROUND(AVG(diesel::numeric))   AS avg_diesel,
-          ROUND(AVG(kerosene::numeric)) AS avg_kerosene
-        FROM oil_weekly_supply_prices
-        WHERE week = (
-          SELECT week FROM oil_weekly_supply_prices
-          WHERE week <= pr.week_key
-          ORDER BY week DESC LIMIT 1
-        )
-      ) avg_w ON TRUE
+      LEFT JOIN oil_weekly_supply_prices w
+        ON w.week = pr.week_key AND w.company = pr.brand
+      LEFT JOIN week_supply_avg wa
+        ON wa.week = pr.week_key
       ORDER BY pr.date DESC, pr.station_name
     `);
     return (result.rows as any[]).map(row => ({
