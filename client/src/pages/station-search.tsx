@@ -497,7 +497,7 @@ export default function StationSearchPage() {
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
                       ticks={isMobile ? mobileTicks : undefined}
-                      interval={isMobile ? "preserveStartEnd" : 0}
+                      interval={isMobile ? "preserveStartEnd" : 3}
                       height={32}
                       tickMargin={8}
                     />
