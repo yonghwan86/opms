@@ -605,7 +605,7 @@ export default function DashboardPage() {
             icon={ShieldCheck}
             iconBg="bg-indigo-600"
             loading={ceilingLoading}
-            source="산업통상자원부"
+            source="산업통상부"
             headerRight={
               isMaster ? (
                 <button

@@ -575,7 +575,7 @@ export default function PublicDashboardPage() {
           <MetricCard
             title="석유 최고가격제"
             subtitle={ceilingData[0] ? `적용일 ${ceilingData[0].effectiveDate}` : undefined}
-            icon={ShieldCheck} iconBg="bg-indigo-600" loading={ceilingLoading} source="산업통상자원부"
+            icon={ShieldCheck} iconBg="bg-indigo-600" loading={ceilingLoading} source="산업통상부"
           >
             {ceilingData.length > 0 ? (() => {
               const cur = ceilingData[0];
