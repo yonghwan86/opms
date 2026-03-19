@@ -525,7 +525,7 @@ export default function PublicDashboardPage() {
     <div className="min-h-screen bg-background">
       {/* 헤더 */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between px-4 h-14 max-w-screen-xl mx-auto">
+        <div className="flex items-center justify-between px-4 md:px-6 h-14">
           <div className="flex items-center gap-2.5">
             <img src={appIconSrc} alt="앱 아이콘" className="w-7 h-7 rounded-lg" />
             <div>
@@ -548,7 +548,7 @@ export default function PublicDashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-screen-xl mx-auto p-3 md:p-5 space-y-4">
+      <div className="p-3 md:p-5 space-y-4">
 
         {/* ── 상단 4 카드 ── */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">

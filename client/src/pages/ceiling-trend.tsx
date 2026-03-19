@@ -451,7 +451,7 @@ export default function CeilingTrendPage() {
 
   return (
     <Layout>
-      <div className="max-w-[1200px] mx-auto p-4 md:p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 페이지 헤더 */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
