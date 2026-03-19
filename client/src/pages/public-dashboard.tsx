@@ -979,12 +979,8 @@ export default function PublicDashboardPage() {
                   <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 공표일 평균가격보다 높은 업체 수</span>
                   <span className="w-px h-4 bg-border hidden sm:block" />
                   <span className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-blue-500" /><span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 공표일 평균가격보다 낮은 업체 수</span>
-                  {ceilStation && (
-                    <>
-                      <span className="w-px h-4 bg-border hidden sm:block" />
-                      <span className="text-[10px] text-muted-foreground/70">주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
-                    </>
-                  )}
+                  <span className="w-px h-4 bg-border hidden sm:block" />
+                  <span className="text-[10px] text-muted-foreground/70">주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
                   <span className="hidden md:inline text-muted-foreground/50 ml-auto">· 오피넷데이터 활용</span>
                 </div>
               </div>
