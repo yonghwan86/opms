@@ -9,17 +9,7 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 interface CeilingPrice {
@@ -299,7 +289,6 @@ function StationSearch({ value, onChange, onSelect, sido }: {
 
 // ─── 메인 ─────────────────────────────────────────────────────────────────────
 export default function CeilingTrendPage() {
-  const isMobile = useIsMobile();
   const { toast } = useToast();
   const [fuels, setFuels] = useState<Record<FuelKey, boolean>>({
     gasoline: true, diesel: true, kerosene: false,
@@ -311,7 +300,6 @@ export default function CeilingTrendPage() {
   const [showSidoMenu, setShowSidoMenu] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
   const [selectedStation, setSelectedStation] = useState<{ stationId: string; stationName: string } | null>(null);
-  const [showMobileAlert, setShowMobileAlert] = useState(false);
   const [showAvg, setShowAvg] = useState(false);
 
   const dateRef = useRef<HTMLDivElement>(null);
@@ -443,7 +431,6 @@ export default function CeilingTrendPage() {
 
   const handleDownloadCsv = async () => {
     if (!selectedDate) return;
-    if (isMobile) { setShowMobileAlert(true); return; }
     try {
       const params = new URLSearchParams({ effectiveDate: selectedDate });
       const resp = await fetch(`/api/ceiling-trend/export?${params}`, { credentials: "include" });
@@ -579,8 +566,8 @@ export default function CeilingTrendPage() {
 
             <div className="w-px h-8 bg-border hidden md:block" />
 
-            {/* CSV 다운로드 버튼 */}
-            <div className="flex flex-col items-start gap-0.5">
+            {/* CSV 다운로드 버튼 (PC 전용) */}
+            <div className="hidden md:flex flex-col items-start gap-0.5">
               <p className="text-[10px] text-muted-foreground font-medium">데이터 내보내기</p>
               <button
                 onClick={handleDownloadCsv}
@@ -783,24 +770,11 @@ export default function CeilingTrendPage() {
             </span>
             <span className="w-px h-4 bg-border" />
             <span>주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
+            <span className="hidden md:inline text-muted-foreground/50 ml-auto">· 오피넷데이터 활용</span>
           </div>
         </div>
       </div>
 
-      {/* 모바일 다운로드 안내 AlertDialog */}
-      <AlertDialog open={showMobileAlert} onOpenChange={setShowMobileAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>CSV 다운로드</AlertDialogTitle>
-            <AlertDialogDescription>
-              CSV 파일 다운로드는 PC 버전에서 이용해 주시기 바랍니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowMobileAlert(false)}>확인</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Layout>
   );
 }

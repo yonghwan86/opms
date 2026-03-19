@@ -209,9 +209,9 @@ function CeilTooltip({ active, payload, label, fuels, stationName, stationData, 
 }
 
 // ─── 주유소 검색 인라인 컴포넌트 ─────────────────────────────────────────────
-function PubStationSearch({ value, onChange, onSelect, sido }: {
+function PubStationSearch({ value, onChange, onSelect, onSearch, sido }: {
   value: string; onChange: (v: string) => void;
-  onSelect: (s: StationSuggest) => void; sido: string;
+  onSelect: (s: StationSuggest) => void; onSearch: (s: StationSuggest | null) => void; sido: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -231,13 +231,25 @@ function PubStationSearch({ value, onChange, onSelect, sido }: {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+  const handleSearch = () => {
+    if (suggestions.length > 0) { onSelect(suggestions[0]); onChange(suggestions[0].stationName); onSearch(suggestions[0]); setOpen(false); }
+    else { onSearch(null); }
+  };
   return (
-    <div ref={ref} className="relative flex-1 min-w-[180px]">
-      <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(개별 추이 오버레이)</span></p>
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input type="text" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
-          placeholder="주유소 이름 검색..." className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
+    <div ref={ref} className="relative min-w-[180px] max-w-[260px]">
+      <p className="text-[10px] text-gray-400 mb-0.5 font-medium">주유소 검색 <span className="text-gray-300">(선택된 유종 개별 추이 오버레이)</span></p>
+      <div className="flex items-center gap-1.5">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input type="text" value={value}
+            onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
+            onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+            placeholder="주유소 이름 검색..." className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
+        </div>
+        <button onClick={handleSearch} data-testid="button-station-search-pub"
+          className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity">
+          검색
+        </button>
       </div>
       {open && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
@@ -343,6 +355,7 @@ export default function PublicDashboardPage() {
   const [ceilSidoMenu, setCeilSidoMenu] = useState(false);
   const [ceilStationSearch, setCeilStationSearch] = useState("");
   const [ceilStation, setCeilStation] = useState<StationSuggest | null>(null);
+  const [showCeilAvg, setShowCeilAvg] = useState(false);
   const ceilDateRef = useRef<HTMLDivElement>(null);
   const ceilSidoRef = useRef<HTMLDivElement>(null);
 
@@ -864,11 +877,26 @@ export default function PublicDashboardPage() {
                   value={ceilStationSearch}
                   onChange={v => { setCeilStationSearch(v); if (!v.trim()) setCeilStation(null); }}
                   onSelect={s => setCeilStation(s)}
+                  onSearch={s => { if (s) setCeilStation(s); }}
                   sido={ceilSido}
                 />
 
-                {/* 유종 토글 */}
-                <div className="flex gap-1.5 ml-auto">
+                {/* 지역평균선 체크박스 + 유종 토글 */}
+                <div className="flex items-center gap-2 flex-wrap ml-auto">
+                  <label
+                    className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none border border-border rounded-lg px-2.5 py-1.5 bg-card"
+                    data-testid="label-show-avg-pub"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={showCeilAvg}
+                      onChange={e => setShowCeilAvg(e.target.checked)}
+                      data-testid="checkbox-show-avg-pub"
+                      className="w-3 h-3 accent-indigo-600"
+                    />
+                    지역평균선
+                  </label>
+                  <div className="w-px h-5 bg-border" />
                   {CEIL_FUEL_CONFIG.map(f => (
                     <button key={f.key}
                       onClick={() => setCeilFuels(p => ({ ...p, [f.key]: !p[f.key] }))}
@@ -936,14 +964,14 @@ export default function PublicDashboardPage() {
                       {/* 공표일 수직선 */}
                       {ceilLabel && <ReferenceLine x={ceilLabel} stroke="#3b82f6" strokeDasharray="4 4" strokeWidth={1.5}
                         label={{ value: "공표일", position: "top", fontSize: 10, fill: "#3b82f6" }} />}
-                      {/* 평균 라인 */}
-                      {ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasolineAvg" connectNulls />}
-                      {ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} dot={false} name="dieselAvg"   connectNulls />}
-                      {ceilFuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} dot={false} name="keroseneAvg" connectNulls />}
-                      {/* 주유소 오버레이 */}
-                      {ceilStation && ceilFuels.gasoline  && <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationGas"  connectNulls />}
-                      {ceilStation && ceilFuels.diesel    && <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationDsl"  connectNulls />}
-                      {ceilStation && ceilFuels.kerosene  && <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationKero" connectNulls />}
+                      {/* 평균 라인 (점선, showCeilAvg 시에만) */}
+                      {showCeilAvg && ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
+                      {showCeilAvg && ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
+                      {showCeilAvg && ceilFuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="keroseneAvg" connectNulls />}
+                      {/* 주유소 오버레이 (실선) */}
+                      {ceilStation && ceilFuels.gasoline  && <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} dot={false} name="stationGas"  connectNulls />}
+                      {ceilStation && ceilFuels.diesel    && <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} dot={false} name="stationDsl"  connectNulls />}
+                      {ceilStation && ceilFuels.kerosene  && <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} dot={false} name="stationKero" connectNulls />}
                     </ComposedChart>
                   </ResponsiveContainer>
                 )}
@@ -957,6 +985,7 @@ export default function PublicDashboardPage() {
                       <span className="text-[10px] text-muted-foreground/70">툴팁: 최근 공표일 해당 주유소가격 기준 누계 횟수</span>
                     </>
                   )}
+                  <span className="hidden md:inline text-muted-foreground/50 ml-auto">· 오피넷데이터 활용</span>
                 </div>
               </div>
             </div>
