@@ -216,15 +216,20 @@ function PubStationSearch({ value, onChange, onSelect, onSearch, sido }: {
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedValue(value), 300);
+    return () => clearTimeout(t);
+  }, [value]);
   const { data: suggestions = [] } = useQuery<StationSuggest[]>({
-    queryKey: ["/api/public/stations/suggest", value, sido],
+    queryKey: ["/api/public/stations/suggest", debouncedValue, sido],
     queryFn: () => {
-      if (value.trim().length < 1) return Promise.resolve([]);
-      const p = new URLSearchParams({ q: value });
+      if (debouncedValue.trim().length < 2) return Promise.resolve([]);
+      const p = new URLSearchParams({ q: debouncedValue });
       if (sido) p.set("sido", sido);
       return fetch(`/api/public/stations/suggest?${p}`).then(r => r.json());
     },
-    enabled: value.trim().length >= 1,
+    enabled: debouncedValue.trim().length >= 2,
     staleTime: 30_000,
   });
   useEffect(() => {
