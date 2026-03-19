@@ -78,9 +78,9 @@ const SIDO_LIST = [
 
 // ─── 유종 설정 ─────────────────────────────────────────────────────────────────
 const FUEL_CONFIG = [
-  { key: "gasoline", label: "휘발유", dot: "bg-amber-400", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
-  { key: "diesel",   label: "경유",   dot: "bg-green-500", stroke: "#22c55e", ceilingColor: "#16a34a", stationStroke: "#8b5cf6", stationKey: "stationDsl" },
-  { key: "kerosene", label: "등유",   dot: "bg-sky-400",   stroke: "#38bdf8", ceilingColor: "#0284c7", stationStroke: "#ec4899", stationKey: "stationKero" },
+  { key: "gasoline", label: "휘발유", dot: "bg-amber-400", stroke: "#6366f1", ceilingColor: "#d97706", stationStroke: "#eab308", stationKey: "stationGas" },
+  { key: "diesel",   label: "경유",   dot: "bg-green-500", stroke: "#8b5cf6", ceilingColor: "#16a34a", stationStroke: "#22c55e", stationKey: "stationDsl" },
+  { key: "kerosene", label: "등유",   dot: "bg-sky-400",   stroke: "#ec4899", ceilingColor: "#0284c7", stationStroke: "#38bdf8", stationKey: "stationKero" },
 ] as const;
 
 type FuelKey = "gasoline" | "diesel" | "kerosene";
@@ -243,22 +243,41 @@ function StationSearch({ value, onChange, onSelect, sido }: {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const handleSearch = () => {
+    setOpen(false);
+    if (suggestions.length > 0) {
+      const first = suggestions[0];
+      onSelect(first);
+      onChange(first.stationName);
+    }
+  };
+
   return (
-    <div ref={ref} className="relative flex-1 min-w-[200px]">
+    <div ref={ref} className="relative flex-1 min-w-[200px] md:max-w-[400px]">
       <p className="text-[10px] text-gray-400 mb-0.5 font-medium">
         주유소 검색 <span className="text-gray-300">(선택된 유종 개별 추이 오버레이)</span>
       </p>
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input
-          type="text"
-          value={value}
-          onChange={e => { onChange(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="주유소 이름 검색..."
-          className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-          data-testid="input-station-search"
-        />
+      <div className="flex items-center gap-1.5">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input
+            type="text"
+            value={value}
+            onChange={e => { onChange(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+            placeholder="주유소 이름 검색..."
+            className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+            data-testid="input-station-search"
+          />
+        </div>
+        <button
+          onClick={handleSearch}
+          data-testid="button-station-search"
+          className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+        >
+          검색
+        </button>
       </div>
       {open && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -293,6 +312,7 @@ export default function CeilingTrendPage() {
   const [stationSearch, setStationSearch] = useState("");
   const [selectedStation, setSelectedStation] = useState<{ stationId: string; stationName: string } | null>(null);
   const [showMobileAlert, setShowMobileAlert] = useState(false);
+  const [showAvg, setShowAvg] = useState(false);
 
   const dateRef = useRef<HTMLDivElement>(null);
   const sidoRef = useRef<HTMLDivElement>(null);
@@ -553,7 +573,7 @@ export default function CeilingTrendPage() {
             <StationSearch
               value={stationSearch}
               onChange={v => { setStationSearch(v); if (!v.trim()) setSelectedStation(null); }}
-              onSelect={s => setSelectedStation(s)}
+              onSelect={s => { setSelectedStation(s); setStationSearch(s.stationName); }}
               sido={selectedSido}
             />
 
@@ -608,8 +628,24 @@ export default function CeilingTrendPage() {
               <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
               <p className="text-xs text-muted-foreground mt-0.5">수평 점선: 최고가격 기준</p>
             </div>
-            {/* 유종 토글 */}
-            <div className="flex gap-1.5 flex-wrap">
+            {/* 지역평균선 체크박스 + 유종 토글 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* 지역평균선 체크박스 */}
+              <label
+                className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none border border-border rounded-lg px-2.5 py-1.5 bg-card"
+                data-testid="label-show-avg"
+              >
+                <input
+                  type="checkbox"
+                  checked={showAvg}
+                  onChange={e => setShowAvg(e.target.checked)}
+                  data-testid="checkbox-show-avg"
+                  className="w-3 h-3 accent-indigo-600"
+                />
+                지역평균선
+              </label>
+              <div className="w-px h-5 bg-border" />
+              {/* 유종 토글 */}
               {FUEL_CONFIG.map(f => (
                 <button
                   key={f.key}
@@ -681,9 +717,9 @@ export default function CeilingTrendPage() {
                     if (v === "stationGas") return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
                     if (v === "stationDsl") return `${selectedStation?.stationName ?? "주유소"} (경유)`;
                     if (v === "stationKero") return `${selectedStation?.stationName ?? "주유소"} (등유)`;
-                    if (v === "gasolineAvg") return "휘발유 평균";
-                    if (v === "dieselAvg") return "경유 평균";
-                    if (v === "keroseneAvg") return "등유 평균";
+                    if (v === "gasolineAvg") return "휘발유 지역평균";
+                    if (v === "dieselAvg") return "경유 지역평균";
+                    if (v === "keroseneAvg") return "등유 지역평균";
                     return v;
                   }}
                 />
@@ -715,20 +751,20 @@ export default function CeilingTrendPage() {
                   />
                 )}
 
-                {/* 평균 추이 라인 */}
-                {fuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasolineAvg" connectNulls />}
-                {fuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} dot={false} name="dieselAvg"   connectNulls />}
-                {fuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#38bdf8" strokeWidth={2.5} dot={false} name="keroseneAvg" connectNulls />}
+                {/* 평균 추이 라인 (점선, showAvg 시에만) */}
+                {showAvg && fuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#6366f1" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
+                {showAvg && fuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#8b5cf6" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
+                {showAvg && fuels.kerosene && <Line type="monotone" dataKey="keroseneAvg" stroke="#ec4899" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="keroseneAvg" connectNulls />}
 
-                {/* 주유소 개별 라인 (오버레이) */}
+                {/* 주유소 개별 라인 (실선, 오버레이) */}
                 {selectedStation && fuels.gasoline && (
-                  <Line type="monotone" dataKey="stationGas"  stroke="#6366f1" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationGas"  connectNulls />
+                  <Line type="monotone" dataKey="stationGas"  stroke="#eab308" strokeWidth={2} dot={false} name="stationGas"  connectNulls />
                 )}
                 {selectedStation && fuels.diesel && (
-                  <Line type="monotone" dataKey="stationDsl"  stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationDsl"  connectNulls />
+                  <Line type="monotone" dataKey="stationDsl"  stroke="#22c55e" strokeWidth={2} dot={false} name="stationDsl"  connectNulls />
                 )}
                 {selectedStation && fuels.kerosene && (
-                  <Line type="monotone" dataKey="stationKero" stroke="#ec4899" strokeWidth={2} strokeDasharray="5 2" dot={false} name="stationKero" connectNulls />
+                  <Line type="monotone" dataKey="stationKero" stroke="#38bdf8" strokeWidth={2} dot={false} name="stationKero" connectNulls />
                 )}
               </ComposedChart>
             </ResponsiveContainer>
