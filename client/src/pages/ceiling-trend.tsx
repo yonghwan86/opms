@@ -139,16 +139,16 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
       </p>
 
       {stationName && (
-        <div className="mb-1.5 pb-1.5 border-b border-gray-100">
-          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[170px]">{stationName}</p>
+        <div className="mb-1.5 pb-1.5 border-b border-gray-200 bg-blue-50/60 rounded-lg px-2 py-1.5 -mx-1">
+          <p className="text-gray-900 text-[11px] font-extrabold mb-1 truncate max-w-[170px]">{stationName}</p>
           {activeFuelConf.map(f => {
             const stVal = d[f.stationKey] as number | null;
             if (stVal == null) return null;
             const base = stationBaseRow?.[f.key as keyof StationRow] as number | null;
             return (
               <div key={f.key} className="flex justify-between items-center">
-                <span style={{ color: f.stationStroke }} className="text-[10px]">● {f.label}</span>
-                <span style={{ color: f.stationStroke }} className="font-bold">
+                <span style={{ color: f.stationStroke }} className="font-bold text-[11px]">● {f.label}</span>
+                <span style={{ color: f.stationStroke }} className="font-extrabold text-[12px]">
                   {fmt(stVal)}원<DiffBadge val={stVal} base={base} />
                 </span>
               </div>
@@ -168,7 +168,7 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
       <div className="space-y-0.5 mb-1.5">
         {fuels.gasoline && d.gasolineAvg != null && (
           <div className="flex justify-between items-center gap-3">
-            <span className="text-amber-600">● 휘발유 평균</span>
+            <span style={{ color: '#eab308' }}>● 휘발유 평균</span>
             <span className="font-semibold text-gray-800">
               {fmt(d.gasolineAvg)}원<DiffBadge val={d.gasolineAvg} base={d.baseGas} />
             </span>
@@ -176,7 +176,7 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
         )}
         {fuels.diesel && d.dieselAvg != null && (
           <div className="flex justify-between items-center gap-3">
-            <span className="text-green-600">● 경유 평균</span>
+            <span style={{ color: '#22c55e' }}>● 경유 평균</span>
             <span className="font-semibold text-gray-800">
               {fmt(d.dieselAvg)}원<DiffBadge val={d.dieselAvg} base={d.baseDiesel} />
             </span>
@@ -184,7 +184,7 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
         )}
         {fuels.kerosene && d.keroseneAvg != null && (
           <div className="flex justify-between items-center gap-3">
-            <span className="text-sky-500">● 등유 평균</span>
+            <span style={{ color: '#38bdf8' }}>● 등유 평균</span>
             <span className="font-semibold text-gray-800">
               {fmt(d.keroseneAvg)}원<DiffBadge val={d.keroseneAvg} base={d.baseKerosene} />
             </span>

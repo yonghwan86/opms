@@ -155,16 +155,16 @@ function CeilTooltip({ active, payload, label, fuels, stationName, stationData, 
     <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[200px]">
       <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">{label}{isPublish ? " ★공표일" : ""}</p>
       {stationName && (
-        <div className="mb-1.5 pb-1.5 border-b border-gray-100">
-          <p className="text-gray-400 text-[10px] mb-0.5 font-medium truncate max-w-[170px]">{stationName}</p>
+        <div className="mb-1.5 pb-1.5 border-b border-gray-200 bg-blue-50/60 rounded-lg px-2 py-1.5 -mx-1">
+          <p className="text-gray-900 text-[11px] font-extrabold mb-1 truncate max-w-[170px]">{stationName}</p>
           {activeFuels.map(f => {
             const stVal = d[f.stationKey];
             if (stVal == null) return null;
             const base = stationBaseRow?.[f.key as keyof StationRow] as number | null;
             return (
               <div key={f.key} className="flex justify-between items-center">
-                <span style={{ color: f.stationStroke }} className="text-[10px]">● {f.label}</span>
-                <span style={{ color: f.stationStroke }} className="font-bold">
+                <span style={{ color: f.stationStroke }} className="font-bold text-[11px]">● {f.label}</span>
+                <span style={{ color: f.stationStroke }} className="font-extrabold text-[12px]">
                   {fmt(stVal)}원<DiffBadge val={stVal} base={base} />
                 </span>
               </div>
