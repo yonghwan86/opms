@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -342,6 +343,7 @@ export default function PublicDashboardPage() {
   const regionParam = geoRegion ? `?region=${encodeURIComponent(geoRegion)}` : "";
   const regionLabel = geoRegion ?? "전국";
 
+  const isMobile = useIsMobile();
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [chartTab, setChartTab] = useState<'intl' | 'ceiling'>('ceiling');
@@ -727,7 +729,9 @@ export default function PublicDashboardPage() {
                     <XAxis dataKey="label"
                       tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
                       tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
-                      interval={Math.max(0, Math.floor(chartData.length / 6) - 1)}
+                      interval={isMobile
+                        ? Math.max(0, Math.ceil(chartData.length / 4) - 1)
+                        : Math.max(0, Math.floor(chartData.length / 6) - 1)}
                       height={36} padding={{ left: 24, right: 24 }} tickMargin={10}
                     />
                     <YAxis yAxisId="wti" orientation="left"
