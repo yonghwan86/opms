@@ -68,7 +68,7 @@ const SIDO_LIST = [
 
 // ─── 유종 설정 ─────────────────────────────────────────────────────────────────
 const FUEL_CONFIG = [
-  { key: "gasoline", label: "휘발유", dot: "bg-amber-400", stroke: "#6366f1", ceilingColor: "#d97706", stationStroke: "#eab308", stationKey: "stationGas" },
+  { key: "gasoline", label: "휘발유", dot: "bg-yellow-500", stroke: "#6366f1", ceilingColor: "#d97706", stationStroke: "#eab308", stationKey: "stationGas" },
   { key: "diesel",   label: "경유",   dot: "bg-green-500", stroke: "#8b5cf6", ceilingColor: "#16a34a", stationStroke: "#22c55e", stationKey: "stationDsl" },
   { key: "kerosene", label: "등유",   dot: "bg-sky-400",   stroke: "#ec4899", ceilingColor: "#0284c7", stationStroke: "#38bdf8", stationKey: "stationKero" },
 ] as const;

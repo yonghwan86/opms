@@ -302,9 +302,9 @@ export default function StationSearchPage() {
   }, [chartData]);
 
   const FUEL_COLORS: Record<FuelType, string> = {
-    gasoline: "#16a34a",
-    diesel:   "#2563eb",
-    kerosene: "#d97706",
+    gasoline: "#eab308",
+    diesel:   "#22c55e",
+    kerosene: "#38bdf8",
   };
 
   return (
@@ -395,10 +395,11 @@ export default function StationSearchPage() {
               key={f.type}
               data-testid={`tab-fuel-${f.type}`}
               onClick={() => setFuel(f.type)}
-              className={cn(
+              style={fuel === f.type ? { backgroundColor: FUEL_COLORS[f.type] } : undefined}
+            className={cn(
                 "px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0",
                 fuel === f.type
-                  ? "bg-green-600 text-white"
+                  ? "text-white"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
             >

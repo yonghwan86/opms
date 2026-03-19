@@ -95,7 +95,7 @@ interface StationSuggest { stationId: string; stationName: string; region: strin
 
 // ─── 최고가 유종 설정 ─────────────────────────────────────────────────────────
 const CEIL_FUEL_CONFIG = [
-  { key: "gasoline" as const, label: "휘발유", dot: "bg-amber-400", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
+  { key: "gasoline" as const, label: "휘발유", dot: "bg-yellow-500", stroke: "#eab308", ceilingColor: "#d97706", stationStroke: "#6366f1", stationKey: "stationGas" },
   { key: "diesel"   as const, label: "경유",   dot: "bg-green-500", stroke: "#22c55e", ceilingColor: "#16a34a", stationStroke: "#8b5cf6", stationKey: "stationDsl" },
   { key: "kerosene" as const, label: "등유",   dot: "bg-sky-400",   stroke: "#38bdf8", ceilingColor: "#0284c7", stationStroke: "#ec4899", stationKey: "stationKero" },
 ];
