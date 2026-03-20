@@ -752,7 +752,7 @@ export default function PublicDashboardPage() {
                 <div className="flex items-start justify-between gap-2 pb-2">
                   <div>
                     <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 제품가격 비교</h2>
-                    <p className="text-xs text-muted-foreground">국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 30일</p>
+                    <p className="text-xs text-muted-foreground">국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 {isMobile ? 30 : 90}일</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {([
@@ -789,7 +789,7 @@ export default function PublicDashboardPage() {
                     diesel: r => r.domesticDiesel,
                     kerosene: r => r.domesticKerosene,
                   };
-                  const chartRows = intlVsDomesticData.slice(-30).map(row => ({
+                  const chartRows = (isMobile ? intlVsDomesticData.slice(-30) : intlVsDomesticData).map(row => ({
                     label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
                     intl: intlSelector[comparisonFuel](row),
                     domestic: domSelector[comparisonFuel](row),
