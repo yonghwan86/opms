@@ -107,7 +107,15 @@ export async function runIntlPriceCrawler(): Promise<void> {
   }
 }
 
-export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<{ saved: number; dates: string[] }> {
+interface CsvUpsertResult {
+  saved: number;
+  dates: string[];
+  startDate: string | null;
+  endDate: string | null;
+  error?: string;
+}
+
+export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<CsvUpsertResult> {
   const buffer = Buffer.from(base64, "base64");
   let text = buffer.toString("utf-8").replace(/^\uFEFF/, "");
   if (!text.includes(",")) {
@@ -115,7 +123,7 @@ export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<{ sav
     text = iconv.decode(buffer, "euc-kr").replace(/^\uFEFF/, "");
   }
   const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return { saved: 0, dates: [] };
+  if (lines.length < 2) return { saved: 0, dates: [], startDate: null, endDate: null };
 
   const SKIP_KEYWORDS = ["전일비", "전주비", "전월동일비", "전년동일비", "평균"];
 
