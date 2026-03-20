@@ -141,6 +141,7 @@ export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<{ sav
     const kerosene = parseNumber(cols[4] ?? "");
     const diesel = parseNumber(cols[6] ?? "");
 
+    let rowError: unknown = null;
     try {
       await db.execute(sql`
         INSERT INTO intl_fuel_prices (date, gasoline, diesel, kerosene)
@@ -152,7 +153,15 @@ export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<{ sav
       `);
       saved++;
       savedDates.push(dateStr);
-    } catch { }
+    } catch (e) {
+      rowError = e;
+      console.error(`[IntlPriceCrawler] ${dateStr} upsert 실패:`, e);
+    }
+    if (rowError) {
+      return { saved, dates: savedDates, error: `${dateStr} 처리 중 DB 오류 발생` };
+    }
   }
-  return { saved, dates: savedDates };
+  const startDate = savedDates.length > 0 ? savedDates[0] : null;
+  const endDate = savedDates.length > 0 ? savedDates[savedDates.length - 1] : null;
+  return { saved, dates: savedDates, startDate, endDate };
 }

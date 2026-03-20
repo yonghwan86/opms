@@ -1671,11 +1671,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!base64) return res.status(400).json({ message: "base64 필드 필요" });
       const { parseAndUpsertIntlCsvBase64 } = await import("./services/intlPriceCrawler");
       const result = await parseAndUpsertIntlCsvBase64(base64);
+      if (result.error) {
+        return res.status(500).json({ message: result.error, savedCount: result.saved });
+      }
       res.json({
         ok: true,
         savedCount: result.saved,
         fileName: fileName ?? "unknown",
         dates: result.dates,
+        startDate: result.startDate,
+        endDate: result.endDate,
       });
     } catch (e) {
       console.error("[IntlUpload] 오류:", e);
@@ -1709,17 +1714,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         `),
       ]);
 
-      const intlMap = new Map<string, { gasoline: string | null; diesel: string | null; kerosene: string | null }>();
-      for (const r of intlRows.rows as any[]) {
-        intlMap.set(r.date, { gasoline: r.gasoline, diesel: r.diesel, kerosene: r.kerosene });
+      interface IntlRow { date: string; gasoline: string | null; diesel: string | null; kerosene: string | null }
+      interface DomesticRow { date: string; domestic_gasoline: string | null; domestic_diesel: string | null; domestic_kerosene: string | null }
+
+      const intlMap = new Map<string, IntlRow>();
+      for (const r of intlRows.rows as IntlRow[]) {
+        intlMap.set(r.date, r);
       }
-      const domesticMap = new Map<string, { domestic_gasoline: string | null; domestic_diesel: string | null; domestic_kerosene: string | null }>();
-      for (const r of domesticRows.rows as any[]) {
-        domesticMap.set(r.date, {
-          domestic_gasoline: r.domestic_gasoline,
-          domestic_diesel: r.domestic_diesel,
-          domestic_kerosene: r.domestic_kerosene,
-        });
+      const domesticMap = new Map<string, DomesticRow>();
+      for (const r of domesticRows.rows as DomesticRow[]) {
+        domesticMap.set(r.date, r);
       }
 
       const allDates = new Set([...Array.from(intlMap.keys()), ...Array.from(domesticMap.keys())]);
