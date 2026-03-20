@@ -50,12 +50,12 @@ function renderLegend(props: any) {
             key={entry.dataKey}
             style={{ display: "flex", alignItems: "center", gap: "5px" }}
           >
-            <svg width="22" height="10" style={{ flexShrink: 0 }}>
+            <svg width="28" height="10" style={{ flexShrink: 0 }}>
               <line
-                x1="1" y1="5" x2="21" y2="5"
+                x1="1" y1="5" x2="27" y2="5"
                 stroke={cfg.color}
                 strokeWidth="2.5"
-                strokeDasharray={cfg.dashed ? "5 2" : undefined}
+                strokeDasharray={cfg.dashed ? "5 5" : undefined}
                 strokeLinecap="round"
               />
             </svg>
@@ -180,12 +180,12 @@ export function LegendDemo() {
               <div className="flex flex-col gap-2">
                 {Object.entries(SERIES_CONFIG).map(([key, cfg]) => (
                   <div key={key} className="flex items-center gap-2">
-                    <svg width="22" height="10">
+                    <svg width="28" height="10">
                       <line
-                        x1="1" y1="5" x2="21" y2="5"
+                        x1="1" y1="5" x2="27" y2="5"
                         stroke={cfg.color}
                         strokeWidth="2.5"
-                        strokeDasharray={cfg.dashed ? "5 2" : undefined}
+                        strokeDasharray={cfg.dashed ? "5 5" : undefined}
                         strokeLinecap="round"
                       />
                     </svg>
