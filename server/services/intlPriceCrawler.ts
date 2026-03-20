@@ -137,6 +137,7 @@ export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<CsvUp
 
   let prevMonth = 0;
   let year = new Date().getFullYear();
+  let firstDataRow = true;
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",");
@@ -152,7 +153,13 @@ export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<CsvUp
     const dateStr = `${year}${pad2(md.month)}${pad2(md.day)}`;
     const gasoline = parseNumber(cols[3] ?? "");
     const kerosene = parseNumber(cols[4] ?? "");
-    const diesel = parseNumber(cols[6] ?? "");
+    const diesel = parseNumber(cols[5] ?? "") ?? parseNumber(cols[6] ?? "");
+
+    if (firstDataRow) {
+      console.log(`[IntlPriceCrawler] CSV 첫행 컬럼 디버그 — 날짜:${dateStr} cols:${cols.slice(0, 10).map((v, i) => `[${i}]${v.trim()}`).join(" ")}`);
+      console.log(`[IntlPriceCrawler] 파싱결과 — 휘발유(col3):${gasoline} 등유(col4):${kerosene} 경유(col5/6):${diesel}`);
+      firstDataRow = false;
+    }
 
     let rowError: unknown = null;
     try {
@@ -161,7 +168,7 @@ export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<CsvUp
         VALUES (${dateStr}, ${gasoline}, ${diesel}, ${kerosene})
         ON CONFLICT (date) DO UPDATE SET
           gasoline = EXCLUDED.gasoline,
-          diesel = EXCLUDED.diesel,
+          diesel = COALESCE(EXCLUDED.diesel, intl_fuel_prices.diesel),
           kerosene = EXCLUDED.kerosene
       `);
       saved++;

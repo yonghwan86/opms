@@ -71,10 +71,12 @@ export async function runStationCoordScraper(): Promise<void> {
 
   try {
     const rows = await db.execute(sql`
-      SELECT DISTINCT station_id, station_name, region, sido
-      FROM oil_price_raw
-      WHERE station_id IS NOT NULL AND station_id != ''
-      ORDER BY station_id
+      SELECT DISTINCT opr.station_id, opr.station_name, opr.region, opr.sido
+      FROM oil_price_raw opr
+      LEFT JOIN gas_stations_master gsm ON opr.station_id = gsm.station_id
+      WHERE opr.station_id IS NOT NULL AND opr.station_id != ''
+        AND (gsm.station_id IS NULL OR gsm.gis_x IS NULL)
+      ORDER BY opr.station_id
     `);
 
     const stations = rows.rows as { station_id: string; station_name: string; region: string; sido: string }[];
