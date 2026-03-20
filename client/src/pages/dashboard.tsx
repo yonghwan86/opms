@@ -263,6 +263,16 @@ export default function DashboardPage() {
     queryKey: ["/api/dashboard/domestic-history"],
     staleTime: 2 * 60 * 1000,
   });
+  type IntlVsDomesticRow = {
+    date: string;
+    intlGasoline: number | null; intlDiesel: number | null; intlKerosene: number | null;
+    domesticGasoline: number | null; domesticDiesel: number | null; domesticKerosene: number | null;
+  };
+  const { data: intlVsDomesticData = [] } = useQuery<IntlVsDomesticRow[]>({
+    queryKey: ["/api/public/intl-vs-domestic"],
+    staleTime: 10 * 60 * 1000,
+    enabled: oilAnalysisTab === 'comparison',
+  });
   const { data: availableDates = [] } = useQuery<string[]>({
     queryKey: ["/api/oil-prices/available-dates"],
     staleTime: 5 * 60 * 1000,
@@ -363,7 +373,8 @@ export default function DashboardPage() {
   const TOTAL_SLIDES = 5;
 
   // 유가 분석 카드 탭 (MASTER=국제-국내 연동, HQ_USER=지역별 추이)
-  const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'regional'>(isMaster ? 'global' : 'regional');
+  const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'comparison' | 'regional'>(isMaster ? 'global' : 'regional');
+  const [comparisonFuel, setComparisonFuel] = useState<'gasoline' | 'diesel' | 'kerosene'>('gasoline');
 
   // 지역별 순위 탭
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
@@ -424,7 +435,13 @@ export default function DashboardPage() {
     return chartH + 100; // 헤더(~80px) + 상하 패딩(~20px)
   }, [regional, regionalTab]);
 
-  // 차트 데이터 병합 (WTI + 국내)
+  // 차트 데이터 병합 (WTI + 국내) — 날짜 기준 90일 필터
+  const cutoff90 = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 90);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
   const chartData = useMemo(() => {
     const domMap = new Map(domesticHistory.map(d => [
       `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`,
@@ -435,14 +452,17 @@ export default function DashboardPage() {
       ...domesticHistory.map(d => `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`),
       ...(wtiRes?.history ?? []).map(h => h.date),
     ]);
-    return Array.from(allDates).sort().map(date => ({
-      date,
-      label: date.slice(5),
-      wti: wtiMap.get(date) ?? null,
-      gasoline: domMap.get(date)?.gasoline ?? null,
-      diesel: domMap.get(date)?.diesel ?? null,
-    }));
-  }, [wtiRes, domesticHistory]);
+    return Array.from(allDates)
+      .filter(date => date >= cutoff90)
+      .sort()
+      .map(date => ({
+        date,
+        label: date.slice(5),
+        wti: wtiMap.get(date) ?? null,
+        gasoline: domMap.get(date)?.gasoline ?? null,
+        diesel: domMap.get(date)?.diesel ?? null,
+      }));
+  }, [wtiRes, domesticHistory, cutoff90]);
 
   const regionalChartData = useMemo(() => {
     return regionalHistory.map(d => ({
@@ -454,7 +474,7 @@ export default function DashboardPage() {
   }, [regionalHistory]);
 
   const displayChartData = useMemo(() =>
-    isMobile ? chartData.slice(-7) : chartData.slice(-90),
+    isMobile ? chartData.slice(-7) : chartData,
   [isMobile, chartData]);
 
   const displayRegionalChartData = useMemo(() =>
@@ -795,10 +815,16 @@ export default function DashboardPage() {
                 <h2 className="text-sm md:text-base font-semibold text-foreground leading-snug">
                   {isMobile
                     ? '유가 연동 분석'
-                    : oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석' : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
+                    : oilAnalysisTab === 'global' ? '국제-국내 유가 연동 분석'
+                    : oilAnalysisTab === 'comparison' ? '국제-국내 제품가격 비교'
+                    : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
                 </h2>
                 <div className="flex gap-1 flex-shrink-0">
-                  {([['global', isMobile ? '국제' : '국제-국내 유가'], ['regional', '지역별 추이']] as const).map(([key, label]) => (
+                  {([
+                    ['global', isMobile ? '국제유가' : '국제-국내 유가'],
+                    ['comparison', isMobile ? '제품비교' : '국제-국내 제품비교'],
+                    ['regional', '지역별 추이'],
+                  ] as const).map(([key, label]) => (
                     <button
                       key={key}
                       onClick={() => setOilAnalysisTab(key)}
@@ -816,6 +842,8 @@ export default function DashboardPage() {
               <p className="text-xs md:text-sm text-muted-foreground">
                 {oilAnalysisTab === 'global'
                   ? 'WTI 국제 유가 vs 국내 평균 유가'
+                  : oilAnalysisTab === 'comparison'
+                  ? '국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 90일'
                   : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
               </p>
             </div>
@@ -879,7 +907,70 @@ export default function DashboardPage() {
                   <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
                 </ComposedChart>
               </ResponsiveContainer>
-            ) : (
+            ) : oilAnalysisTab === 'comparison' ? (() => {
+              const fuelColor = comparisonFuel === 'gasoline' ? '#eab308' : comparisonFuel === 'diesel' ? '#22c55e' : '#38bdf8';
+              const fuelLabel = comparisonFuel === 'gasoline' ? '휘발유' : comparisonFuel === 'diesel' ? '경유' : '등유';
+              type FuelSel = (r: IntlVsDomesticRow) => number | null;
+              const intlSel: Record<typeof comparisonFuel, FuelSel> = {
+                gasoline: r => r.intlGasoline, diesel: r => r.intlDiesel, kerosene: r => r.intlKerosene,
+              };
+              const domSel: Record<typeof comparisonFuel, FuelSel> = {
+                gasoline: r => r.domesticGasoline, diesel: r => r.domesticDiesel, kerosene: r => r.domesticKerosene,
+              };
+              const compRows = intlVsDomesticData.map(row => ({
+                label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
+                intl: intlSel[comparisonFuel](row),
+                domestic: domSel[comparisonFuel](row),
+              }));
+              return (
+                <div>
+                  <div className="flex gap-1 justify-end pb-1 pt-0.5">
+                    {([
+                      { id: 'gasoline', label: '휘발유', active: 'bg-yellow-100 text-yellow-700 border-yellow-400', color: '#eab308' },
+                      { id: 'diesel', label: '경유', active: 'bg-green-100 text-green-700 border-green-400', color: '#22c55e' },
+                      { id: 'kerosene', label: '등유', active: 'bg-sky-100 text-sky-700 border-sky-400', color: '#38bdf8' },
+                    ] as const).map(f => (
+                      <button key={f.id}
+                        onClick={() => setComparisonFuel(f.id)}
+                        data-testid={`btn-comparison-${f.id}`}
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded border font-medium transition-colors",
+                          comparisonFuel === f.id ? f.active : "bg-background text-muted-foreground border-border hover:bg-muted/50"
+                        )}>{f.label}</button>
+                    ))}
+                  </div>
+                  <ResponsiveContainer width="100%" height={310}>
+                    <ComposedChart data={compRows} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                      <XAxis dataKey="label"
+                        tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
+                        tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
+                        interval={isMobile ? Math.max(0, Math.ceil(compRows.length / 4) - 1) : Math.max(0, Math.floor(compRows.length / 6) - 1)}
+                        height={36} padding={{ left: 24, right: 24 }} tickMargin={10}
+                      />
+                      <YAxis yAxisId="intl" orientation="left"
+                        tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
+                        tickFormatter={v => `$${v}`} domain={["auto", "auto"]} tickCount={6} width={56} axisLine={false} tickLine={false}
+                      />
+                      <YAxis yAxisId="domestic" orientation="right"
+                        tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
+                        tickFormatter={v => `${fmt(v)}원`} domain={["auto", "auto"]} tickCount={6} width={64} axisLine={false} tickLine={false}
+                      />
+                      <Tooltip formatter={(value: any, name: string) => {
+                        if (name === 'intl') return [`$${typeof value === 'number' ? value.toFixed(2) : value}`, `${fuelLabel} (국제, $/Bbl)`];
+                        if (name === 'domestic') return [`${typeof value === 'number' ? fmt(value) : value}원`, `${fuelLabel} (국내, 원/L)`];
+                        return [value, name];
+                      }} />
+                      <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="circle" iconSize={10}
+                        formatter={(val) => val === 'intl' ? `${fuelLabel} 국제 ($/Bbl)` : `${fuelLabel} 국내 (원/L)`}
+                      />
+                      <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
+                      <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })() : (
               displayRegionalChartData.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[340px]">
                   <p className="text-sm text-muted-foreground">데이터 없음</p>
