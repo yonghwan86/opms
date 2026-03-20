@@ -537,9 +537,9 @@ export default function StationSearchPage() {
                       }}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
-                      iconType="circle"
-                      iconSize={10}
+                      wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }}
+                      iconType="line"
+                      iconSize={isMobile ? 12 : 20}
                       formatter={(val: string) =>
                         val === "gasoline" ? "휘발유" : val === "diesel" ? "경유" : "등유"
                       }

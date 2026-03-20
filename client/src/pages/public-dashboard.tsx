@@ -733,7 +733,7 @@ export default function PublicDashboardPage() {
                       tickFormatter={v => `${fmt(v)}원`} domain={["auto", "auto"]} tickCount={6} width={64} axisLine={false} tickLine={false}
                     />
                     <Tooltip content={<ChartTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="circle" iconSize={10}
+                    <Legend wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }} iconType="line" iconSize={isMobile ? 12 : 20}
                       formatter={(val) => val === "wti" ? "WTI (국제)" : val === "gasoline" ? "휘발유" : "경유"}
                     />
                     <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
@@ -817,7 +817,7 @@ export default function PublicDashboardPage() {
                           if (name === 'domestic') return [`${typeof value === 'number' ? fmt(value) : value}원`, `${fuelLabel} (국내, 원/L)`];
                           return [value, name];
                         }} />
-                        <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="circle" iconSize={10}
+                        <Legend wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }} iconType="line" iconSize={isMobile ? 12 : 20}
                           formatter={(val) => val === 'intl' ? `${fuelLabel} 국제 ($/Bbl)` : `${fuelLabel} 국내 (원/L)`}
                         />
                         <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
@@ -969,17 +969,45 @@ export default function PublicDashboardPage() {
                         domain={[ceilYMin, ceilYMax]} tickCount={7} width={72} axisLine={false} tickLine={false}
                       />
                       <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} stationData={ceilStationData} ceilingLabel={ceilLabel} effectiveDateRaw={ceilDate ? ceilDate.replace(/-/g, "") : ""} />} />
-                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8}
-                        formatter={(v: string) => {
-                          const isStation = v.startsWith("station");
-                          const label =
-                            v === "stationGas"  ? `${ceilStation?.stationName ?? "주유소"} (휘발유)` :
-                            v === "stationDsl"  ? `${ceilStation?.stationName ?? "주유소"} (경유)` :
-                            v === "stationKero" ? `${ceilStation?.stationName ?? "주유소"} (등유)` :
-                            v === "gasolineAvg" ? "휘발유 평균" :
-                            v === "dieselAvg"   ? "경유 평균" :
-                            v === "keroseneAvg" ? "등유 평균" : v;
-                          return <span style={{ color: isStation ? '#111827' : '#9ca3af', fontWeight: isStation ? 700 : 400 }}>{label}</span>;
+                      <Legend
+                        wrapperStyle={{ paddingTop: 8 }}
+                        content={(props: any) => {
+                          const { payload } = props;
+                          if (!payload) return null;
+                          const svgW = isMobile ? 16 : 28;
+                          const x2 = svgW - 1;
+                          const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg"]);
+                          const getLabel = (key: string) => {
+                            if (key === "stationGas")  return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
+                            if (key === "stationDsl")  return `${ceilStation?.stationName ?? "주유소"} (경유)`;
+                            if (key === "stationKero") return `${ceilStation?.stationName ?? "주유소"} (등유)`;
+                            if (key === "gasolineAvg") return "휘발유 평균";
+                            if (key === "dieselAvg")   return "경유 평균";
+                            if (key === "keroseneAvg") return "등유 평균";
+                            return key;
+                          };
+                          return (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "8px" : "14px", justifyContent: "center", paddingTop: "2px" }}>
+                              {payload.map((entry: any) => {
+                                const isDashed = DASHED.has(entry.dataKey);
+                                const isStation = entry.dataKey.startsWith("station");
+                                return (
+                                  <div key={entry.dataKey} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                    <svg width={svgW} height="10" style={{ flexShrink: 0 }}>
+                                      <line x1="1" y1="5" x2={x2} y2="5"
+                                        stroke={entry.color} strokeWidth="2.5"
+                                        strokeDasharray={isDashed ? (isMobile ? "3 3" : "5 5") : undefined}
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                    <span style={{ fontSize: isMobile ? "10px" : "11px", color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
+                                      {getLabel(entry.dataKey)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
                         }}
                       />
                       {/* 최고가 기준선 */}

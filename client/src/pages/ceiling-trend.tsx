@@ -10,6 +10,7 @@ import {
 import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 interface CeilingPrice {
@@ -290,6 +291,7 @@ function StationSearch({ value, onChange, onSelect, sido }: {
 // ─── 메인 ─────────────────────────────────────────────────────────────────────
 export default function CeilingTrendPage() {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [fuels, setFuels] = useState<Record<FuelKey, boolean>>({
     gasoline: true, diesel: true, kerosene: false,
   });
@@ -697,19 +699,44 @@ export default function CeilingTrendPage() {
                   }
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(v: string) => {
-                    const isStation = v.startsWith("station");
-                    const label =
-                      v === "stationGas"  ? `${selectedStation?.stationName ?? "주유소"} (휘발유)` :
-                      v === "stationDsl"  ? `${selectedStation?.stationName ?? "주유소"} (경유)` :
-                      v === "stationKero" ? `${selectedStation?.stationName ?? "주유소"} (등유)` :
-                      v === "gasolineAvg" ? "휘발유 지역평균" :
-                      v === "dieselAvg"   ? "경유 지역평균" :
-                      v === "keroseneAvg" ? "등유 지역평균" : v;
-                    return <span style={{ color: isStation ? '#111827' : '#9ca3af', fontWeight: isStation ? 700 : 400 }}>{label}</span>;
+                  wrapperStyle={{ paddingTop: 8 }}
+                  content={(props: any) => {
+                    const { payload } = props;
+                    if (!payload) return null;
+                    const svgW = isMobile ? 16 : 28;
+                    const x2 = svgW - 1;
+                    const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg"]);
+                    const getLabel = (key: string) => {
+                      if (key === "stationGas")  return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
+                      if (key === "stationDsl")  return `${selectedStation?.stationName ?? "주유소"} (경유)`;
+                      if (key === "stationKero") return `${selectedStation?.stationName ?? "주유소"} (등유)`;
+                      if (key === "gasolineAvg") return "휘발유 지역평균";
+                      if (key === "dieselAvg")   return "경유 지역평균";
+                      if (key === "keroseneAvg") return "등유 지역평균";
+                      return key;
+                    };
+                    return (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "8px" : "14px", justifyContent: "center", paddingTop: "2px" }}>
+                        {payload.map((entry: any) => {
+                          const isDashed = DASHED.has(entry.dataKey);
+                          const isStation = entry.dataKey.startsWith("station");
+                          return (
+                            <div key={entry.dataKey} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                              <svg width={svgW} height="10" style={{ flexShrink: 0 }}>
+                                <line x1="1" y1="5" x2={x2} y2="5"
+                                  stroke={entry.color} strokeWidth="2.5"
+                                  strokeDasharray={isDashed ? (isMobile ? "3 3" : "5 5") : undefined}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <span style={{ fontSize: isMobile ? "10px" : "11px", color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
+                                {getLabel(entry.dataKey)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
                   }}
                 />
 

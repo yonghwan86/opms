@@ -892,8 +892,8 @@ export default function DashboardPage() {
                   <Tooltip content={<ChartTooltip />} />
                   <Legend
                     wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }}
-                    iconType="circle"
-                    iconSize={10}
+                    iconType="line"
+                    iconSize={isMobile ? 12 : 20}
                     formatter={(val) => {
                       if (val === "wti") return isMobile ? "WTI" : "WTI (국제)";
                       if (val === "gasoline") return "휘발유";
@@ -960,7 +960,7 @@ export default function DashboardPage() {
                         if (name === 'domestic') return [`${typeof value === 'number' ? fmt(value) : value}원`, `${fuelLabel} (국내, 원/L)`];
                         return [value, name];
                       }} />
-                      <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} iconType="circle" iconSize={10}
+                      <Legend wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }} iconType="line" iconSize={isMobile ? 12 : 20}
                         formatter={(val) => val === 'intl' ? `${fuelLabel} 국제 ($/Bbl)` : `${fuelLabel} 국내 (원/L)`}
                       />
                       <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
@@ -1000,9 +1000,9 @@ export default function DashboardPage() {
                     />
                     <Tooltip content={<ChartTooltip />} />
                     <Legend
-                      wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
-                      iconType="circle"
-                      iconSize={10}
+                      wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }}
+                      iconType="line"
+                      iconSize={isMobile ? 12 : 20}
                       formatter={(val) => {
                         if (val === "gasoline") return "휘발유";
                         if (val === "diesel") return "경유";
