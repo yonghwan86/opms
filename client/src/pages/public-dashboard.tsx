@@ -17,28 +17,30 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const appIconSrc = "/icon-192.png";
 
-// ─── 위치 훅 (Opinet GIS 기반 역지오코딩) ────────────────────────────────────
+// ─── 위치 훅 (Nominatim 역지오코딩) ─────────────────────────────────────────
+interface GeoData { region: string; sido: string; }
 function useGeoRegion() {
-  const [region, setRegion] = useState<string | null | undefined>(undefined); // undefined=감지중, null=거부/실패
+  const [geoData, setGeoData] = useState<GeoData | null | undefined>(undefined); // undefined=감지중, null=거부/실패
   useEffect(() => {
-    if (!navigator.geolocation) { setRegion(null); return; }
+    if (!navigator.geolocation) { setGeoData(null); return; }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
           const { latitude: lat, longitude: lon } = pos.coords;
           const res = await fetch(`/api/public/geocode?lat=${lat}&lon=${lon}`);
-          if (!res.ok) { setRegion(null); return; }
+          if (!res.ok) { setGeoData(null); return; }
           const data = await res.json();
-          setRegion(data.region ?? null);
+          if (data.region && data.sido) setGeoData({ region: data.region, sido: data.sido });
+          else setGeoData(null);
         } catch {
-          setRegion(null);
+          setGeoData(null);
         }
       },
-      () => setRegion(null),
+      () => setGeoData(null),
       { timeout: 8000 }
     );
   }, []);
-  return region;
+  return geoData;
 }
 
 // ─── 타입 ────────────────────────────────────────────────────────────────────
@@ -302,10 +304,14 @@ function ChartTooltip({ active, payload, label }: any) {
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function PublicDashboardPage() {
-  const geoRegion = useGeoRegion(); // undefined=감지중, null=전국, string=시군구
-  const isGeoLoading = geoRegion === undefined;
-  const regionParam = geoRegion ? `?region=${encodeURIComponent(geoRegion)}` : "";
-  const regionLabel = geoRegion ?? "전국";
+  const geoData = useGeoRegion(); // undefined=감지중, null=전국, {region,sido}=성공
+  const isGeoLoading = geoData === undefined;
+  // 편차/fuel-stats: 시/군/구 단위 (성남시 → ?region=경기+성남시)
+  const spreadParam = geoData ? `?region=${encodeURIComponent(geoData.region)}` : "";
+  // 지역별 순위: sido 단위 → 도 내 시/군 or 광역시 내 구 집계
+  const regionalParam = geoData ? `?region=${encodeURIComponent(geoData.sido)}` : "";
+  const regionLabel = geoData?.region ?? "전국";
+  const geoRegion = geoData?.region ?? null; // 표시용
 
   const isMobile = useIsMobile();
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
@@ -342,13 +348,13 @@ export default function PublicDashboardPage() {
   });
   const { data: fuelStats, isLoading: fuelLoading } = useQuery<FuelStats>({
     queryKey: ["/api/public/fuel-stats", geoRegion],
-    queryFn: () => fetch(`/api/public/fuel-stats${regionParam}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/public/fuel-stats${spreadParam}`).then(r => r.json()),
     enabled: !isGeoLoading,
     staleTime: 2 * 60 * 1000,
   });
   const { data: regional = [], isLoading: regionalLoading } = useQuery<RegionalAvg[]>({
-    queryKey: ["/api/public/regional-averages", geoRegion],
-    queryFn: () => fetch(`/api/public/regional-averages${regionParam}`).then(r => r.json()),
+    queryKey: ["/api/public/regional-averages", geoData?.sido ?? null],
+    queryFn: () => fetch(`/api/public/regional-averages${regionalParam}`).then(r => r.json()),
     enabled: !isGeoLoading,
     staleTime: 2 * 60 * 1000,
   });
@@ -1016,7 +1022,14 @@ export default function PublicDashboardPage() {
                   <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {regionalTab === 'diesel' ? "경유" : "휘발유"}{" "}
-                    {isGeoLoading ? "위치 확인 중" : geoRegion ? `${geoRegion} 시/군/구별` : "시/도별"} 평균
+                    {isGeoLoading ? "위치 확인 중" : geoData
+                      ? (() => {
+                          const METRO = new Set(["서울","부산","대구","인천","광주","대전","울산"]);
+                          return METRO.has(geoData.sido)
+                            ? `${geoData.sido} 구별`
+                            : `${geoData.sido} 시/군별`;
+                        })()
+                      : "시/도별"} 평균
                   </p>
                 </div>
                 <div className="flex gap-1">

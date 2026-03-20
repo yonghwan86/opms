@@ -1604,7 +1604,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // GET /api/public/geocode?lat=&lon= — GPS → 가장 가까운 주유소 지역 반환
+  // GET /api/public/geocode?lat=&lon= — GPS → Nominatim 역지오코딩 → 오피넷 지역 반환
   app.get("/api/public/geocode", async (req, res) => {
     try {
       const lat = parseFloat(req.query.lat as string);
@@ -1612,27 +1612,55 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!isFinite(lat) || !isFinite(lon)) {
         return res.status(400).json({ message: "lat, lon 파라미터 필요" });
       }
-      // KATEC 좌표계 근사 변환: FE=400000, FN=600000, lon0=128, lat0=38
-      const katecX = 400000 + (lon - 128) * 88270;
-      const katecY = 600000 + (lat - 38) * 110574;
 
-      const { sql } = await import("drizzle-orm");
-      const { db } = await import("./db");
-      const rows = await db.execute(sql`
-        SELECT region, sido
-        FROM gas_stations_master
-        WHERE gis_x IS NOT NULL AND gis_y IS NOT NULL AND region IS NOT NULL AND region != ''
-        ORDER BY
-          power(CAST(gis_x AS float8) - ${katecX}, 2) +
-          power(CAST(gis_y AS float8) - ${katecY}, 2)
-        LIMIT 1
-      `);
-      if (!rows.rows.length) {
-        return res.status(404).json({ message: "주유소 데이터 없음 - 관리자에게 좌표 수집 요청" });
+      // Nominatim 역지오코딩
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`;
+      const nomRes = await fetch(nominatimUrl, {
+        headers: { "User-Agent": "KPETRO-OPMS/1.0 contact@kpetro.or.kr" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!nomRes.ok) return res.status(502).json({ message: "역지오코딩 실패" });
+      const nomData = await nomRes.json();
+      const addr = nomData.address ?? {};
+
+      // 오피넷 sido 약칭 매핑
+      const PROVINCE_MAP: Record<string, string> = {
+        "서울특별시": "서울", "부산광역시": "부산", "대구광역시": "대구",
+        "인천광역시": "인천", "광주광역시": "광주", "대전광역시": "대전",
+        "울산광역시": "울산", "세종특별자치시": "세종시",
+        "경기도": "경기", "강원특별자치도": "강원", "강원도": "강원",
+        "충청북도": "충북", "충청남도": "충남",
+        "전북특별자치도": "전북", "전라북도": "전북", "전라남도": "전남",
+        "경상북도": "경북", "경상남도": "경남", "제주특별자치도": "제주",
+      };
+      const METRO = new Set(["서울", "부산", "대구", "인천", "광주", "대전", "울산"]);
+
+      // 광역시는 province 없이 city에 "서울특별시" 등이 오는 경우가 있음
+      const rawProvince = addr.province ?? addr.state ?? addr.city ?? "";
+      const sido = PROVINCE_MAP[rawProvince] ?? (PROVINCE_MAP[addr.city ?? ""] ?? "");
+      if (!sido) {
+        console.warn("[geocode] province 매핑 실패:", JSON.stringify(addr));
+        return res.status(422).json({ message: "지역 식별 불가", addr });
       }
-      const row = rows.rows[0] as { region: string; sido: string };
-      res.json({ region: row.region, sido: row.sido });
+
+      // 시/군/구 파악
+      let sigungu: string;
+      if (METRO.has(sido)) {
+        // 광역시: borough(구) > city_district > suburb 순
+        sigungu = addr.borough ?? addr.city_district ?? addr.suburb ?? addr.quarter ?? "";
+      } else {
+        // 도: city(시) > county(군) > town 순
+        sigungu = addr.city ?? addr.county ?? addr.town ?? "";
+      }
+      if (!sigungu) {
+        console.warn("[geocode] sigungu 식별 실패:", JSON.stringify(addr));
+        return res.status(422).json({ message: "시/군/구 식별 불가", addr });
+      }
+
+      const region = `${sido} ${sigungu}`;
+      res.json({ region, sido });
     } catch (e) {
+      console.error("[geocode] 오류:", e);
       res.status(500).json({ message: "서버 오류" });
     }
   });
