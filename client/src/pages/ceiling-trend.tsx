@@ -11,6 +11,7 @@ import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck, Download } 
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 interface CeilingPrice {
@@ -292,6 +293,7 @@ function StationSearch({ value, onChange, onSelect, sido }: {
 export default function CeilingTrendPage() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const bp = useBreakpoint();
   const [fuels, setFuels] = useState<Record<FuelKey, boolean>>({
     gasoline: true, diesel: true, kerosene: false,
   });
@@ -703,8 +705,11 @@ export default function CeilingTrendPage() {
                   content={(props: any) => {
                     const { payload } = props;
                     if (!payload) return null;
-                    const svgW = isMobile ? 16 : 28;
+                    const svgW = ({ mobile: 16, tablet: 20, desktop: 28 } as const)[bp];
                     const x2 = svgW - 1;
+                    const dash = ({ mobile: "3 3", tablet: "4 4", desktop: "5 5" } as const)[bp];
+                    const gap  = ({ mobile: "8px", tablet: "10px", desktop: "14px" } as const)[bp];
+                    const fs   = ({ mobile: "10px", tablet: "10px", desktop: "11px" } as const)[bp];
                     const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg"]);
                     const getLabel = (key: string) => {
                       if (key === "stationGas")  return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
@@ -716,7 +721,7 @@ export default function CeilingTrendPage() {
                       return key;
                     };
                     return (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "8px" : "14px", justifyContent: "center", paddingTop: "2px" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap, justifyContent: "center", paddingTop: "2px" }}>
                         {payload.map((entry: any) => {
                           const isDashed = DASHED.has(entry.dataKey);
                           const isStation = entry.dataKey.startsWith("station");
@@ -725,11 +730,11 @@ export default function CeilingTrendPage() {
                               <svg width={svgW} height="10" style={{ flexShrink: 0 }}>
                                 <line x1="1" y1="5" x2={x2} y2="5"
                                   stroke={entry.color} strokeWidth="2.5"
-                                  strokeDasharray={isDashed ? (isMobile ? "3 3" : "5 5") : undefined}
+                                  strokeDasharray={isDashed ? dash : undefined}
                                   strokeLinecap="round"
                                 />
                               </svg>
-                              <span style={{ fontSize: isMobile ? "10px" : "11px", color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
+                              <span style={{ fontSize: fs, color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
                                 {getLabel(entry.dataKey)}
                               </span>
                             </div>

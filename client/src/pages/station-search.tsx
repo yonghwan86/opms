@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { useQuery } from "@tanstack/react-query";
 import { Layout, PageHeader } from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,6 +97,7 @@ export default function StationSearchPage() {
   const [graphFuels, setGraphFuels] = useState<Set<FuelType>>(new Set<FuelType>(["gasoline", "diesel"]));
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const bp = useBreakpoint();
 
   function toggleGraphFuel(f: FuelType) {
     setGraphFuels(prev => {
@@ -537,9 +539,9 @@ export default function StationSearchPage() {
                       }}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }}
+                      wrapperStyle={{ fontSize: ({ mobile: 11, tablet: 12, desktop: 13 } as const)[bp], paddingTop: 8 }}
                       iconType="line"
-                      iconSize={isMobile ? 12 : 20}
+                      iconSize={({ mobile: 12, tablet: 14, desktop: 20 } as const)[bp]}
                       formatter={(val: string) =>
                         val === "gasoline" ? "휘발유" : val === "diesel" ? "경유" : "등유"
                       }

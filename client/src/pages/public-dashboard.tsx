@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -314,6 +315,7 @@ export default function PublicDashboardPage() {
   const geoRegion = geoData?.region ?? null; // 표시용
 
   const isMobile = useIsMobile();
+  const bp = useBreakpoint();
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalScope, setRegionalScope] = useState<'local' | 'national'>('local');
@@ -733,7 +735,7 @@ export default function PublicDashboardPage() {
                       tickFormatter={v => `${fmt(v)}원`} domain={["auto", "auto"]} tickCount={6} width={64} axisLine={false} tickLine={false}
                     />
                     <Tooltip content={<ChartTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }} iconType="line" iconSize={isMobile ? 12 : 20}
+                    <Legend wrapperStyle={{ fontSize: ({ mobile: 11, tablet: 12, desktop: 13 } as const)[bp], paddingTop: 8 }} iconType="line" iconSize={({ mobile: 12, tablet: 14, desktop: 20 } as const)[bp]}
                       formatter={(val) => val === "wti" ? "WTI (국제)" : val === "gasoline" ? "휘발유" : "경유"}
                     />
                     <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
@@ -817,7 +819,7 @@ export default function PublicDashboardPage() {
                           if (name === 'domestic') return [`${typeof value === 'number' ? fmt(value) : value}원`, `${fuelLabel} (국내, 원/L)`];
                           return [value, name];
                         }} />
-                        <Legend wrapperStyle={{ fontSize: isMobile ? 11 : 13, paddingTop: 8 }} iconType="line" iconSize={isMobile ? 12 : 20}
+                        <Legend wrapperStyle={{ fontSize: ({ mobile: 11, tablet: 12, desktop: 13 } as const)[bp], paddingTop: 8 }} iconType="line" iconSize={({ mobile: 12, tablet: 14, desktop: 20 } as const)[bp]}
                           formatter={(val) => val === 'intl' ? `${fuelLabel} 국제 ($/Bbl)` : `${fuelLabel} 국내 (원/L)`}
                         />
                         <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
@@ -974,8 +976,11 @@ export default function PublicDashboardPage() {
                         content={(props: any) => {
                           const { payload } = props;
                           if (!payload) return null;
-                          const svgW = isMobile ? 16 : 28;
+                          const svgW = ({ mobile: 16, tablet: 20, desktop: 28 } as const)[bp];
                           const x2 = svgW - 1;
+                          const dash = ({ mobile: "3 3", tablet: "4 4", desktop: "5 5" } as const)[bp];
+                          const gap  = ({ mobile: "8px", tablet: "10px", desktop: "14px" } as const)[bp];
+                          const fs   = ({ mobile: "10px", tablet: "10px", desktop: "11px" } as const)[bp];
                           const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg"]);
                           const getLabel = (key: string) => {
                             if (key === "stationGas")  return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
@@ -987,7 +992,7 @@ export default function PublicDashboardPage() {
                             return key;
                           };
                           return (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "8px" : "14px", justifyContent: "center", paddingTop: "2px" }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap, justifyContent: "center", paddingTop: "2px" }}>
                               {payload.map((entry: any) => {
                                 const isDashed = DASHED.has(entry.dataKey);
                                 const isStation = entry.dataKey.startsWith("station");
@@ -996,11 +1001,11 @@ export default function PublicDashboardPage() {
                                     <svg width={svgW} height="10" style={{ flexShrink: 0 }}>
                                       <line x1="1" y1="5" x2={x2} y2="5"
                                         stroke={entry.color} strokeWidth="2.5"
-                                        strokeDasharray={isDashed ? (isMobile ? "3 3" : "5 5") : undefined}
+                                        strokeDasharray={isDashed ? dash : undefined}
                                         strokeLinecap="round"
                                       />
                                     </svg>
-                                    <span style={{ fontSize: isMobile ? "10px" : "11px", color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
+                                    <span style={{ fontSize: fs, color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
                                       {getLabel(entry.dataKey)}
                                     </span>
                                   </div>
