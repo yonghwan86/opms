@@ -1602,6 +1602,64 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/public/geocode?lat=&lon= — GPS → 가장 가까운 주유소 지역 반환
+  app.get("/api/public/geocode", async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lon = parseFloat(req.query.lon as string);
+      if (!isFinite(lat) || !isFinite(lon)) {
+        return res.status(400).json({ message: "lat, lon 파라미터 필요" });
+      }
+      // KATEC 좌표계 근사 변환: FE=400000, FN=600000, lon0=128, lat0=38
+      const katecX = 400000 + (lon - 128) * 88270;
+      const katecY = 600000 + (lat - 38) * 110574;
+
+      const { sql } = await import("drizzle-orm");
+      const { db } = await import("./db");
+      const rows = await db.execute(sql`
+        SELECT region, sido
+        FROM gas_stations_master
+        WHERE gis_x IS NOT NULL AND gis_y IS NOT NULL AND region IS NOT NULL AND region != ''
+        ORDER BY
+          power(CAST(gis_x AS float8) - ${katecX}, 2) +
+          power(CAST(gis_y AS float8) - ${katecY}, 2)
+        LIMIT 1
+      `);
+      if (!rows.rows.length) {
+        return res.status(404).json({ message: "주유소 데이터 없음 - 관리자에게 좌표 수집 요청" });
+      }
+      const row = rows.rows[0] as { region: string; sido: string };
+      res.json({ region: row.region, sido: row.sido });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // POST /api/admin/stations/collect-coords — 주유소 좌표 수집 잡 실행 (MASTER 전용)
+  app.post("/api/admin/stations/collect-coords", requireAuth, requireMaster, async (_req, res) => {
+    try {
+      const { runStationCoordScraper, getCoordScraperProgress } = await import("./services/stationCoordScraper");
+      const prog = getCoordScraperProgress();
+      if (prog.status === "running") {
+        return res.json({ message: "이미 실행 중", progress: prog });
+      }
+      runStationCoordScraper().catch(e => console.error("[StationCoordScraper] 백그라운드 오류:", e));
+      res.json({ message: "주유소 좌표 수집 시작", progress: getCoordScraperProgress() });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/admin/stations/collect-coords/progress — 진행 상황 조회 (MASTER 전용)
+  app.get("/api/admin/stations/collect-coords/progress", requireAuth, requireMaster, async (_req, res) => {
+    try {
+      const { getCoordScraperProgress } = await import("./services/stationCoordScraper");
+      res.json(getCoordScraperProgress());
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // ─── 유가 CSV 업로드 API ─────────────────────────────────────────────────────
 
   // ─── CSV 청크 업로드 (프록시 크기 제한 우회) ────────────────────────────────

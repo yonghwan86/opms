@@ -245,3 +245,14 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+// ─── 주유소 좌표 마스터 (Opinet GIS) ─────────────────────────────────────────
+export const gasStationsMaster = pgTable("gas_stations_master", {
+  stationId: varchar("station_id", { length: 20 }).primaryKey(),
+  stationName: text("station_name").notNull(),
+  gisX: numeric("gis_x"),
+  gisY: numeric("gis_y"),
+  region: text("region"),
+  sido: text("sido"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

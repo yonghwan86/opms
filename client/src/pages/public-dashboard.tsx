@@ -17,66 +17,25 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const appIconSrc = "/icon-192.png";
 
-// ─── 시도 약어 매핑 (Nominatim → DB 형식) ────────────────────────────────────
-const SIDO_ABBREV: Record<string, string> = {
-  '서울특별시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천',
-  '광주광역시': '광주', '대전광역시': '대전', '울산광역시': '울산', '세종특별자치시': '세종시',
-  '경기도': '경기', '강원특별자치도': '강원', '강원도': '강원', '충청북도': '충북', '충청남도': '충남',
-  '전라북도': '전북', '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남',
-  '제주특별자치도': '제주',
-};
-
-// ─── 역지오코딩 → DB region 문자열 변환 ───────────────────────────────────────
-async function resolveRegionFromCoords(lat: number, lon: number): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko&zoom=12`,
-      { headers: { "Accept-Language": "ko" } }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const addr = data.address ?? {};
-    const stateRaw: string = addr.state ?? addr.province ?? "";
-    const sidoAbbrev = SIDO_ABBREV[stateRaw] || stateRaw;
-    if (!sidoAbbrev) return null;
-
-    // 시군구 추출: county(시/군/구) → city_district(광역시의 구) → town → suburb 순
-    // city는 광역시명과 동일할 수 있어 제외
-    const rawSigungu: string =
-      addr.county ??
-      addr.city_district ??
-      addr.town ??
-      addr.suburb ??
-      "";
-
-    // 광역시/세종: sigungu가 없거나 stateRaw와 동일하면 sido만 반환 (API에서 sidoFilter로 처리)
-    const isMetroSido = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종시"].includes(sidoAbbrev);
-    if (!rawSigungu || rawSigungu === stateRaw) {
-      return sidoAbbrev;
-    }
-    // 광역시의 구 단위 (예: "서울 강남구")
-    if (isMetroSido) {
-      return `${sidoAbbrev} ${rawSigungu}`.trim();
-    }
-    // 도 단위 시/군/구 (예: "충북 청주시")
-    return `${sidoAbbrev} ${rawSigungu}`.trim();
-  } catch {
-    return null;
-  }
-}
-
-// ─── 위치 훅 ─────────────────────────────────────────────────────────────────
+// ─── 위치 훅 (Opinet GIS 기반 역지오코딩) ────────────────────────────────────
 function useGeoRegion() {
   const [region, setRegion] = useState<string | null | undefined>(undefined); // undefined=감지중, null=거부/실패
   useEffect(() => {
     if (!navigator.geolocation) { setRegion(null); return; }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const r = await resolveRegionFromCoords(pos.coords.latitude, pos.coords.longitude);
-        setRegion(r);
+        try {
+          const { latitude: lat, longitude: lon } = pos.coords;
+          const res = await fetch(`/api/public/geocode?lat=${lat}&lon=${lon}`);
+          if (!res.ok) { setRegion(null); return; }
+          const data = await res.json();
+          setRegion(data.region ?? null);
+        } catch {
+          setRegion(null);
+        }
       },
       () => setRegion(null),
-      { timeout: 6000 }
+      { timeout: 8000 }
     );
   }, []);
   return region;

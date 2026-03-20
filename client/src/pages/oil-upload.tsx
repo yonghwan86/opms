@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Building2 } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Building2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 
@@ -259,6 +259,107 @@ function SupplyPriceUploadSection() {
   );
 }
 
+function StationCoordSection() {
+  const [status, setStatus] = useState<{ total: number; done: number; failed: number; status: string } | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const { toast } = useToast();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  const startPolling = () => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/admin/stations/collect-coords/progress");
+        if (!res.ok) return;
+        const data = await res.json();
+        setStatus(data);
+        if (data.status === "done" || data.status === "failed") {
+          stopPolling();
+          setIsPending(false);
+          toast({ title: data.status === "done" ? `좌표 수집 완료 (${data.done.toLocaleString()}개)` : "좌표 수집 실패", variant: data.status === "done" ? "default" : "destructive" });
+        }
+      } catch { stopPolling(); setIsPending(false); }
+    }, 3000);
+  };
+
+  const handleStart = async () => {
+    setIsPending(true);
+    try {
+      const res = await fetch("/api/admin/stations/collect-coords", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data.message ?? "오류 발생", variant: "destructive" });
+        setIsPending(false);
+        return;
+      }
+      setStatus(data.progress);
+      startPolling();
+    } catch {
+      toast({ title: "서버 오류", variant: "destructive" });
+      setIsPending(false);
+    }
+  };
+
+  const pct = status && status.total > 0 ? Math.round((status.done / status.total) * 100) : 0;
+  const isRunning = status?.status === "running" || isPending;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <MapPin className="w-5 h-5 text-blue-500" />
+        <h2 className="text-base font-semibold">주유소 GPS 좌표 수집</h2>
+      </div>
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            오피넷 API를 통해 전국 주유소의 GIS 좌표를 수집합니다.<br />
+            공개 대시보드의 <strong>위치 기반 지역 감지</strong>에 사용됩니다.
+          </p>
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
+            ⚡ 수집 소요 시간: 약 15~25분 (전국 약 12,000개 주유소 기준)<br />
+            ✅ 수집 중에도 서비스 정상 운영됩니다.<br />
+            🔁 최초 1회 수행 후 신규 주유소 추가 시에만 재실행하면 됩니다.
+          </p>
+
+          <Button
+            onClick={handleStart}
+            disabled={isRunning}
+            className="w-full sm:w-auto"
+            data-testid="button-collect-coords"
+          >
+            {isRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />수집 중...</> : <><MapPin className="w-4 h-4 mr-2" />좌표 수집 시작</>}
+          </Button>
+
+          {status && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{status.done.toLocaleString()} / {status.total.toLocaleString()} 처리</span>
+                <span>실패 {status.failed.toLocaleString()}개 · {pct}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className={cn("h-2 rounded-full transition-all duration-500", status.status === "done" ? "bg-emerald-500" : status.status === "failed" ? "bg-destructive" : "bg-blue-500")}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {status.status === "done" && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> 수집 완료 — 위치 기반 기능이 정상 작동합니다.</p>
+              )}
+              {status.status === "failed" && (
+                <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="w-4 h-4" /> 수집 실패 — 다시 시도해주세요.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function OilUploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -492,6 +593,12 @@ export default function OilUploadPage() {
 
         {/* 정유사 공급가 업로드 */}
         <SupplyPriceUploadSection />
+
+        {/* 구분선 */}
+        <div className="border-t border-border pt-2" />
+
+        {/* 주유소 GPS 좌표 수집 */}
+        <StationCoordSection />
       </div>
     </Layout>
   );
