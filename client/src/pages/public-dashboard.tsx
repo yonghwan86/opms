@@ -316,6 +316,7 @@ export default function PublicDashboardPage() {
   const isMobile = useIsMobile();
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
+  const [regionalScope, setRegionalScope] = useState<'local' | 'national'>('local');
   const [chartTab, setChartTab] = useState<'intl' | 'comparison' | 'ceiling'>('intl');
   const [comparisonFuel, setComparisonFuel] = useState<'gasoline' | 'diesel' | 'kerosene'>('gasoline');
 
@@ -352,10 +353,13 @@ export default function PublicDashboardPage() {
     enabled: !isGeoLoading,
     staleTime: 2 * 60 * 1000,
   });
+  const effectiveRegionalParam = (regionalScope === 'local' && geoData)
+    ? `?region=${encodeURIComponent(geoData.sido)}`
+    : "";
   const { data: regional = [], isLoading: regionalLoading } = useQuery<RegionalAvg[]>({
-    queryKey: ["/api/public/regional-averages", geoData?.sido ?? null],
-    queryFn: () => fetch(`/api/public/regional-averages${regionalParam}`).then(r => r.json()),
-    enabled: !isGeoLoading,
+    queryKey: ["/api/public/regional-averages", regionalScope === 'local' ? (geoData?.sido ?? null) : null],
+    queryFn: () => fetch(`/api/public/regional-averages${effectiveRegionalParam}`).then(r => r.json()),
+    enabled: !isGeoLoading || regionalScope === 'national',
     staleTime: 2 * 60 * 1000,
   });
   const { data: domesticHistory = [] } = useQuery<DomesticHistory[]>({
@@ -1018,35 +1022,51 @@ export default function PublicDashboardPage() {
           {/* 오른쪽 1/3: 지역별 순위 */}
           <div className="col-span-1 flex flex-col">
             <Card className="flex-1 flex flex-col border border-border bg-card">
-              <div className="px-4 pt-3 pb-3 border-b border-border flex items-center justify-between flex-shrink-0">
-                <div>
+              <div className="px-4 pt-3 pb-3 border-b border-border flex items-center justify-between flex-shrink-0 gap-2">
+                <div className="min-w-0">
                   <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {isGeoLoading ? "위치 확인 중" : geoData
-                      ? (() => {
-                          const METRO = new Set(["서울","부산","대구","인천","광주","대전","울산"]);
-                          return METRO.has(geoData.sido)
-                            ? `${geoData.sido} 구별`
-                            : `${geoData.sido} 시/군별`;
-                        })()
-                      : "시/도별"} 평균
+                    {regionalScope === 'national'
+                      ? "시/도별 평균"
+                      : isGeoLoading
+                        ? "위치 확인 중"
+                        : geoData
+                          ? (() => {
+                              const METRO = new Set(["서울","부산","대구","인천","광주","대전","울산"]);
+                              return (METRO.has(geoData.sido) ? `${geoData.sido} 구별` : `${geoData.sido} 시/군별`) + " 평균";
+                            })()
+                          : "시/도별 평균"}
                   </p>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   {(['gasoline', 'diesel'] as const).map(tab => (
                     <button key={tab} onClick={() => setRegionalTab(tab)}
-                      className={cn("text-xs px-2.5 py-1 rounded-md font-medium transition-colors",
+                      className={cn("text-xs px-2 py-1 rounded-md font-medium transition-colors",
                         regionalTab === tab
                           ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       )}>
-                      {tab === 'gasoline' ? '휘' : '경'}
+                      <span className="md:hidden">{tab === 'gasoline' ? '휘' : '경'}</span>
+                      <span className="hidden md:inline">{tab === 'gasoline' ? '휘발유' : '경유'}</span>
+                    </button>
+                  ))}
+                  <div className="w-px h-3.5 bg-border mx-0.5" />
+                  {(['local', 'national'] as const).map(scope => (
+                    <button key={scope} onClick={() => setRegionalScope(scope)}
+                      disabled={scope === 'local' && !geoData && !isGeoLoading}
+                      className={cn("text-xs px-2 py-1 rounded-md font-medium transition-colors",
+                        regionalScope === scope
+                          ? "bg-blue-500 text-white"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80",
+                        scope === 'local' && !geoData && !isGeoLoading ? "opacity-40 cursor-not-allowed" : ""
+                      )}>
+                      {scope === 'local' ? '지역' : '전국'}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="flex-1 min-h-0 px-3 pb-3 pt-3">
-                {regionalLoading || isGeoLoading ? (
+                {regionalLoading || (isGeoLoading && regionalScope === 'local') ? (
                   <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
                 ) : sortedRegional.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
