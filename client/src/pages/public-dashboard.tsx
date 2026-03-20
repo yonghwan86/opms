@@ -518,7 +518,7 @@ export default function PublicDashboardPage() {
           <div className="flex items-center gap-2.5">
             <img src={appIconSrc} alt="앱 아이콘" className="w-7 h-7 rounded-lg" />
             <div>
-              <p className="text-sm font-semibold text-foreground leading-tight">유가 이상징후 탐지 시스템</p>
+              <p className="text-sm font-semibold text-foreground leading-tight">유가 모니터링 상황판</p>
               <p className="text-xs text-muted-foreground">공개 유가 현황 정보</p>
             </div>
           </div>
@@ -678,18 +678,19 @@ export default function PublicDashboardPage() {
           <div className="px-4 pt-3 pb-3 border-b border-border">
             <div className="inline-flex items-center gap-1 bg-muted rounded-lg p-1">
               {([
-                { id: 'intl', label: '국제-국내 유가' },
-                { id: 'comparison', label: '국제-국내 제품비교' },
-                { id: 'ceiling', label: '최고가격제 변동추이' },
+                { id: 'intl', label: '국제-국내 유가', short: '국제-국내' },
+                { id: 'comparison', label: '국제-국내 제품비교', short: '제품비교' },
+                { id: 'ceiling', label: '최고가격제 변동추이', short: '최고가격제' },
               ] as const).map(t => (
                 <button key={t.id} onClick={() => setChartTab(t.id)}
                   className={cn(
-                    "text-xs px-3 py-1.5 font-medium rounded-md transition-colors",
+                    "text-xs px-2 md:px-3 py-1.5 font-medium rounded-md transition-colors whitespace-nowrap",
                     chartTab === t.id
                       ? "bg-background text-foreground shadow-sm border border-border"
                       : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80",
                   )}>
-                  {t.label}
+                  <span className="md:hidden">{t.short}</span>
+                  <span className="hidden md:inline">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -1021,7 +1022,6 @@ export default function PublicDashboardPage() {
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {regionalTab === 'diesel' ? "경유" : "휘발유"}{" "}
                     {isGeoLoading ? "위치 확인 중" : geoData
                       ? (() => {
                           const METRO = new Set(["서울","부산","대구","인천","광주","대전","울산"]);
@@ -1040,7 +1040,7 @@ export default function PublicDashboardPage() {
                           ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       )}>
-                      {tab === 'gasoline' ? '휘발유' : '경유'}
+                      {tab === 'gasoline' ? '휘' : '경'}
                     </button>
                   ))}
                 </div>
@@ -1085,7 +1085,7 @@ export default function PublicDashboardPage() {
         {/* 푸터 */}
         <div className="text-center text-xs text-muted-foreground py-4 border-t border-border">
           <p>이 페이지의 유가 정보는 오피넷 및 Yahoo Finance 데이터를 기반으로 합니다.</p>
-          <p className="mt-1">© 한국석유관리원 유가 이상징후 탐지 시스템</p>
+          <p className="mt-1">© 한국석유관리원 유가 모니터링 상황판</p>
         </div>
       </div>
     </div>
