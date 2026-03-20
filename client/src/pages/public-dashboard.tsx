@@ -1055,9 +1055,9 @@ export default function PublicDashboardPage() {
           {/* 오른쪽 1/3: 지역별 순위 */}
           <div className="col-span-1 flex flex-col">
             <Card className="flex-1 flex flex-col border border-border bg-card">
-              <div className="px-4 pt-3 pb-3 border-b border-border flex items-center justify-between flex-shrink-0 gap-2">
-                <div className="min-w-0">
-                  <h2 className="text-sm font-semibold text-foreground">지역별 평균 유가 순위</h2>
+              <div className="px-4 pt-3 pb-3 border-b border-border flex flex-row items-center justify-between gap-2 md:flex-col md:items-start md:gap-1.5 xl:flex-row xl:items-center xl:justify-between xl:gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground whitespace-nowrap">지역별 평균 유가 순위</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {regionalScope === 'national'
                       ? "시/도별 평균"
@@ -1071,7 +1071,7 @@ export default function PublicDashboardPage() {
                           : "시/도별 평균"}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
                   {(['gasoline', 'diesel'] as const).map(tab => (
                     <button key={tab} onClick={() => setRegionalTab(tab)}
                       className={cn("text-xs px-2 py-1 rounded-md font-medium transition-colors",
@@ -1079,8 +1079,8 @@ export default function PublicDashboardPage() {
                           ? tab === 'gasoline' ? "bg-yellow-400 text-white" : "bg-emerald-500 text-white"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
                       )}>
-                      <span className="md:hidden">{tab === 'gasoline' ? '휘' : '경'}</span>
-                      <span className="hidden md:inline">{tab === 'gasoline' ? '휘발유' : '경유'}</span>
+                      <span className="xl:hidden">{tab === 'gasoline' ? '휘' : '경'}</span>
+                      <span className="hidden xl:inline">{tab === 'gasoline' ? '휘발유' : '경유'}</span>
                     </button>
                   ))}
                   <div className="w-px h-3.5 bg-border mx-0.5" />
