@@ -547,7 +547,18 @@ export function startOilScheduler(): void {
     await runWeeklySupplyJob();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST)");
+  // 화~토 08:10 KST — Petronet 일일국제제품가격 크롤링 (전일 데이터)
+  cron.schedule("10 8 * * 2-6", async () => {
+    console.log("[IntlPriceCrawler] 정기 수집 시작 (화~토 08:10 KST)");
+    try {
+      const { runIntlPriceCrawler } = await import("./intlPriceCrawler");
+      await runIntlPriceCrawler();
+    } catch (e) {
+      console.error("[IntlPriceCrawler] 스케줄 실행 오류:", e);
+    }
+  }, { timezone: "Asia/Seoul" });
+
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:10 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 

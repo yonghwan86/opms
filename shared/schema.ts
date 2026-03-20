@@ -246,6 +246,15 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 
+// ─── 국제 유류 제품가격 (Petronet 크롤링 / 수동 업로드) ───────────────────────
+export const intlFuelPrices = pgTable("intl_fuel_prices", {
+  date: varchar("date", { length: 8 }).primaryKey(),
+  gasoline: numeric("gasoline"),
+  diesel: numeric("diesel"),
+  kerosene: numeric("kerosene"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ─── 주유소 좌표 마스터 (Opinet GIS) ─────────────────────────────────────────
 export const gasStationsMaster = pgTable("gas_stations_master", {
   stationId: varchar("station_id", { length: 20 }).primaryKey(),

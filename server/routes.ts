@@ -5,6 +5,8 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { storage } from "./storage";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import { initPush, getVapidPublicKey, sendPush, sendPushToAll } from "./services/pushService";
 
@@ -1656,6 +1658,88 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { getCoordScraperProgress } = await import("./services/stationCoordScraper");
       res.json(getCoordScraperProgress());
     } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // ─── 국제 유가 API ───────────────────────────────────────────────────────────
+
+  // POST /api/admin/intl-fuel-prices/upload — CSV 수동 업로드 (MASTER 전용)
+  app.post("/api/admin/intl-fuel-prices/upload", requireAuth, requireMaster, async (req, res) => {
+    try {
+      const { base64, fileName } = req.body;
+      if (!base64) return res.status(400).json({ message: "base64 필드 필요" });
+      const { parseAndUpsertIntlCsvBase64 } = await import("./services/intlPriceCrawler");
+      const result = await parseAndUpsertIntlCsvBase64(base64);
+      res.json({
+        ok: true,
+        savedCount: result.saved,
+        fileName: fileName ?? "unknown",
+        dates: result.dates,
+      });
+    } catch (e) {
+      console.error("[IntlUpload] 오류:", e);
+      res.status(500).json({ message: "업로드 처리 실패" });
+    }
+  });
+
+  // GET /api/public/intl-vs-domestic — 최근 90일 국제·국내 병합 데이터
+  app.get("/api/public/intl-vs-domestic", async (_req, res) => {
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 90);
+      const cutoffStr = cutoff.toISOString().slice(0, 10).replace(/-/g, "");
+
+      const [intlRows, domesticRows] = await Promise.all([
+        db.execute(sql`
+          SELECT date, gasoline::text, diesel::text, kerosene::text
+          FROM intl_fuel_prices
+          WHERE date >= ${cutoffStr}
+          ORDER BY date ASC
+        `),
+        db.execute(sql`
+          SELECT date,
+                 ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END))::text as domestic_gasoline,
+                 ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END))::text as domestic_diesel,
+                 ROUND(AVG(CASE WHEN kerosene > 0 THEN kerosene END))::text as domestic_kerosene
+          FROM oil_price_raw
+          WHERE date >= ${cutoffStr}
+          GROUP BY date
+          ORDER BY date ASC
+        `),
+      ]);
+
+      const intlMap = new Map<string, { gasoline: string | null; diesel: string | null; kerosene: string | null }>();
+      for (const r of intlRows.rows as any[]) {
+        intlMap.set(r.date, { gasoline: r.gasoline, diesel: r.diesel, kerosene: r.kerosene });
+      }
+      const domesticMap = new Map<string, { domestic_gasoline: string | null; domestic_diesel: string | null; domestic_kerosene: string | null }>();
+      for (const r of domesticRows.rows as any[]) {
+        domesticMap.set(r.date, {
+          domestic_gasoline: r.domestic_gasoline,
+          domestic_diesel: r.domestic_diesel,
+          domestic_kerosene: r.domestic_kerosene,
+        });
+      }
+
+      const allDates = new Set([...Array.from(intlMap.keys()), ...Array.from(domesticMap.keys())]);
+      const sorted = Array.from(allDates).sort();
+      const merged = sorted.map(date => {
+        const intl = intlMap.get(date);
+        const dom = domesticMap.get(date);
+        return {
+          date,
+          intlGasoline: intl?.gasoline ? parseFloat(intl.gasoline) : null,
+          intlDiesel: intl?.diesel ? parseFloat(intl.diesel) : null,
+          intlKerosene: intl?.kerosene ? parseFloat(intl.kerosene) : null,
+          domesticGasoline: dom?.domestic_gasoline ? parseFloat(dom.domestic_gasoline) : null,
+          domesticDiesel: dom?.domestic_diesel ? parseFloat(dom.domestic_diesel) : null,
+          domesticKerosene: dom?.domestic_kerosene ? parseFloat(dom.domestic_kerosene) : null,
+        };
+      });
+      res.json(merged);
+    } catch (e) {
+      console.error("[IntlVsDomestic] 오류:", e);
       res.status(500).json({ message: "서버 오류" });
     }
   });
