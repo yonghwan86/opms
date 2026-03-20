@@ -617,7 +617,7 @@ export default function PublicDashboardPage() {
 
           {/* 유가 가격 편차 (위치 기반) */}
           <MetricCard
-            title={`${regionLabel} 유가 가격 편차`}
+            title={`${regionLabel.includes(' ') ? regionLabel.split(' ').slice(1).join(' ') : regionLabel} 유가 가격 편차`}
             subtitle="최고가 − 최저가 격차"
             icon={BarChart2}
             iconBg={spreadTab === 'diesel' ? "bg-emerald-500" : "bg-yellow-400"}
@@ -752,7 +752,7 @@ export default function PublicDashboardPage() {
                 <div className="flex items-start justify-between gap-2 pb-2">
                   <div>
                     <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 제품가격 비교</h2>
-                    <p className="text-xs text-muted-foreground">국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 90일</p>
+                    <p className="text-xs text-muted-foreground">국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 30일</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {([
@@ -789,7 +789,7 @@ export default function PublicDashboardPage() {
                     diesel: r => r.domesticDiesel,
                     kerosene: r => r.domesticKerosene,
                   };
-                  const chartRows = intlVsDomesticData.map(row => ({
+                  const chartRows = intlVsDomesticData.slice(-30).map(row => ({
                     label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
                     intl: intlSelector[comparisonFuel](row),
                     domestic: domSelector[comparisonFuel](row),
