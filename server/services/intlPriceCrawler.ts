@@ -36,63 +36,68 @@ function parseNumber(s: string): number | null {
   return isFinite(v) ? v : null;
 }
 
-async function fetchPetronetData(
-  year: number, month: number, day: number
-): Promise<{ gasoline: number | null; diesel: number | null; kerosene: number | null } | null> {
-  const y = String(year);
-  const m = pad2(month);
-  const d = pad2(day);
-  const url =
-    `https://www.petronet.co.kr/v4/excel/KDFQ0200_x.jsp` +
-    `?term=d&bq=1&bw=01&by=${y}&bm=${m}&bd=${d}` +
-    `&aq=1&aw=01&ay=${y}&am=${m}&ad=${d}` +
-    `&ProdCDList=B007,C001,D009`;
+interface PetronetPriceResult {
+  gasoline: number | null;
+  diesel: number | null;
+  kerosene: number | null;
+  date: string | null;
+}
 
-  const res = await fetch(url, {
+function extractLiPrice(html: string, elementId: string): number | null {
+  const pos = html.indexOf(`id="${elementId}"`);
+  if (pos < 0) return null;
+  const liStart = html.lastIndexOf("<li", pos);
+  const liEnd = html.indexOf("</li>", pos);
+  if (liStart < 0 || liEnd < 0) return null;
+  const block = html.slice(liStart, liEnd + 5);
+  const m = block.match(/<p class="coast">([^<]+)<\/p>/);
+  if (!m) return null;
+  return parseNumber(m[1]);
+}
+
+async function fetchPetronetDataFromMain(): Promise<PetronetPriceResult | null> {
+  const res = await fetch("https://www.petronet.co.kr/v4/main.jsp", {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      "Referer": "https://www.petronet.co.kr/v4/sub.jsp",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120",
+      "Accept": "text/html,application/xhtml+xml",
+      "Accept-Language": "ko-KR,ko;q=0.9",
     },
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) {
-    console.warn(`[IntlPriceCrawler] HTTP ${res.status}`);
+    console.warn(`[IntlPriceCrawler] main.jsp HTTP ${res.status}`);
     return null;
   }
   const html = await res.text();
 
-  const trMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) ?? [];
-  for (const tr of trMatches) {
-    const cells = (tr.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) ?? []).map(td =>
-      stripHtmlTags(td.replace(/<td[^>]*>/i, "").replace(/<\/td>/i, ""))
-    );
-    if (cells.length < 3) continue;
-    const dateCell = cells.find(c => /\d{1,2}월\s*\d{1,2}일/.test(c));
-    if (!dateCell) continue;
-    const md = parseKoreanMonthDay(dateCell);
-    if (!md || md.month !== month || md.day !== day) continue;
+  const gasoline = extractLiPrice(html, "textB007");
+  const kerosene = extractLiPrice(html, "textC001");
+  const diesel   = extractLiPrice(html, "textD009");
 
-    const nums = cells
-      .filter(c => /^[\d,.-]+$/.test(c.replace(/\s/g, "")))
-      .map(parseNumber)
-      .filter((n): n is number => n !== null && n > 0);
+  // 날짜 추출 (YYYY.MM.DD 형식)
+  const dateMatch = html.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+  const date = dateMatch
+    ? `${dateMatch[1]}${dateMatch[2]}${dateMatch[3]}`
+    : null;
 
-    if (nums.length < 3) continue;
-    return { gasoline: nums[0], kerosene: nums[1], diesel: nums[2] };
-  }
-  return null;
+  console.log(`[IntlPriceCrawler] HTML 파싱 — 날짜:${date} 휘발유:${gasoline} 경유:${diesel} 등유:${kerosene}`);
+  return { gasoline, diesel, kerosene, date };
 }
 
 export async function runIntlPriceCrawler(): Promise<void> {
-  const { year, month, day, dateStr } = getKSTYesterday();
-  console.log(`[IntlPriceCrawler] 수집 시작: ${dateStr} (전일)`);
+  console.log(`[IntlPriceCrawler] 수집 시작 (Petronet main.jsp HTML 스크래핑)`);
 
   try {
-    const data = await fetchPetronetData(year, month, day);
-    if (!data || (data.gasoline === null && data.diesel === null && data.kerosene === null)) {
-      console.warn(`[IntlPriceCrawler] ${dateStr} 데이터 없음 (휴일 또는 미업로드)`);
+    const data = await fetchPetronetDataFromMain();
+    if (!data || data.date === null) {
+      console.warn(`[IntlPriceCrawler] 데이터 파싱 실패 (날짜 없음)`);
       return;
     }
+    if (data.gasoline === null && data.diesel === null && data.kerosene === null) {
+      console.warn(`[IntlPriceCrawler] ${data.date} 가격 데이터 없음 (휴일 또는 미업로드)`);
+      return;
+    }
+    const dateStr = data.date;
     await db.execute(sql`
       INSERT INTO intl_fuel_prices (date, gasoline, diesel, kerosene)
       VALUES (${dateStr}, ${data.gasoline}, ${data.diesel}, ${data.kerosene})

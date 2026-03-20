@@ -472,10 +472,21 @@ interface IntlUploadResult {
   dates: string[];
 }
 
+interface IntlCrawlResult {
+  ok: boolean;
+  date?: string;
+  gasoline?: number;
+  diesel?: number;
+  kerosene?: number;
+  message?: string;
+}
+
 function IntlFuelSection() {
   const [file, setFile] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [isCrawling, setIsCrawling] = useState(false);
   const [result, setResult] = useState<IntlUploadResult | null>(null);
+  const [crawlResult, setCrawlResult] = useState<IntlCrawlResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -485,6 +496,32 @@ function IntlFuelSection() {
     setFile(f);
     setResult(null);
     setError(null);
+  };
+
+  const handleCrawl = async () => {
+    setIsCrawling(true);
+    setCrawlResult(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/intl-fuel-prices/crawl", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "수집 실패");
+      setCrawlResult(data as IntlCrawlResult);
+      if (data.ok) {
+        toast({ title: "수집 완료", description: `${formatDate(data.date)} 데이터가 저장되었습니다.` });
+        queryClient.invalidateQueries({ queryKey: ["/api/public/intl-vs-domestic"] });
+      } else {
+        toast({ title: "수집 결과", description: data.message, variant: "destructive" });
+      }
+    } catch (e: any) {
+      setError(e.message || "수집 중 오류가 발생했습니다.");
+      toast({ title: "수집 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setIsCrawling(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -527,10 +564,49 @@ function IntlFuelSection() {
 
   return (
     <div className="space-y-4">
+      {/* Petronet 즉시 수집 카드 */}
+      <Card className="border-blue-200 dark:border-blue-800">
+        <CardContent className="p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-blue-500" />
+            <p className="text-sm font-medium">Petronet 즉시 수집</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Petronet 사이트에서 최신 국제 제품가격을 지금 바로 가져옵니다. (화~토 08:10에 자동 실행)</p>
+          <Button
+            variant="outline"
+            className="w-full border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+            onClick={handleCrawl}
+            disabled={isCrawling}
+            data-testid="button-crawl-intl"
+          >
+            {isCrawling ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />수집 중...</>
+            ) : (
+              <><Globe className="w-4 h-4 mr-2" />지금 수집하기</>
+            )}
+          </Button>
+          {crawlResult?.ok && crawlResult.date && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-emerald-700 dark:text-emerald-400">
+                <p className="font-semibold">{formatDate(crawlResult.date)} 수집 완료</p>
+                <p className="text-xs mt-0.5">휘발유 {crawlResult.gasoline} · 경유 {crawlResult.diesel} · 등유 {crawlResult.kerosene} ($/Bbl)</p>
+              </div>
+            </div>
+          )}
+          {crawlResult && !crawlResult.ok && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-700 dark:text-amber-400">{crawlResult.message}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="p-5 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">CSV 파일 선택</label>
+            <label className="text-xs font-medium text-muted-foreground">CSV 파일 선택 (과거 데이터 수동 업로드)</label>
             <div
               className="flex items-center gap-2 px-3 py-2 border border-border rounded-md cursor-pointer hover:bg-muted/30 transition-colors"
               onClick={() => inputRef.current?.click()}

@@ -1664,6 +1664,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── 국제 유가 API ───────────────────────────────────────────────────────────
 
+  // POST /api/admin/intl-fuel-prices/crawl — Petronet HTML 즉시 수집 (MASTER 전용)
+  app.post("/api/admin/intl-fuel-prices/crawl", requireAuth, requireMaster, async (_req, res) => {
+    try {
+      const { runIntlPriceCrawler } = await import("./services/intlPriceCrawler");
+      await runIntlPriceCrawler();
+      // 마지막 저장된 행 반환
+      const latest = await db.execute(sql`
+        SELECT date, gasoline::text, diesel::text, kerosene::text
+        FROM intl_fuel_prices ORDER BY date DESC LIMIT 1
+      `);
+      const row = latest.rows[0] as { date: string; gasoline: string; diesel: string; kerosene: string } | undefined;
+      if (!row) return res.json({ ok: false, message: "수집했으나 저장된 데이터 없음" });
+      res.json({ ok: true, date: row.date, gasoline: parseFloat(row.gasoline), diesel: parseFloat(row.diesel), kerosene: parseFloat(row.kerosene) });
+    } catch (e) {
+      console.error("[IntlCrawl] 수동 실행 오류:", e);
+      res.status(500).json({ message: "크롤링 실패" });
+    }
+  });
+
   // POST /api/admin/intl-fuel-prices/upload — CSV 수동 업로드 (MASTER 전용)
   app.post("/api/admin/intl-fuel-prices/upload", requireAuth, requireMaster, async (req, res) => {
     try {
