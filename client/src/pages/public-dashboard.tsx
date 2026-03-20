@@ -18,6 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const appIconSrc = "/icon-192.png";
 
+const SIDO_LIST = ["서울","부산","대구","인천","광주","대전","울산","세종","경기","강원","충북","충남","전북","전남","경북","경남","제주"];
+
 // ─── 위치 훅 (Nominatim 역지오코딩) ─────────────────────────────────────────
 interface GeoData { region: string; sido: string; }
 function useGeoRegion() {
@@ -307,12 +309,33 @@ function ChartTooltip({ active, payload, label }: any) {
 export default function PublicDashboardPage() {
   const geoData = useGeoRegion(); // undefined=감지중, null=전국, {region,sido}=성공
   const isGeoLoading = geoData === undefined;
+
+  // 수동 지역 선택 (localStorage 유지)
+  const [manualSido, setManualSido] = useState<string | null>(() => {
+    try { return localStorage.getItem('pub_sido') || null; } catch { return null; }
+  });
+  const [regionOpen, setRegionOpen] = useState(false);
+
+  const selectSido = (sido: string | null) => {
+    setManualSido(sido);
+    try {
+      if (sido) localStorage.setItem('pub_sido', sido);
+      else localStorage.removeItem('pub_sido');
+    } catch {}
+    setRegionOpen(false);
+  };
+
+  // GPS 또는 수동 선택 중 우선순위: 수동 > GPS
+  const effectiveGeo: { region: string; sido: string } | null = manualSido
+    ? { region: manualSido, sido: manualSido }
+    : (geoData ?? null);
+
   // 편차/fuel-stats: 시/군/구 단위 (성남시 → ?region=경기+성남시)
-  const spreadParam = geoData ? `?region=${encodeURIComponent(geoData.region)}` : "";
+  const spreadParam = effectiveGeo ? `?region=${encodeURIComponent(effectiveGeo.region)}` : "";
   // 지역별 순위: sido 단위 → 도 내 시/군 or 광역시 내 구 집계
-  const regionalParam = geoData ? `?region=${encodeURIComponent(geoData.sido)}` : "";
-  const regionLabel = geoData?.region ?? "전국";
-  const geoRegion = geoData?.region ?? null; // 표시용
+  const regionalParam = effectiveGeo ? `?region=${encodeURIComponent(effectiveGeo.sido)}` : "";
+  const regionLabel = effectiveGeo?.region ?? "전국";
+  const geoRegion = effectiveGeo?.region ?? null; // 표시용
 
   const isMobile = useIsMobile();
   const bp = useBreakpoint();
@@ -350,18 +373,18 @@ export default function PublicDashboardPage() {
     staleTime: 5 * 60 * 1000,
   });
   const { data: fuelStats, isLoading: fuelLoading } = useQuery<FuelStats>({
-    queryKey: ["/api/public/fuel-stats", geoRegion],
+    queryKey: ["/api/public/fuel-stats", effectiveGeo?.region ?? null],
     queryFn: () => fetch(`/api/public/fuel-stats${spreadParam}`).then(r => r.json()),
-    enabled: !isGeoLoading,
+    enabled: !isGeoLoading || !!manualSido,
     staleTime: 2 * 60 * 1000,
   });
-  const effectiveRegionalParam = (regionalScope === 'local' && geoData)
-    ? `?region=${encodeURIComponent(geoData.sido)}`
+  const effectiveRegionalParam = (regionalScope === 'local' && effectiveGeo)
+    ? `?region=${encodeURIComponent(effectiveGeo.sido)}`
     : "";
   const { data: regional = [], isLoading: regionalLoading } = useQuery<RegionalAvg[]>({
-    queryKey: ["/api/public/regional-averages", regionalScope === 'local' ? (geoData?.sido ?? null) : null],
+    queryKey: ["/api/public/regional-averages", regionalScope === 'local' ? (effectiveGeo?.sido ?? null) : null],
     queryFn: () => fetch(`/api/public/regional-averages${effectiveRegionalParam}`).then(r => r.json()),
-    enabled: !isGeoLoading || regionalScope === 'national',
+    enabled: !isGeoLoading || !!manualSido || regionalScope === 'national',
     staleTime: 2 * 60 * 1000,
   });
   const { data: domesticHistory = [] } = useQuery<DomesticHistory[]>({
@@ -529,14 +552,47 @@ export default function PublicDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {isGeoLoading ? (
-              <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 위치 확인 중...</span>
-            ) : (
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {geoRegion ? geoRegion : "전국 기준"}
-              </span>
-            )}
+            <Popover open={regionOpen} onOpenChange={setRegionOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex flex-col items-end cursor-pointer hover:text-foreground transition-colors group">
+                  <span className="flex items-center gap-1">
+                    {isGeoLoading && !manualSido ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /><span>위치 확인 중...</span></>
+                    ) : (
+                      <><MapPin className="w-3 h-3" /><span>{geoRegion ?? "전국 기준"}</span><ChevronDown className="w-3 h-3 opacity-50 group-hover:opacity-80" /></>
+                    )}
+                  </span>
+                  <span className="hidden lg:block text-[10px] text-muted-foreground/55 leading-tight">
+                    {manualSido ? "수동 설정됨" : "지역 변경 가능"}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-40 p-1.5">
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => selectSido(null)}
+                    className={cn("w-full text-left text-xs px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors flex items-center gap-1.5",
+                      !manualSido ? "font-semibold text-foreground bg-muted" : "text-muted-foreground"
+                    )}
+                  >
+                    <MapPin className="w-3 h-3 flex-shrink-0" />자동 감지 (GPS)
+                  </button>
+                  <div className="h-px bg-border my-1" />
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {SIDO_LIST.map(sido => (
+                      <button key={sido}
+                        onClick={() => selectSido(sido)}
+                        className={cn("text-left text-xs px-2 py-1.5 rounded-md hover:bg-muted transition-colors",
+                          manualSido === sido ? "font-semibold text-foreground bg-muted" : "text-muted-foreground"
+                        )}
+                      >
+                        {sido}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <span className="text-muted-foreground/50">|</span>
             <span>📅 {todayLabel()}</span>
           </div>
@@ -1061,12 +1117,12 @@ export default function PublicDashboardPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {regionalScope === 'national'
                       ? "시/도별 평균"
-                      : isGeoLoading
+                      : (isGeoLoading && !manualSido)
                         ? "위치 확인 중"
-                        : geoData
+                        : effectiveGeo
                           ? (() => {
                               const METRO = new Set(["서울","부산","대구","인천","광주","대전","울산"]);
-                              return (METRO.has(geoData.sido) ? `${geoData.sido} 구별` : `${geoData.sido} 시/군별`) + " 평균";
+                              return (METRO.has(effectiveGeo.sido) ? `${effectiveGeo.sido} 구별` : `${effectiveGeo.sido} 시/군별`) + " 평균";
                             })()
                           : "시/도별 평균"}
                   </p>
@@ -1086,12 +1142,12 @@ export default function PublicDashboardPage() {
                   <div className="w-px h-3.5 bg-border mx-0.5" />
                   {(['local', 'national'] as const).map(scope => (
                     <button key={scope} onClick={() => setRegionalScope(scope)}
-                      disabled={scope === 'local' && !geoData && !isGeoLoading}
+                      disabled={scope === 'local' && !effectiveGeo && !isGeoLoading}
                       className={cn("text-xs px-2 py-1 rounded-md font-medium transition-colors",
                         regionalScope === scope
                           ? "bg-blue-500 text-white"
                           : "bg-muted text-muted-foreground hover:bg-muted/80",
-                        scope === 'local' && !geoData && !isGeoLoading ? "opacity-40 cursor-not-allowed" : ""
+                        scope === 'local' && !effectiveGeo && !isGeoLoading ? "opacity-40 cursor-not-allowed" : ""
                       )}>
                       {scope === 'local' ? '지역' : '전국'}
                     </button>
@@ -1099,7 +1155,7 @@ export default function PublicDashboardPage() {
                 </div>
               </div>
               <div className="flex-1 min-h-0 px-3 pb-3 pt-3">
-                {regionalLoading || (isGeoLoading && regionalScope === 'local') ? (
+                {regionalLoading || (isGeoLoading && !manualSido && regionalScope === 'local') ? (
                   <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
                 ) : sortedRegional.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">데이터 없음</p>
