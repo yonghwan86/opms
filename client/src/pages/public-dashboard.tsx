@@ -766,13 +766,22 @@ export default function PublicDashboardPage() {
               <div className="px-2 pb-3 pt-1">
                 {(() => {
                   const fuelColor = comparisonFuel === 'gasoline' ? '#eab308' : comparisonFuel === 'diesel' ? '#22c55e' : '#38bdf8';
-                  const intlKey = comparisonFuel === 'gasoline' ? 'intlGasoline' : comparisonFuel === 'diesel' ? 'intlDiesel' : 'intlKerosene';
-                  const domKey = comparisonFuel === 'gasoline' ? 'domesticGasoline' : comparisonFuel === 'diesel' ? 'domesticDiesel' : 'domesticKerosene';
                   const fuelLabel = comparisonFuel === 'gasoline' ? '휘발유' : comparisonFuel === 'diesel' ? '경유' : '등유';
+                  type FuelSelector = (r: IntlVsDomesticRow) => number | null;
+                  const intlSelector: Record<typeof comparisonFuel, FuelSelector> = {
+                    gasoline: r => r.intlGasoline,
+                    diesel: r => r.intlDiesel,
+                    kerosene: r => r.intlKerosene,
+                  };
+                  const domSelector: Record<typeof comparisonFuel, FuelSelector> = {
+                    gasoline: r => r.domesticGasoline,
+                    diesel: r => r.domesticDiesel,
+                    kerosene: r => r.domesticKerosene,
+                  };
                   const chartRows = intlVsDomesticData.map(row => ({
                     label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
-                    intl: (row as any)[intlKey] ?? null,
-                    domestic: (row as any)[domKey] ?? null,
+                    intl: intlSelector[comparisonFuel](row),
+                    domestic: domSelector[comparisonFuel](row),
                   }));
                   return (
                     <ResponsiveContainer width="100%" height={340}>

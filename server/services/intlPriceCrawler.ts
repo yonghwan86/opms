@@ -87,12 +87,6 @@ export async function runIntlPriceCrawler(): Promise<void> {
   const { year, month, day, dateStr } = getKSTYesterday();
   console.log(`[IntlPriceCrawler] 수집 시작: ${dateStr} (전일)`);
 
-  const existing = await db.execute(sql`SELECT date FROM intl_fuel_prices WHERE date = ${dateStr}`);
-  if (existing.rows.length > 0) {
-    console.log(`[IntlPriceCrawler] ${dateStr} 이미 존재 → 건너뜀`);
-    return;
-  }
-
   try {
     const data = await fetchPetronetData(year, month, day);
     if (!data || (data.gasoline === null && data.diesel === null && data.kerosene === null)) {

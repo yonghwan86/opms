@@ -118,6 +118,17 @@ export async function initDb() {
         ADD COLUMN IF NOT EXISTS badge_count INTEGER NOT NULL DEFAULT 0;
     `);
 
+    // intl_fuel_prices 테이블 생성 (국제 유류 제품가격)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS intl_fuel_prices (
+        date VARCHAR(8) PRIMARY KEY,
+        gasoline NUMERIC,
+        diesel NUMERIC,
+        kerosene NUMERIC,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
     // oil_weekly_supply_prices 테이블 생성 (주간공급가격)
     await client.query(`
       CREATE TABLE IF NOT EXISTS oil_weekly_supply_prices (
