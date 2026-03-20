@@ -30,13 +30,13 @@ const SIDO_ABBREV: Record<string, string> = {
 async function resolveRegionFromCoords(lat: number, lon: number): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`,
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko&zoom=12`,
       { headers: { "Accept-Language": "ko" } }
     );
     if (!res.ok) return null;
     const data = await res.json();
     const addr = data.address ?? {};
-    const stateRaw: string = addr.state ?? "";
+    const stateRaw: string = addr.state ?? addr.province ?? "";
     const sidoAbbrev = SIDO_ABBREV[stateRaw] || stateRaw;
     if (!sidoAbbrev) return null;
 
