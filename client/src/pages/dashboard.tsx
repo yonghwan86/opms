@@ -271,7 +271,6 @@ export default function DashboardPage() {
   const { data: intlVsDomesticData = [] } = useQuery<IntlVsDomesticRow[]>({
     queryKey: ["/api/public/intl-vs-domestic"],
     staleTime: 10 * 60 * 1000,
-    enabled: oilAnalysisTab === 'comparison',
   });
   const { data: availableDates = [] } = useQuery<string[]>({
     queryKey: ["/api/oil-prices/available-dates"],
