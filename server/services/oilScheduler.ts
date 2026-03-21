@@ -298,8 +298,30 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
     return runOilPriceJob(jobDates?.today, jobDates?.yesterday, retryJobType);
   };
 
+  // 재시도 전에 다른 경로로 이미 수집 성공했는지 DB 확인
+  const checkAlreadySucceeded = async (): Promise<boolean> => {
+    try {
+      if (slot === "morning") {
+        // 오늘 09:30 KST(= 00:30 UTC) 이후 성공 로그 존재 여부
+        const cutoffUTC = new Date(getKSTNow());
+        cutoffUTC.setUTCHours(0, 30, 0, 0);
+        return await storage.hasSuccessfulMorningLog(result.today, cutoffUTC);
+      } else {
+        // 오후: 오늘 날짜 데이터가 DB에 존재하면 성공
+        const availableDates = await storage.getOilAvailableDates();
+        return availableDates.length > 0 && availableDates[0] >= result.today;
+      }
+    } catch {
+      return false;
+    }
+  };
+
   // 1차 재시도 (10분 후)
   setTimeout(async () => {
+    if (await checkAlreadySucceeded()) {
+      console.log(`[OilScheduler] ${source} 1차 재시도 건너뜀 — 다른 경로로 이미 수집 성공됨 (${result.today})`);
+      return;
+    }
     console.log(`[OilScheduler] ${source} 1차 재시도 시작`);
     const retry1 = await retryFn("1차 재시도", `${baseJobType}_retry1`);
     console.log(`[OilScheduler] ${source} 1차 재시도 결과:`, retry1);
@@ -315,6 +337,10 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
 
     // 2차 재시도 (20분 후)
     setTimeout(async () => {
+      if (await checkAlreadySucceeded()) {
+        console.log(`[OilScheduler] ${source} 2차 재시도 건너뜀 — 다른 경로로 이미 수집 성공됨 (${result.today})`);
+        return;
+      }
       console.log(`[OilScheduler] ${source} 2차 재시도 시작`);
       const retry2 = await retryFn("2차 재시도", `${baseJobType}_retry2`);
       console.log(`[OilScheduler] ${source} 2차 재시도 결과:`, retry2);
