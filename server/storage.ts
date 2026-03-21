@@ -251,6 +251,7 @@ export interface IStorage {
   upsertWeeklySupplyPrices(rows: InsertOilWeeklySupplyPrice[]): Promise<void>;
   upsertWeeklySupplyFuelColumn(rows: { week: string; company: string; price: number | null }[], fuelType: 'gasoline' | 'diesel' | 'kerosene'): Promise<number>;
   getWeeklySupplyPrices(limitWeeks?: number): Promise<OilWeeklySupplyPrice[]>;
+  getLatestWeeklySupplyWeek(): Promise<string | null>;
 }
 
 export interface StationSearchRow {
@@ -1667,6 +1668,15 @@ export class PostgresStorage implements IStorage {
       .from(oilWeeklySupplyPrices)
       .where(inArray(oilWeeklySupplyPrices.week, weeks))
       .orderBy(desc(oilWeeklySupplyPrices.week), asc(oilWeeklySupplyPrices.company));
+  }
+
+  async getLatestWeeklySupplyWeek(): Promise<string | null> {
+    const rows = await db
+      .selectDistinct({ week: oilWeeklySupplyPrices.week })
+      .from(oilWeeklySupplyPrices)
+      .orderBy(desc(oilWeeklySupplyPrices.week))
+      .limit(1);
+    return rows[0]?.week ?? null;
   }
 }
 

@@ -426,17 +426,52 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
   }
 }
 
-export async function runWeeklySupplyJob(): Promise<void> {
+export async function runWeeklySupplyJob(retryCount = 0): Promise<void> {
   const jobType = "weekly_supply_price";
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY_MS = 60 * 60 * 1000; // 1시간
   const start = Date.now();
-  console.log("[WeeklySupplyScheduler] 주간공급가격 수집 시작");
+  console.log(`[WeeklySupplyScheduler] 주간공급가격 수집 시작${retryCount > 0 ? ` (재시도 ${retryCount}/${MAX_RETRIES})` : ""}`);
   try {
+    // 현재 DB의 최신 주차 조회 (수집 전)
+    const latestDbWeek = await storage.getLatestWeeklySupplyWeek();
+    console.log(`[WeeklySupplyScheduler] DB 최신 주차: ${latestDbWeek ?? "없음"}`);
+
     const rows = await scrapeWeeklySupplyPrices();
     if (rows.length === 0) {
       await storage.saveOilCollectionLog({ jobType, status: "failed", errorMessage: "파싱된 데이터 없음 (정유사 4사 행 미발견)" });
       await sendMasterPush("주간공급가격 수집 실패", "테이블 파싱 후 대상 정유사 데이터가 없습니다.");
       return;
     }
+
+    const scrapedWeek = rows[0]?.week ?? "";
+
+    // 새 주차 데이터인지 확인: 오피넷이 아직 업데이트 전이면 재시도
+    if (latestDbWeek && scrapedWeek <= latestDbWeek) {
+      console.warn(`[WeeklySupplyScheduler] 오피넷 미갱신 — 수집 주차(${scrapedWeek}) ≤ DB 최신(${latestDbWeek}), 새 데이터 없음`);
+      await storage.saveOilCollectionLog({
+        jobType,
+        status: "skipped",
+        errorMessage: `오피넷 미갱신: 수집 주차(${scrapedWeek}) = DB 최신(${latestDbWeek})${retryCount < MAX_RETRIES ? ` — 1시간 후 재시도 (${retryCount + 1}/${MAX_RETRIES})` : " — 최대 재시도 초과"}`,
+      });
+
+      if (retryCount < MAX_RETRIES) {
+        await sendMasterPush(
+          "주간공급가격 미갱신",
+          `오피넷이 아직 업데이트되지 않았습니다 (${scrapedWeek}).\n1시간 후 재시도합니다. (${retryCount + 1}/${MAX_RETRIES})`,
+        );
+        console.log(`[WeeklySupplyScheduler] 1시간 후 재시도 예정 (${retryCount + 1}/${MAX_RETRIES})`);
+        setTimeout(() => runWeeklySupplyJob(retryCount + 1), RETRY_DELAY_MS);
+      } else {
+        await sendMasterPush(
+          "주간공급가격 수집 확인 필요",
+          `${MAX_RETRIES}회 재시도 후에도 새 주차 데이터가 없습니다 (${scrapedWeek}).\n오피넷을 직접 확인하거나 수동 수집이 필요합니다.`,
+        );
+        console.warn(`[WeeklySupplyScheduler] 최대 재시도 횟수(${MAX_RETRIES}) 초과 — 수동 확인 필요`);
+      }
+      return;
+    }
+
     const insertRows = rows.map(r => ({
       week: r.week,
       company: r.company,
@@ -461,9 +496,9 @@ export async function runWeeklySupplyJob(): Promise<void> {
     }
 
     await storage.saveOilCollectionLog({ jobType, status: collectionStatus, rawCount: rows.length, analysisDurationMs: durationMs });
-    console.log(`[WeeklySupplyScheduler] 수집 완료: ${rows.length}건 (${durationMs}ms, ${collectionStatus})`);
+    console.log(`[WeeklySupplyScheduler] 수집 완료: ${rows.length}건 (${durationMs}ms, ${collectionStatus}, 주차: ${scrapedWeek})`);
 
-    const wk = rows[0]?.week ?? "";
+    const wk = scrapedWeek;
     const pushBody = wk.length === 8
       ? `${wk.slice(0, 4)}년 ${wk.slice(4, 6)}월 ${parseInt(wk.slice(6, 8))}주 공급가격 데이터가 업데이트되었습니다.`
       : `${wk} 주간 공급가격 데이터가 업데이트되었습니다.`;
