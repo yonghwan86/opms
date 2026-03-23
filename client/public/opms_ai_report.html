@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+  <html lang="ko">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>공공부문 AI 시스템·서비스 현황 제출서</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 11pt; color: #1a1a1a; background: #fff; padding: 0; }
+    .page { max-width: 850px; margin: 0 auto; padding: 40px 50px; }
+    h1 { font-size: 18pt; font-weight: 700; text-align: center; padding: 18px 0 6px; border-top: 3px solid #1d4ed8; border-bottom: 1px solid #1d4ed8; margin-bottom: 30px; color: #1d4ed8; letter-spacing: -0.5px; }
+    h2 { font-size: 13pt; font-weight: 700; color: #1d4ed8; border-left: 4px solid #1d4ed8; padding-left: 10px; margin: 28px 0 12px; }
+    h3 { font-size: 11.5pt; font-weight: 700; margin: 18px 0 8px; color: #1e3a5f; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 10.5pt; }
+    th { background: #1d4ed8; color: #fff; padding: 7px 10px; text-align: center; font-weight: 600; }
+    td { padding: 6px 10px; border: 1px solid #d1d5db; vertical-align: top; }
+    tr:nth-child(even) td { background: #f8faff; }
+    td:first-child { font-weight: 600; color: #1e3a5f; white-space: nowrap; }
+    pre { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px 16px; font-family: 'Consolas', 'D2Coding', monospace; font-size: 9pt; line-height: 1.6; margin: 10px 0 16px; overflow-x: auto; white-space: pre; }
+    ul, ol { padding-left: 20px; margin: 6px 0 10px; }
+    li { margin-bottom: 5px; line-height: 1.6; }
+    strong { color: #1e3a5f; }
+    .note { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 4px; padding: 10px 14px; font-size: 10pt; margin-top: 30px; color: #78350f; }
+    p { line-height: 1.7; margin: 6px 0; }
+    @media print {
+      body { font-size: 10pt; }
+      h1 { font-size: 16pt; }
+      pre { font-size: 8pt; }
+      .page { padding: 20px 30px; }
+    }
+  </style>
+  </head>
+  <body>
+  <div class="page">
+
+  <h1>공공부문 AI 시스템·서비스 현황 제출서</h1>
+
+  <h2>1. AI 시스템·서비스 현황</h2>
+  <table>
+  <tr><td>시스템명</td><td>유가 이상징후 자율 모니터링 시스템 (OPMS, Oil Price Monitoring System)</td></tr>
+  <tr><td>개요</td><td>중동 정세 불안에 따른 국제 유가 변동성 확대에 대응하기 위해, 오피넷(Opinet) 및 페트로넷(Petronet) 등 공공·국제 유가 데이터를 AI가 24시간 자율 수집·분석하여 가격 담합·폭리 등 이상징후를 자동 탐지하고, 현장 점검 인력에게 모바일 푸시 알림을 실시간 제공하는 자율형 유가 모니터링 시스템</td></tr>
+  <tr><td>서비스 대상</td><td>■ 국민 (대국민 공개 대시보드)<br>■ 공무원 (산업부 등 유관기관 범부처 합동 점검단, 한국석유관리원 현장 요원)</td></tr>
+  <tr><td>적용 행정 분야</td><td>세무·재정 / 재난·안전 (석유 유통 질서 확립 및 민생 경제 안정)</td></tr>
+  <tr><td>서비스 주소</td><td>https://opms.kpetro.or.kr</td></tr>
+  <tr><td>추진 단계</td><td>시범 운영 중 (2026.03.16. 개시, PoC 완료 단계)</td></tr>
+  </table>
+
+  <h2>2. AI 기술 적용 내용</h2>
+
+  <h3>1) 적용 AI 기술</h3>
+
+  <p><strong>① 이상 탐지 (Anomaly Detection) ○</strong></p>
+  <p>전국 약 12,000개 주유소의 일별 유가 데이터를 자동 수집하여 아래 4가지 핵심 이상징후를 알고리즘으로 판별한다.</p>
+  <table>
+  <tr><th>탐지 유형</th><th>판별 기준</th><th>의미</th></tr>
+  <tr><td>급등·급락 탐지</td><td>전일 대비 ±일정 기준 초과 변동 주유소 자동 집계</td><td>단기 가격 조작 또는 매점매석 의심</td></tr>
+  <tr><td>최고가격제 초과</td><td>정부 고시 유류 최고가격 대비 판매가 초과 여부</td><td>명백한 법령 위반 업소 색출</td></tr>
+  <tr><td>유종 간 가격 역전</td><td>휘발유·경유·등유 간 정상 가격 서열 역전 감지</td><td>비정상적 유통 구조 및 세금 탈루 의심</td></tr>
+  <tr><td>지역 평균 이탈</td><td>시도별 평균 대비 극단값 주유소 순위화 (TOP 10)</td><td>지역 내 폭리 또는 불법 덤핑 의심</td></tr>
+  </table>
+
+  <p><strong>② 생성형 AI (Generative AI) ○</strong></p>
+  <p>구글 제미나이(Gemini)를 AI 협업 도구로 활용하여 데이터 수집·분석 로직을 설계하고, Replit 기반의 코드 자동 생성(Vibe Coding) 방식으로 비전문 개발자가 단기간 내 전 기능을 구현하였다. 별도 외주 개발 또는 IT 부서 협업 없이 업무 담당자가 직접 시스템을 완성한 공공부문 AX(AI Transformation)의 대표 사례이다.</p>
+
+  <p><strong>③ 예측·분석 (Predictive Analytics) ○</strong></p>
+  <p>페트로넷(Petronet)에서 수집한 국제 원유 3종(WTI·브렌트유·두바이유) 가격과 달러·원 환율을 국내 유종별 가격과 연계 분석하여, 국제 유가 상승분이 국내 소비자가에 과도하게 전가되는 이상 변동성 구간을 선별한다. 국제 유가 대비 국내 유가 연동성 차트를 통해 정책 담당자의 의사결정을 지원한다.</p>
+
+  <h3>2) 활용 데이터</h3>
+  <table>
+  <tr><th>데이터 종류</th><th>출처</th><th>수집 주기</th><th>내용</th></tr>
+  <tr><td>국내 유종별 가격</td><td>오피넷 (Opinet)</td><td>1일 1회 (자동)</td><td>전국 약 12,000개 주유소 유종별(휘발유·경유·등유) 일별 판매가</td></tr>
+  <tr><td>국제 원유 가격</td><td>페트로넷 (Petronet)</td><td>영업일 1회 (08:10 자동)</td><td>WTI·브렌트유·두바이유 배럴당 달러 기준 가격 및 전일 대비 변동</td></tr>
+  <tr><td>달러·원 환율</td><td>페트로넷 (Petronet)</td><td>영업일 1회 (연동)</td><td>매매기준율 및 전일 대비 변동폭</td></tr>
+  <tr><td>유류 최고가격</td><td>산업부 고시</td><td>변경 시 수동 등록</td><td>정부 고시 유종별 최고 판매가격</td></tr>
+  <tr><td>GIS 좌표</td><td>오피넷 API</td><td>최초 1회 수집 후 DB 보관</td><td>전국 주유소 위도·경도 (지도 기반 시각화 활용)</td></tr>
+  </table>
+
+  <h3>3) 시스템 구조</h3>
+  <pre>[데이터 수집 계층]
+   ├─ 오피넷 CSV 자동 다운로드 → PostgreSQL DB 적재 (1일 1회)
+   └─ 페트로넷 HTML 크롤링 → 원유 3종 + 환율 자동 파싱 (영업일 08:10)
+
+  [분석·탐지 계층]
+   ├─ 이상징후 탐지 엔진 (급등·급락, 최고가초과, 가격역전, 지역이탈)
+   ├─ 국제-국내 유가 연동성 분석 모듈
+   └─ 스케줄러 (1일 2회 분석, 크롤링 실패 시 최대 2회 자동 재시도)
+
+  [서비스 계층]
+   ├─ 관리자 대시보드 (로그인 필요): 본부·팀·사용자 권한 관리, 5종 분석 화면
+   ├─ 대국민 공개 대시보드: 지역별 평균 유가, 국제 유가, 환율, 날씨 실시간 제공
+   └─ PWA 모바일 앱: 현장 요원 대상 푸시 알림 (10:00, 17:00 자동 발송)</pre>
+  <p><strong>기술 스택:</strong> React 18 (TypeScript) · Express.js · PostgreSQL · Drizzle ORM · Tailwind CSS · PWA(Service Worker)</p>
+
+  <h2>3. AX(AI Transformation) 효과</h2>
+
+  <h3>1) 행정업무 효율화</h3>
+  <table>
+  <tr><th>항목</th><th>도입 전 (수동)</th><th>도입 후 (AI 자율)</th></tr>
+  <tr><td>모니터링 방식</td><td>담당자가 오피넷 수동 접속·확인</td><td>24시간 자동 수집·분석·알림</td></tr>
+  <tr><td>이상 주유소 발굴</td><td>전수 조회 불가 (표본 위주)</td><td>전국 12,000개소 전수 자동 검증</td></tr>
+  <tr><td>현장 대응 속도</td><td>익일 또는 주간 보고 후 대응</td><td>당일 2회 모바일 푸시 → 즉각 대응</td></tr>
+  <tr><td>국제 유가 연동 분석</td><td>개별 수작업</td><td>자동 수집·차트 시각화</td></tr>
+  <tr><td>개발 소요 예산</td><td>(외주 시 수천만 원 예상)</td><td><strong>약 $500 수준 (AI 도구 구독료)</strong></td></tr>
+  </table>
+
+  <h3>2) 국민 서비스 개선</h3>
+  <ul>
+  <li><strong>유통 투명성 확보:</strong> 가격 담합 및 폭리 업체를 데이터 기반으로 조기 탐지·차단하여 국민 유류비 부담 완화 및 공정 시장 질서 조성</li>
+  <li><strong>위치 기반 정보 공개:</strong> 대국민 공개 대시보드를 통해 지역별 평균 유가 추이 및 최저가 주유소 정보를 누구나 실시간으로 확인 가능</li>
+  <li><strong>정책 신뢰도 제고:</strong> 정부 최고가격제 준수 여부를 자동으로 모니터링함으로써 가격 규제의 실효성을 대내외에 입증</li>
+  </ul>
+
+  <h3>3) 정책 의사결정 지원</h3>
+  <ul>
+  <li><strong>핀셋 감시 구현:</strong> TOP 10 이상 주유소(급등·급락·최고가초과·최저가) 자동 순위화로 인력·자원의 집중 투입 지점을 데이터가 직접 제시</li>
+  <li><strong>범부처 협업 지원:</strong> 시스템 접근 계정을 본부·팀 단위 권한별로 발급하여 산업부·석유관리원 등 유관기관 합동 점검단이 동일한 데이터를 공유하며 협업</li>
+  </ul>
+
+  <h2>4. 확산 가능성</h2>
+
+  <h3>1) 공통 플랫폼·모듈화 가능성</h3>
+  <ul>
+  <li><strong>범용 이상탐지 모듈:</strong> 본 시스템의 가격 이상징후 탐지 로직은 농축산물, 생필품, 의약품 등 물가 관리가 필요한 모든 공공 행정 분야에 즉시 이식 가능한 범용 구조로 설계되어 있음</li>
+  <li><strong>AX 확산 모델 실증:</strong> 예산 편성, IT 부서 협업, 외주 개발 없이 <strong>업무 담당자 1인이 AI 협업만으로 30일 이내에 실서비스를 구축·배포</strong>한 사례로서, 공공부문 AX의 선도적 우수사례(Best Practice)로 자리매김함</li>
+  </ul>
+
+  <h3>2) 타 기관 및 해외 확산 가능성</h3>
+  <ul>
+  <li><strong>국내 수평 전파:</strong> 대구경북본부의 시범 운영 성과를 토대로 전국 지방 조직 및 타 부처 물가 감시 업무에 동일 플랫폼 적용 가능</li>
+  <li><strong>해외 수출 잠재성:</strong> 에너지 안보 및 석유 유통 시장 관리가 중요한 개발도상국을 대상으로, 한국의 디지털 정부 모델과 결합한 석유 유통 모니터링 솔루션 수출 가능성이 높음 (ODA 연계 디지털 정부 협력 사업 적용 검토)</li>
+  </ul>
+
+  <h3>3) 확산 추진 의지</h3>
+  <ul>
+  <li>적극 참여 의향 있음</li>
+  <li>대구경북본부 우수사례를 고도화하여 전 부서에 배포 중이며, 향후 글로벌 표준형 AX 모델 선정을 통한 해외 진출 추진 의지 확고함</li>
+  </ul>
+
+  <div class="note">※ 본 시스템은 별도 예산 편성 없이 기구독 AI 도구(Google Gemini, Replit)를 활용, 담당자가 직접 설계·개발·운영하는 저비용 고효율 모델임</div>
+
+  </div>
+  </body>
+  </html>
