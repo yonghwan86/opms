@@ -46,7 +46,7 @@ function useGeoRegion() {
 
 // ─── 타입 ────────────────────────────────────────────────────────────────────
 interface CrudePrice { price: number; change: number; changePercent: number; }
-interface WtiResponse { current: CrudePrice | null; brent: CrudePrice | null; dubai: CrudePrice | null; crudeDate: string | null; history: { date: string; value: number }[]; }
+interface WtiResponse { current: CrudePrice | null; brent: CrudePrice | null; dubai: CrudePrice | null; crudeDate: string | null; history: { date: string; value: number }[]; brentHistory: { date: string; value: number }[]; dubaiHistory: { date: string; value: number }[]; }
 interface ExchangeRate { rate: number; change: number; changePercent: number; }
 interface SpreadData { spread: number; maxPrice: number; maxStation: string; maxRegion: string; minPrice: number; minStation: string; minRegion: string; }
 interface FuelStats { date: string; averages: { gasoline: number; diesel: number; kerosene: number; gasolineChange: number; dieselChange: number; keroseneChange: number } | null; spread: { gasoline: SpreadData | null; diesel: SpreadData | null } | null; }
@@ -295,6 +295,9 @@ function MetricCard({ title, subtitle, source, live, icon: Icon, iconBg, loading
   );
 }
 
+const CRUDE_LABEL: Record<string, string> = { wti: "WTI", brent: "브렌트", dubai: "두바이" };
+const CRUDE_KEYS = new Set(["wti", "brent", "dubai"]);
+
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
@@ -302,8 +305,8 @@ function ChartTooltip({ active, payload, label }: any) {
       <p className="font-semibold text-foreground mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.color }}>
-          {p.dataKey === "wti" ? "WTI" : p.dataKey === "gasoline" ? "휘발유" : "경유"}:{" "}
-          {p.dataKey === "wti" ? `$${Number(p.value).toFixed(2)}` : `${fmt(Number(p.value))}원`}
+          {CRUDE_KEYS.has(p.dataKey) ? CRUDE_LABEL[p.dataKey] : p.dataKey === "gasoline" ? "휘발유" : "경유"}:{" "}
+          {CRUDE_KEYS.has(p.dataKey) ? `$${Number(p.value).toFixed(2)}` : `${fmt(Number(p.value))}원`}
         </p>
       ))}
     </div>
@@ -348,6 +351,7 @@ export default function PublicDashboardPage() {
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalScope, setRegionalScope] = useState<'local' | 'national'>('local');
   const [chartTab, setChartTab] = useState<'intl' | 'comparison' | 'ceiling'>('intl');
+  const [selectedCrude, setSelectedCrude] = useState<'wti' | 'brent' | 'dubai'>('wti');
   const [comparisonFuel, setComparisonFuel] = useState<'gasoline' | 'diesel' | 'kerosene'>('gasoline');
 
   // 최고가격제 탭 상태
@@ -401,10 +405,15 @@ export default function PublicDashboardPage() {
     const domMap = new Map(domesticHistory.map(d => [
       `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`, d,
     ]));
-    const wtiMap = new Map((wtiRes?.history ?? []).map(h => [h.date, h.value]));
+    const crudeArr = selectedCrude === 'wti'
+      ? (wtiRes?.history ?? [])
+      : selectedCrude === 'brent'
+      ? (wtiRes?.brentHistory ?? [])
+      : (wtiRes?.dubaiHistory ?? []);
+    const crudeMap = new Map(crudeArr.map(h => [h.date, h.value]));
     const allDates = new Set([
       ...domesticHistory.map(d => `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`),
-      ...(wtiRes?.history ?? []).map(h => h.date),
+      ...crudeArr.map(h => h.date),
     ]);
     const days = isMobile ? 7 : 90;
     const cutoff = new Date();
@@ -412,11 +421,11 @@ export default function PublicDashboardPage() {
     const cutoffStr = cutoff.toISOString().slice(0, 10);
     return Array.from(allDates).sort().filter(d => d >= cutoffStr).map(date => ({
       date, label: date.slice(5),
-      wti: wtiMap.get(date) ?? null,
+      [selectedCrude]: crudeMap.get(date) ?? null,
       gasoline: domMap.get(date)?.gasoline ?? null,
       diesel: domMap.get(date)?.diesel ?? null,
     }));
-  }, [wtiRes, domesticHistory, isMobile]);
+  }, [wtiRes, domesticHistory, isMobile, selectedCrude]);
 
   const wti = wtiRes?.current;
   const brent = wtiRes?.brent;
@@ -804,11 +813,32 @@ export default function PublicDashboardPage() {
               <div className="px-5 pt-3 pb-0">
                 <div className="flex flex-col gap-1 pb-2">
                   <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
-                  <p className="text-xs text-muted-foreground">WTI 국제 유가 vs 국내 평균 유가</p>
+                  <p className="text-xs text-muted-foreground">{CRUDE_LABEL[selectedCrude]} 국제 유가 vs 국내 평균 유가</p>
                 </div>
-                <p className="text-xs text-muted-foreground mb-1 leading-relaxed">
-                  ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-                </p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    ※ 국제 유가 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+                  </p>
+                  <div className="flex gap-1 flex-shrink-0 ml-2">
+                    {([
+                      ['wti', 'WTI'],
+                      ['brent', '브렌트'],
+                      ['dubai', '두바이'],
+                    ] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedCrude(key)}
+                        data-testid={`crude-tab-${key}`}
+                        className={cn(
+                          "text-xs px-2 py-1 rounded font-medium transition-colors whitespace-nowrap",
+                          selectedCrude === key
+                            ? "bg-slate-700 text-white"
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >{label}</button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="px-2 pb-3 pt-1">
                 <ResponsiveContainer width="100%" height={340}>
@@ -832,9 +862,9 @@ export default function PublicDashboardPage() {
                     />
                     <Tooltip content={<ChartTooltip />} />
                     <Legend wrapperStyle={{ fontSize: ({ mobile: 11, tablet: 12, desktop: 13 } as const)[bp], paddingTop: 8 }} iconType="line" iconSize={({ mobile: 12, tablet: 14, desktop: 20 } as const)[bp]}
-                      formatter={(val) => val === "wti" ? "WTI (국제)" : val === "gasoline" ? "휘발유" : "경유"}
+                      formatter={(val) => CRUDE_KEYS.has(String(val)) ? `${CRUDE_LABEL[String(val)]} (국제)` : val === "gasoline" ? "휘발유" : "경유"}
                     />
-                    <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
+                    <Line yAxisId="wti" type="monotone" dataKey={selectedCrude} stroke="#64748b" strokeWidth={2.5} dot={false} name={selectedCrude} connectNulls />
                     <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
                     <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
                   </ComposedChart>

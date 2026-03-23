@@ -132,6 +132,8 @@ interface WtiResponse {
   dubai: CrudePrice | null;
   crudeDate: string | null;
   history: { date: string; value: number }[];
+  brentHistory: { date: string; value: number }[];
+  dubaiHistory: { date: string; value: number }[];
 }
 interface ExchangeRate {
   rate: number; change: number; changePercent: number;
@@ -230,7 +232,11 @@ const FUEL_NAME_KO: Record<string, string> = {
   diesel: "경유",
   kerosene: "등유",
   wti: "WTI",
+  brent: "브렌트",
+  dubai: "두바이",
 };
+
+const CRUDE_INTL_KEYS = new Set(["wti", "brent", "dubai"]);
 
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -239,7 +245,7 @@ function ChartTooltip({ active, payload, label }: any) {
       <p className="font-semibold text-foreground mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.color }}>
-          {FUEL_NAME_KO[p.dataKey] ?? p.name}: {p.dataKey === "wti" ? `$${Number(p.value).toFixed(2)}` : `${fmt(Number(p.value))}원`}
+          {FUEL_NAME_KO[p.dataKey] ?? p.name}: {CRUDE_INTL_KEYS.has(p.dataKey) ? `$${Number(p.value).toFixed(2)}` : `${fmt(Number(p.value))}원`}
         </p>
       ))}
     </div>
@@ -385,6 +391,7 @@ export default function DashboardPage() {
 
   // 유가 분석 카드 탭 (MASTER=국제-국내 연동, HQ_USER=지역별 추이)
   const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'comparison' | 'regional'>(isMaster ? 'global' : 'regional');
+  const [selectedCrude, setSelectedCrude] = useState<'wti' | 'brent' | 'dubai'>('wti');
   const [comparisonFuel, setComparisonFuel] = useState<'gasoline' | 'diesel' | 'kerosene'>('gasoline');
 
   // 지역별 순위 탭
@@ -458,10 +465,15 @@ export default function DashboardPage() {
       `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`,
       d,
     ]));
-    const wtiMap = new Map((wtiRes?.history ?? []).map(h => [h.date, h.value]));
+    const crudeArr = selectedCrude === 'wti'
+      ? (wtiRes?.history ?? [])
+      : selectedCrude === 'brent'
+      ? (wtiRes?.brentHistory ?? [])
+      : (wtiRes?.dubaiHistory ?? []);
+    const crudeMap = new Map(crudeArr.map(h => [h.date, h.value]));
     const allDates = new Set([
       ...domesticHistory.map(d => `${d.date.slice(0, 4)}-${d.date.slice(4, 6)}-${d.date.slice(6, 8)}`),
-      ...(wtiRes?.history ?? []).map(h => h.date),
+      ...crudeArr.map(h => h.date),
     ]);
     return Array.from(allDates)
       .filter(date => date >= cutoff90)
@@ -469,11 +481,11 @@ export default function DashboardPage() {
       .map(date => ({
         date,
         label: date.slice(5),
-        wti: wtiMap.get(date) ?? null,
+        [selectedCrude]: crudeMap.get(date) ?? null,
         gasoline: domMap.get(date)?.gasoline ?? null,
         diesel: domMap.get(date)?.diesel ?? null,
       }));
-  }, [wtiRes, domesticHistory, cutoff90]);
+  }, [wtiRes, domesticHistory, cutoff90, selectedCrude]);
 
   const regionalChartData = useMemo(() => {
     return regionalHistory.map(d => ({
@@ -885,16 +897,37 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs md:text-sm text-muted-foreground">
                 {oilAnalysisTab === 'global'
-                  ? 'WTI 국제 유가 vs 국내 평균 유가'
+                  ? `${FUEL_NAME_KO[selectedCrude]} 국제 유가 vs 국내 평균 유가`
                   : oilAnalysisTab === 'comparison'
                   ? '국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 90일'
                   : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
               </p>
             </div>
             {oilAnalysisTab === 'global' && (
-              <p className="text-xs text-muted-foreground mt-2 mb-1 leading-relaxed">
-                ※ 국제 유가(WTI) 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-              </p>
+              <div className="flex items-center justify-between mt-2 mb-1">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  ※ 국제 유가 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
+                </p>
+                <div className="flex gap-1 flex-shrink-0 ml-2">
+                  {([
+                    ['wti', 'WTI'],
+                    ['brent', '브렌트'],
+                    ['dubai', '두바이'],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedCrude(key)}
+                      data-testid={`crude-tab-${key}`}
+                      className={cn(
+                        "text-xs px-2 py-1 rounded font-medium transition-colors whitespace-nowrap",
+                        selectedCrude === key
+                          ? "bg-slate-700 text-white"
+                          : "text-muted-foreground hover:bg-muted"
+                      )}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
           <div className="px-2 pb-2 pt-1">
@@ -940,13 +973,13 @@ export default function DashboardPage() {
                     iconType="line"
                     iconSize={({ mobile: 12, tablet: 14, desktop: 20 } as const)[bp]}
                     formatter={(val) => {
-                      if (val === "wti") return isMobile ? "WTI" : "WTI (국제)";
+                      if (val === selectedCrude) return isMobile ? FUEL_NAME_KO[selectedCrude] : `${FUEL_NAME_KO[selectedCrude]} (국제)`;
                       if (val === "gasoline") return "휘발유";
                       if (val === "diesel") return "경유";
                       return val;
                     }}
                   />
-                  <Line yAxisId="wti" type="monotone" dataKey="wti" stroke="#64748b" strokeWidth={2.5} dot={false} name="wti" connectNulls />
+                  <Line yAxisId="wti" type="monotone" dataKey={selectedCrude} stroke="#64748b" strokeWidth={2.5} dot={false} name={selectedCrude} connectNulls />
                   <Line yAxisId="domestic" type="monotone" dataKey="gasoline" stroke="#eab308" strokeWidth={2.5} dot={false} name="gasoline" connectNulls />
                   <Line yAxisId="domestic" type="monotone" dataKey="diesel" stroke="#22c55e" strokeWidth={2.5} dot={false} name="diesel" connectNulls />
                 </ComposedChart>

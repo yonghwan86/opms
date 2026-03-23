@@ -201,6 +201,33 @@ interface CsvUpsertResult {
   error?: string;
 }
 
+// ─── DB 기반 원유 3종 히스토리 조회 ───────────────────────────────────────────
+export async function getCrudeDbHistory(): Promise<{
+  wti: { date: string; value: number }[];
+  brent: { date: string; value: number }[];
+  dubai: { date: string; value: number }[];
+}> {
+  const rows = await db.execute(sql`
+    SELECT date, wti, brent, dubai
+    FROM intl_fuel_prices
+    WHERE date >= to_char(NOW() - INTERVAL '100 days', 'YYYYMMDD')
+    ORDER BY date ASC
+  `);
+  const wti: { date: string; value: number }[] = [];
+  const brent: { date: string; value: number }[] = [];
+  const dubai: { date: string; value: number }[] = [];
+  for (const r of rows.rows as any[]) {
+    const raw = String(r.date ?? "");
+    const isoDate = raw.length === 8
+      ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+      : raw;
+    if (r.wti != null)   wti.push({ date: isoDate, value: Number(r.wti) });
+    if (r.brent != null) brent.push({ date: isoDate, value: Number(r.brent) });
+    if (r.dubai != null) dubai.push({ date: isoDate, value: Number(r.dubai) });
+  }
+  return { wti, brent, dubai };
+}
+
 export async function parseAndUpsertIntlCsvBase64(base64: string): Promise<CsvUpsertResult> {
   const buffer = Buffer.from(base64, "base64");
   let text = buffer.toString("utf-8").replace(/^\uFEFF/, "");
