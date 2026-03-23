@@ -99,9 +99,9 @@ export async function getLatestCrudeOilPrices(): Promise<CrudeOilData> {
       const p = curr ? parseFloat(curr) : null;
       if (p === null || !isFinite(p)) return null;
       const pv = prevVal ? parseFloat(prevVal) : null;
-      const change = pv !== null ? p - pv : 0;
-      const changePercent = pv !== null && pv !== 0 ? (change / pv) * 100 : 0;
-      return { price: p, change, changePercent };
+      const change = pv !== null ? p - pv : null;
+      const changePercent = pv !== null && pv !== 0 && change !== null ? (change / pv) * 100 : null;
+      return { price: p, change: change ?? 0, changePercent: changePercent ?? 0 };
     };
 
     return {
