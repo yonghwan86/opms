@@ -622,7 +622,7 @@ export default function DashboardPage() {
                       <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
                       <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
                       {data && (data.change !== 0 || data.changePercent !== 0) && (
-                        <ChangeChip val={data.change} unit="$" percent={data.changePercent} decimals={2} />
+                        <ChangeChip val={data.change} unit="$" decimals={2} />
                       )}
                     </div>
                   ))}
