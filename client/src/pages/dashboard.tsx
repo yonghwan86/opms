@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   ComposedChart, Line, Bar, BarChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer,
+  ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Fuel, DollarSign, Globe, BarChart2, HelpCircle, Pencil, ShieldCheck, ClipboardList, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -923,6 +923,11 @@ export default function DashboardPage() {
                 intl: intlSel[comparisonFuel](row),
                 domestic: domSel[comparisonFuel](row),
               }));
+              const firstDate = intlVsDomesticData[0]?.date ?? "0";
+              const lastDate = intlVsDomesticData[intlVsDomesticData.length - 1]?.date ?? "99999999";
+              const ceilingRefLabels = ceilingData
+                .filter(c => { const d = c.effectiveDate.replace(/-/g, ""); return d >= firstDate && d <= lastDate; })
+                .map(c => c.effectiveDate.slice(5).replace("-", "/"));
               return (
                 <div>
                   <div className="flex gap-1 justify-end pb-1 pt-0.5">
@@ -941,7 +946,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   <ResponsiveContainer width="100%" height={310}>
-                    <ComposedChart data={compRows} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
+                    <ComposedChart data={compRows} margin={{ top: 24, right: 8, left: 10, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                       <XAxis dataKey="label"
                         tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
@@ -967,6 +972,10 @@ export default function DashboardPage() {
                       />
                       <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
                       <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
+                      {ceilingRefLabels.map(lbl => (
+                        <ReferenceLine key={lbl} x={lbl} yAxisId="intl" stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
+                          label={{ value: "공표일", position: "top", fontSize: 10, fill: fuelColor }} />
+                      ))}
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
