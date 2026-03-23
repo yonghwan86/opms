@@ -603,7 +603,7 @@ export default function PublicDashboardPage() {
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
 
           {/* WTI */}
-          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance" live>
+          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance">
             {wti ? (
               <>
                 <div className="flex items-center justify-between gap-1.5 overflow-hidden">
@@ -653,7 +653,7 @@ export default function PublicDashboardPage() {
           </MetricCard>
 
           {/* 국내 유류 평균 */}
-          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading} source="오피넷" live>
+          <MetricCard title="국내 유류 평균" icon={Fuel} iconBg="bg-orange-500" loading={fuelLoading} source="오피넷">
             {avg ? (
               <div className="space-y-2">
                 {[
