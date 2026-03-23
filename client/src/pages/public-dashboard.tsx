@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Minus, Globe, Fuel, BarChart2, ShieldCheck,
-  MapPin, Loader2, Search, ChevronDown,
+  MapPin, Loader2, Search, ChevronDown, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -254,12 +254,12 @@ function ChangeChip({ val, unit = "원", percent, decimals = 0, compact = false 
   return (
     <span className={cn(
       "font-semibold flex items-center whitespace-nowrap",
-      compact ? "text-[10px] gap-0.5" : "text-xs md:text-sm gap-0.5 md:gap-1",
+      compact ? "text-[10px] md:text-xs gap-0.5" : "text-xs md:text-sm gap-0.5 md:gap-1",
       up ? "text-red-500" : "text-blue-500"
     )}>
       {up
-        ? <TrendingUp className={compact ? "w-2.5 h-2.5" : "w-3 h-3 md:w-4 md:h-4"} />
-        : <TrendingDown className={compact ? "w-2.5 h-2.5" : "w-3 h-3 md:w-4 md:h-4"} />}
+        ? <TrendingUp className={compact ? "w-2.5 h-2.5 md:w-3 md:h-3" : "w-3 h-3 md:w-4 md:h-4"} />
+        : <TrendingDown className={compact ? "w-2.5 h-2.5 md:w-3 md:h-3" : "w-3 h-3 md:w-4 md:h-4"} />}
       {up ? "+" : "-"}{displayVal}{unit}
       {percent !== undefined && <span className="font-normal opacity-80">({percent > 0 ? "+" : ""}{percent.toFixed(2)}%)</span>}
     </span>
@@ -267,7 +267,7 @@ function ChangeChip({ val, unit = "원", percent, decimals = 0, compact = false 
 }
 
 function MetricCard({ title, subtitle, source, live, icon: Icon, iconBg, loading, children }: {
-  title: string; subtitle?: string; source?: string; live?: boolean; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
+  title: string; subtitle?: React.ReactNode; source?: string; live?: boolean; icon: React.ElementType; iconBg: string; loading?: boolean; children: React.ReactNode;
 }) {
   return (
     <Card className="px-3 pt-3 pb-2 md:px-4 md:pt-4 md:pb-3 border border-border bg-card flex flex-col">
@@ -615,7 +615,14 @@ export default function PublicDashboardPage() {
           {/* 국제 원유 가격 */}
           <MetricCard
             title="국제 원유 가격"
-            subtitle={crudeDate ? `${crudeDate.slice(0,4)}.${crudeDate.slice(4,6)}.${crudeDate.slice(6,8)} 기준` : undefined}
+            subtitle={crudeDate ? (
+              <span className="inline-flex items-center gap-1 flex-wrap">
+                {`${crudeDate.slice(0,4)}.${crudeDate.slice(4,6)}.${crudeDate.slice(6,8)} 기준`}
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
+                  (<DollarSign className="w-2.5 h-2.5" strokeWidth={2.5} />/배럴)
+                </span>
+              </span>
+            ) : undefined}
             icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Petronet"
           >
             {(wti || brent || dubai) ? (
@@ -627,9 +634,9 @@ export default function PublicDashboardPage() {
                       { label: "브렌트", data: brent },
                       { label: "두바이", data: dubai },
                     ].map(({ label, data }) => (
-                      <div key={label} className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
-                        <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="text-xs md:text-sm font-semibold text-muted-foreground w-11 md:w-14 shrink-0">{label}</span>
+                        <span className="text-sm md:text-base font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
                         {data && (data.change !== 0 || data.changePercent !== 0) && (
                           <ChangeChip val={data.change} unit="$" decimals={2} compact />
                         )}
