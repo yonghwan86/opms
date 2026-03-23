@@ -1686,6 +1686,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/admin/intl-fuel-prices/crude-upsert — 원유가격 수동 입력 (MASTER 전용)
+  app.post("/api/admin/intl-fuel-prices/crude-upsert", requireAuth, requireMaster, async (req, res) => {
+    try {
+      const { date, wti, brent, dubai, wti_change, brent_change, dubai_change } = req.body as {
+        date: string; wti: number; brent: number; dubai: number;
+        wti_change: number; brent_change: number; dubai_change: number;
+      };
+      if (!date || !/^\d{8}$/.test(date)) return res.status(400).json({ message: "날짜 형식 오류 (YYYYMMDD)" });
+      if (wti == null || brent == null || dubai == null) return res.status(400).json({ message: "WTI·브렌트·두바이 가격 필요" });
+
+      await db.execute(sql`
+        INSERT INTO intl_fuel_prices (date, wti, brent, dubai, wti_change, brent_change, dubai_change)
+        VALUES (${date}, ${wti}, ${brent}, ${dubai}, ${wti_change ?? 0}, ${brent_change ?? 0}, ${dubai_change ?? 0})
+        ON CONFLICT (date) DO UPDATE
+          SET wti = EXCLUDED.wti,
+              brent = EXCLUDED.brent,
+              dubai = EXCLUDED.dubai,
+              wti_change = EXCLUDED.wti_change,
+              brent_change = EXCLUDED.brent_change,
+              dubai_change = EXCLUDED.dubai_change
+      `);
+      res.json({ ok: true, date, wti, brent, dubai, wti_change, brent_change, dubai_change });
+    } catch (e) {
+      console.error("[CrudeUpsert] 오류:", e);
+      res.status(500).json({ message: "저장 실패" });
+    }
+  });
+
   // POST /api/admin/intl-fuel-prices/upload — CSV 수동 업로드 (MASTER 전용)
   app.post("/api/admin/intl-fuel-prices/upload", requireAuth, requireMaster, async (req, res) => {
     try {
