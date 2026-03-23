@@ -618,13 +618,11 @@ export default function DashboardPage() {
                     { label: "브렌트", data: brent },
                     { label: "두바이", data: dubai },
                   ].map(({ label, data }) => (
-                    <div key={label} className="flex items-center gap-1">
+                    <div key={label} className="flex items-center gap-1.5">
                       <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
                       <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
                       {data && (data.change !== 0 || data.changePercent !== 0) && (
-                        <span className="ml-auto shrink-0">
-                          <ChangeChip val={data.change} unit="$" percent={data.changePercent} decimals={2} />
-                        </span>
+                        <ChangeChip val={data.change} unit="$" percent={data.changePercent} decimals={2} />
                       )}
                     </div>
                   ))}
