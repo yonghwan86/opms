@@ -845,11 +845,21 @@ export default function PublicDashboardPage() {
                     diesel: r => r.domesticDiesel,
                     kerosene: r => r.domesticKerosene,
                   };
-                  const chartRows = (isMobile ? intlVsDomesticData.slice(-30) : intlVsDomesticData).map(row => ({
+                  const visibleData = isMobile ? intlVsDomesticData.slice(-30) : intlVsDomesticData;
+                  const firstDate = visibleData[0]?.date ?? "0";
+                  const lastDate = visibleData[visibleData.length - 1]?.date ?? "99999999";
+                  const chartRows = visibleData.map(row => ({
                     label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
                     intl: intlSelector[comparisonFuel](row),
                     domestic: domSelector[comparisonFuel](row),
                   }));
+                  // 차트 기간 내 공표일만 필터 → MM/DD 레이블로 변환
+                  const ceilingRefLabels = allCeilings
+                    .filter(c => {
+                      const d = c.effectiveDate.replace(/-/g, "");
+                      return d >= firstDate && d <= lastDate;
+                    })
+                    .map(c => c.effectiveDate.slice(5).replace("-", "/"));
                   return (
                     <ResponsiveContainer width="100%" height={340}>
                       <ComposedChart data={chartRows} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
@@ -878,6 +888,10 @@ export default function PublicDashboardPage() {
                         />
                         <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
                         <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
+                        {ceilingRefLabels.map(lbl => (
+                          <ReferenceLine key={lbl} x={lbl} yAxisId="intl" stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
+                            label={{ value: "공표일", position: "top", fontSize: 10, fill: fuelColor }} />
+                        ))}
                       </ComposedChart>
                     </ResponsiveContainer>
                   );
