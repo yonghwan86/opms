@@ -613,28 +613,28 @@ export default function PublicDashboardPage() {
             icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Petronet"
           >
             {(wti || brent || dubai) ? (
-              <div className="space-y-1.5 mt-0.5">
-                {[
-                  { label: "WTI", data: wti },
-                  { label: "브렌트", data: brent },
-                  { label: "두바이", data: dubai },
-                ].map(({ label, data }) => (
-                  <div key={label} className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
-                    <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
-                    <span className="shrink-0">
-                      {data && (data.change !== 0 || data.changePercent !== 0)
-                        ? <ChangeChip val={data.change} unit="$" percent={data.changePercent} decimals={2} />
-                        : <span className="text-xs text-muted-foreground">—</span>}
-                    </span>
-                  </div>
-                ))}
-                {fx && (
-                  <div className="pt-1 mt-1 border-t border-border/60">
-                    <div className="inline-flex flex-col border border-border rounded-lg px-2 py-1 bg-muted/70">
-                      <span className="text-[11px] font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
-                      <ChangeChip val={fx.change} unit="원" />
+              <div className="flex items-start gap-2 mt-0.5">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  {[
+                    { label: "WTI", data: wti },
+                    { label: "브렌트", data: brent },
+                    { label: "두바이", data: dubai },
+                  ].map(({ label, data }) => (
+                    <div key={label} className="flex items-center gap-1">
+                      <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
+                      <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
+                      {data && (data.change !== 0 || data.changePercent !== 0) && (
+                        <span className="ml-auto shrink-0">
+                          <ChangeChip val={data.change} unit="$" percent={data.changePercent} decimals={2} />
+                        </span>
+                      )}
                     </div>
+                  ))}
+                </div>
+                {fx && (
+                  <div className="flex flex-col shrink-0 border border-border rounded-lg px-2 py-1 bg-muted/70">
+                    <span className="text-[11px] font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
+                    <ChangeChip val={fx.change} unit="원" />
                   </div>
                 )}
               </div>
