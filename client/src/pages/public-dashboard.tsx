@@ -968,16 +968,17 @@ export default function PublicDashboardPage() {
                   </div>
                 </div>
 
-                <div className="w-px h-8 bg-border" />
-
-                {/* 주유소 검색 */}
-                <PubStationSearch
-                  value={ceilStationSearch}
-                  onChange={v => { setCeilStationSearch(v); if (!v.trim()) setCeilStation(null); }}
-                  onSelect={s => setCeilStation(s)}
-                  onSearch={s => { if (s) setCeilStation(s); }}
-                  sido={ceilSido}
-                />
+                {/* 주유소 검색 — 임시 숨김 (hidden 제거 시 복구) */}
+                <div className="hidden">
+                  <div className="w-px h-8 bg-border" />
+                  <PubStationSearch
+                    value={ceilStationSearch}
+                    onChange={v => { setCeilStationSearch(v); if (!v.trim()) setCeilStation(null); }}
+                    onSelect={s => setCeilStation(s)}
+                    onSearch={s => { if (s) setCeilStation(s); }}
+                    sido={ceilSido}
+                  />
+                </div>
 
                 {/* 지역평균선 체크박스 + 유종 토글 */}
                 <div className="flex items-center gap-2 flex-wrap ml-auto">
