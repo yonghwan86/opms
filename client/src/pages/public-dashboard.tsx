@@ -862,7 +862,7 @@ export default function PublicDashboardPage() {
                     .map(c => c.effectiveDate.slice(5).replace("-", "/"));
                   return (
                     <ResponsiveContainer width="100%" height={340}>
-                      <ComposedChart data={chartRows} margin={{ top: 10, right: 8, left: 10, bottom: 20 }}>
+                      <ComposedChart data={chartRows} margin={{ top: 24, right: 8, left: 10, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                         <XAxis dataKey="label"
                           tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
@@ -890,7 +890,7 @@ export default function PublicDashboardPage() {
                         <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
                         {ceilingRefLabels.map(lbl => (
                           <ReferenceLine key={lbl} x={lbl} yAxisId="intl" stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
-                            label={{ value: "공표일", position: "insideTopRight", fontSize: 10, fill: fuelColor }} />
+                            label={{ value: "공표일", position: "top", fontSize: 10, fill: fuelColor }} />
                         ))}
                       </ComposedChart>
                     </ResponsiveContainer>
