@@ -202,21 +202,29 @@ interface CsvUpsertResult {
 }
 
 // ─── DB 기반 원유 3종 히스토리 조회 ───────────────────────────────────────────
+interface CrudeHistoryRow {
+  date: string | number | null;
+  wti: string | number | null;
+  brent: string | number | null;
+  dubai: string | number | null;
+}
+
 export async function getCrudeDbHistory(): Promise<{
   wti: { date: string; value: number }[];
   brent: { date: string; value: number }[];
   dubai: { date: string; value: number }[];
 }> {
-  const rows = await db.execute(sql`
+  const result = await db.execute(sql`
     SELECT date, wti, brent, dubai
     FROM intl_fuel_prices
-    WHERE date >= to_char(NOW() - INTERVAL '100 days', 'YYYYMMDD')
+    WHERE date >= to_char(NOW() - INTERVAL '90 days', 'YYYYMMDD')
     ORDER BY date ASC
   `);
   const wti: { date: string; value: number }[] = [];
   const brent: { date: string; value: number }[] = [];
   const dubai: { date: string; value: number }[] = [];
-  for (const r of rows.rows as any[]) {
+  for (const row of result.rows) {
+    const r = row as CrudeHistoryRow;
     const raw = String(r.date ?? "");
     const isoDate = raw.length === 8
       ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
