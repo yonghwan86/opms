@@ -246,16 +246,22 @@ function todayLabel() {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
 }
 
-function ChangeChip({ val, unit = "원", percent, decimals = 0 }: { val: number; unit?: string; percent?: number; decimals?: number }) {
+function ChangeChip({ val, unit = "원", percent, decimals = 0, compact = false }: { val: number; unit?: string; percent?: number; decimals?: number; compact?: boolean }) {
   const isZero = decimals > 0 ? Math.abs(val) < Math.pow(10, -(decimals + 1)) : Math.round(val) === 0;
   if (isZero) return <span className="text-muted-foreground text-sm flex items-center gap-1"><Minus className="w-4 h-4" /> 변동없음</span>;
   const up = val > 0;
   const displayVal = decimals > 0 ? Math.abs(val).toFixed(decimals) : fmt(Math.abs(Math.round(val)));
   return (
-    <span className={cn("text-xs md:text-sm font-semibold flex items-center gap-0.5 md:gap-1 whitespace-nowrap", up ? "text-red-500" : "text-blue-500")}>
-      {up ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
+    <span className={cn(
+      "font-semibold flex items-center whitespace-nowrap",
+      compact ? "text-[10px] gap-0.5" : "text-xs md:text-sm gap-0.5 md:gap-1",
+      up ? "text-red-500" : "text-blue-500"
+    )}>
+      {up
+        ? <TrendingUp className={compact ? "w-2.5 h-2.5" : "w-3 h-3 md:w-4 md:h-4"} />
+        : <TrendingDown className={compact ? "w-2.5 h-2.5" : "w-3 h-3 md:w-4 md:h-4"} />}
       {up ? "+" : "-"}{displayVal}{unit}
-      {percent !== undefined && <span className="font-normal text-xs opacity-80">({percent > 0 ? "+" : ""}{percent.toFixed(2)}%)</span>}
+      {percent !== undefined && <span className="font-normal opacity-80">({percent > 0 ? "+" : ""}{percent.toFixed(2)}%)</span>}
     </span>
   );
 }
@@ -613,26 +619,36 @@ export default function PublicDashboardPage() {
             icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Petronet"
           >
             {(wti || brent || dubai) ? (
-              <div className="flex items-start gap-2 mt-0.5">
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  {[
-                    { label: "WTI", data: wti },
-                    { label: "브렌트", data: brent },
-                    { label: "두바이", data: dubai },
-                  ].map(({ label, data }) => (
-                    <div key={label} className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
-                      <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
-                      {data && (data.change !== 0 || data.changePercent !== 0) && (
-                        <ChangeChip val={data.change} unit="$" decimals={2} />
-                      )}
+              <div className="mt-0.5 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    {[
+                      { label: "WTI", data: wti },
+                      { label: "브렌트", data: brent },
+                      { label: "두바이", data: dubai },
+                    ].map(({ label, data }) => (
+                      <div key={label} className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
+                        <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
+                        {data && (data.change !== 0 || data.changePercent !== 0) && (
+                          <ChangeChip val={data.change} unit="$" decimals={2} compact />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {fx && (
+                    <div className="hidden sm:flex flex-col shrink-0 border border-border rounded-lg px-2 py-1 bg-muted/70">
+                      <span className="text-[11px] font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
+                      <ChangeChip val={fx.change} unit="원" />
                     </div>
-                  ))}
+                  )}
                 </div>
                 {fx && (
-                  <div className="flex flex-col shrink-0 border border-border rounded-lg px-2 py-1 bg-muted/70">
-                    <span className="text-[11px] font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
-                    <ChangeChip val={fx.change} unit="원" />
+                  <div className="sm:hidden border-t border-border/60 pt-1">
+                    <div className="inline-flex flex-col border border-border rounded-lg px-2 py-1 bg-muted/70">
+                      <span className="text-[11px] font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
+                      <ChangeChip val={fx.change} unit="원" />
+                    </div>
                   </div>
                 )}
               </div>
