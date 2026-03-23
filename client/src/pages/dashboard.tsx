@@ -875,60 +875,57 @@ export default function DashboardPage() {
                     : oilAnalysisTab === 'comparison' ? '국제-국내 제품가격 비교'
                     : `${isGlobal ? "전국" : "관할 지역"} 유가 추이`}
                 </h2>
-                <div className="flex gap-1 flex-shrink-0">
-                  {([
-                    ['global', isMobile ? '국제유가' : '국제-국내 유가'],
-                    ['comparison', isMobile ? '제품비교' : '국제-국내 제품비교'],
-                    ['regional', '지역별 추이'],
-                  ] as const).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setOilAnalysisTab(key)}
-                      data-testid={`tab-oil-${key}`}
-                      className={cn(
-                        "text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap",
-                        oilAnalysisTab === key
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >{label}</button>
-                  ))}
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <div className="flex gap-1">
+                    {([
+                      ['global', isMobile ? '국제유가' : '국제-국내 유가'],
+                      ['comparison', isMobile ? '제품비교' : '국제-국내 제품비교'],
+                      ['regional', '지역별 추이'],
+                    ] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setOilAnalysisTab(key)}
+                        data-testid={`tab-oil-${key}`}
+                        className={cn(
+                          "text-xs px-2.5 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap",
+                          oilAnalysisTab === key
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >{label}</button>
+                    ))}
+                  </div>
+                  {oilAnalysisTab === 'global' && (
+                    <div className="flex gap-1">
+                      {([
+                        ['wti', 'WTI'],
+                        ['brent', '브렌트'],
+                        ['dubai', '두바이'],
+                      ] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedCrude(key)}
+                          data-testid={`crude-tab-${key}`}
+                          className={cn(
+                            "text-xs px-2 py-1 rounded font-medium transition-colors whitespace-nowrap",
+                            selectedCrude === key
+                              ? "bg-slate-700 text-white"
+                              : "text-muted-foreground hover:bg-muted"
+                          )}
+                        >{label}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <p className="text-xs md:text-sm text-muted-foreground">
                 {oilAnalysisTab === 'global'
-                  ? `${FUEL_NAME_KO[selectedCrude]} 국제 유가 vs 국내 평균 유가`
+                  ? `${FUEL_NAME_KO[selectedCrude]} 국제 유가 vs 국내 평균 유가 / ※ 변동은 통상 2~3주 후 반영`
                   : oilAnalysisTab === 'comparison'
                   ? '국제 제품가격($/Bbl) vs 국내 전국 평균 (원/L), 최근 90일'
                   : `${isGlobal ? "전국" : "관할"} 시/도 평균 휘발유·경유 (${isMobile ? '최근 1주일' : '최근 3개월'})`}
               </p>
             </div>
-            {oilAnalysisTab === 'global' && (
-              <div className="flex items-center justify-between mt-2 mb-1">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  ※ 국제 유가 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-                </p>
-                <div className="flex gap-1 flex-shrink-0 ml-2">
-                  {([
-                    ['wti', 'WTI'],
-                    ['brent', '브렌트'],
-                    ['dubai', '두바이'],
-                  ] as const).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setSelectedCrude(key)}
-                      data-testid={`crude-tab-${key}`}
-                      className={cn(
-                        "text-xs px-2 py-1 rounded font-medium transition-colors whitespace-nowrap",
-                        selectedCrude === key
-                          ? "bg-slate-700 text-white"
-                          : "text-muted-foreground hover:bg-muted"
-                      )}
-                    >{label}</button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
           <div className="px-2 pb-2 pt-1">
             {oilAnalysisTab === 'global' ? (

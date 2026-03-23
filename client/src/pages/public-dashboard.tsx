@@ -811,15 +811,12 @@ export default function PublicDashboardPage() {
           {chartTab === 'intl' && (
             <div>
               <div className="px-5 pt-3 pb-0">
-                <div className="flex flex-col gap-1 pb-2">
-                  <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
-                  <p className="text-xs text-muted-foreground">{CRUDE_LABEL[selectedCrude]} 국제 유가 vs 국내 평균 유가</p>
-                </div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    ※ 국제 유가 변동은 통상 <span className="font-medium text-foreground">2~3주 후</span> 국내 주유소 가격에 반영됩니다.
-                  </p>
-                  <div className="flex gap-1 flex-shrink-0 ml-2">
+                <div className="flex items-start justify-between gap-2 pb-1">
+                  <div>
+                    <h2 className="text-sm md:text-base font-semibold text-foreground">국제-국내 유가 연동 분석</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{CRUDE_LABEL[selectedCrude]} 국제 유가 vs 국내 평균 유가 / ※ 변동은 통상 2~3주 후 반영</p>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
                     {([
                       ['wti', 'WTI'],
                       ['brent', '브렌트'],
