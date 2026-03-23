@@ -1,17 +1,6 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 
-function getKSTYesterday(): { year: number; month: number; day: number; dateStr: string } {
-  const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  kst.setUTCDate(kst.getUTCDate() - 1);
-  const year = kst.getUTCFullYear();
-  const month = kst.getUTCMonth() + 1;
-  const day = kst.getUTCDate();
-  const dateStr = `${year}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}`;
-  return { year, month, day, dateStr };
-}
-
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -20,11 +9,6 @@ function parseKoreanMonthDay(text: string): { month: number; day: number } | nul
   const m = text.match(/(\d{1,2})월\s*(\d{1,2})일/);
   if (!m) return null;
   return { month: parseInt(m[1]), day: parseInt(m[2]) };
-}
-
-function inferYear(month: number, refYear: number, refMonth: number): number {
-  if (month > refMonth) return refYear - 1;
-  return refYear;
 }
 
 function stripHtmlTags(s: string): string {
@@ -40,6 +24,9 @@ interface PetronetPriceResult {
   gasoline: number | null;
   diesel: number | null;
   kerosene: number | null;
+  wti: number | null;
+  brent: number | null;
+  dubai: number | null;
   date: string | null;
 }
 
@@ -73,42 +60,94 @@ async function fetchPetronetDataFromMain(): Promise<PetronetPriceResult | null> 
   const gasoline = extractLiPrice(html, "textB007");
   const kerosene = extractLiPrice(html, "textC001");
   const diesel   = extractLiPrice(html, "textD009");
+  const wti      = extractLiPrice(html, "textWti");
+  const brent    = extractLiPrice(html, "textBrent");
+  const dubai    = extractLiPrice(html, "textDubai");
 
-  // 날짜 추출 (YYYY.MM.DD 형식)
   const dateMatch = html.match(/(\d{4})\.(\d{2})\.(\d{2})/);
   const date = dateMatch
     ? `${dateMatch[1]}${dateMatch[2]}${dateMatch[3]}`
     : null;
 
-  console.log(`[IntlPriceCrawler] HTML 파싱 — 날짜:${date} 휘발유:${gasoline} 경유:${diesel} 등유:${kerosene}`);
-  return { gasoline, diesel, kerosene, date };
+  console.log(`[IntlPriceCrawler] HTML 파싱 — 날짜:${date} 휘발유:${gasoline} 경유:${diesel} 등유:${kerosene} WTI:${wti} Brent:${brent} Dubai:${dubai}`);
+  return { gasoline, diesel, kerosene, wti, brent, dubai, date };
 }
 
-export async function runIntlPriceCrawler(): Promise<void> {
+export interface CrudeOilData {
+  wti: { price: number; change: number; changePercent: number } | null;
+  brent: { price: number; change: number; changePercent: number } | null;
+  dubai: { price: number; change: number; changePercent: number } | null;
+  date: string | null;
+}
+
+export async function getLatestCrudeOilPrices(): Promise<CrudeOilData> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT date, wti, brent, dubai
+      FROM intl_fuel_prices
+      WHERE wti IS NOT NULL OR brent IS NOT NULL OR dubai IS NOT NULL
+      ORDER BY date DESC
+      LIMIT 2
+    `);
+    const data = rows.rows as { date: string; wti: string | null; brent: string | null; dubai: string | null }[];
+    if (data.length === 0) return { wti: null, brent: null, dubai: null, date: null };
+
+    const latest = data[0];
+    const prev = data[1] ?? null;
+
+    const compute = (curr: string | null, prevVal: string | null) => {
+      const p = curr ? parseFloat(curr) : null;
+      if (p === null || !isFinite(p)) return null;
+      const pv = prevVal ? parseFloat(prevVal) : null;
+      const change = pv !== null ? p - pv : 0;
+      const changePercent = pv !== null && pv !== 0 ? (change / pv) * 100 : 0;
+      return { price: p, change, changePercent };
+    };
+
+    return {
+      wti: compute(latest.wti, prev?.wti ?? null),
+      brent: compute(latest.brent, prev?.brent ?? null),
+      dubai: compute(latest.dubai, prev?.dubai ?? null),
+      date: latest.date,
+    };
+  } catch (e) {
+    console.error("[IntlPriceCrawler] getLatestCrudeOilPrices 실패:", e);
+    return { wti: null, brent: null, dubai: null, date: null };
+  }
+}
+
+export async function runIntlPriceCrawler(): Promise<{ success: boolean; date: string | null }> {
   console.log(`[IntlPriceCrawler] 수집 시작 (Petronet main.jsp HTML 스크래핑)`);
 
   try {
     const data = await fetchPetronetDataFromMain();
     if (!data || data.date === null) {
       console.warn(`[IntlPriceCrawler] 데이터 파싱 실패 (날짜 없음)`);
-      return;
+      return { success: false, date: null };
     }
-    if (data.gasoline === null && data.diesel === null && data.kerosene === null) {
+    const hasProduct = data.gasoline !== null || data.diesel !== null || data.kerosene !== null;
+    const hasCrude   = data.wti !== null || data.brent !== null || data.dubai !== null;
+    if (!hasProduct && !hasCrude) {
       console.warn(`[IntlPriceCrawler] ${data.date} 가격 데이터 없음 (휴일 또는 미업로드)`);
-      return;
+      return { success: false, date: data.date };
     }
     const dateStr = data.date;
     await db.execute(sql`
-      INSERT INTO intl_fuel_prices (date, gasoline, diesel, kerosene)
-      VALUES (${dateStr}, ${data.gasoline}, ${data.diesel}, ${data.kerosene})
+      INSERT INTO intl_fuel_prices (date, gasoline, diesel, kerosene, wti, brent, dubai)
+      VALUES (${dateStr}, ${data.gasoline}, ${data.diesel}, ${data.kerosene}, ${data.wti}, ${data.brent}, ${data.dubai})
       ON CONFLICT (date) DO UPDATE SET
-        gasoline = EXCLUDED.gasoline,
-        diesel = EXCLUDED.diesel,
-        kerosene = EXCLUDED.kerosene
+        gasoline = COALESCE(EXCLUDED.gasoline, intl_fuel_prices.gasoline),
+        diesel   = COALESCE(EXCLUDED.diesel,   intl_fuel_prices.diesel),
+        kerosene = COALESCE(EXCLUDED.kerosene, intl_fuel_prices.kerosene),
+        wti      = COALESCE(EXCLUDED.wti,      intl_fuel_prices.wti),
+        brent    = COALESCE(EXCLUDED.brent,    intl_fuel_prices.brent),
+        dubai    = COALESCE(EXCLUDED.dubai,    intl_fuel_prices.dubai)
     `);
-    console.log(`[IntlPriceCrawler] ${dateStr} 저장 완료 — 휘발유:${data.gasoline} 경유:${data.diesel} 등유:${data.kerosene}`);
+    console.log(`[IntlPriceCrawler] ${dateStr} 저장 완료 — WTI:${data.wti} Brent:${data.brent} Dubai:${data.dubai} 휘발유:${data.gasoline} 경유:${data.diesel} 등유:${data.kerosene}`);
+    return { success: true, date: dateStr };
   } catch (err) {
     console.error(`[IntlPriceCrawler] 수집 실패:`, err);
+    return { success: false, date: null };
   }
 }
 

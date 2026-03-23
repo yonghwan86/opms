@@ -452,6 +452,34 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
   }
 }
 
+async function runIntlPriceCrawlerWithRetry(retryCount = 0): Promise<void> {
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY_MS = 60 * 60 * 1000; // 1시간
+
+  try {
+    const { runIntlPriceCrawler } = await import("./intlPriceCrawler");
+    const result = await runIntlPriceCrawler();
+
+    if (result.success) {
+      console.log(`[IntlPriceCrawler] 수집 완료 (날짜: ${result.date})`);
+      return;
+    }
+
+    // 수집 실패 또는 데이터 없음 → 재시도
+    if (retryCount < MAX_RETRIES) {
+      console.warn(`[IntlPriceCrawler] 데이터 없음 또는 미갱신 — ${RETRY_DELAY_MS / 60000}분 후 재시도 (${retryCount + 1}/${MAX_RETRIES})`);
+      setTimeout(() => runIntlPriceCrawlerWithRetry(retryCount + 1), RETRY_DELAY_MS);
+    } else {
+      console.error(`[IntlPriceCrawler] 최대 재시도 횟수 초과, 이전 데이터 유지`);
+    }
+  } catch (e) {
+    console.error("[IntlPriceCrawler] 실행 오류:", e);
+    if (retryCount < MAX_RETRIES) {
+      setTimeout(() => runIntlPriceCrawlerWithRetry(retryCount + 1), RETRY_DELAY_MS);
+    }
+  }
+}
+
 export async function runWeeklySupplyJob(retryCount = 0): Promise<void> {
   const jobType = "weekly_supply_price";
   const MAX_RETRIES = 2;
@@ -608,15 +636,10 @@ export function startOilScheduler(): void {
     await runWeeklySupplyJob();
   }, { timezone: "Asia/Seoul" });
 
-  // 화~토 08:10 KST — Petronet 일일국제제품가격 크롤링 (전일 데이터)
+  // 화~토 08:10 KST — Petronet 국제가격(석유제품+원유 3종) 크롤링
   cron.schedule("10 8 * * 2-6", async () => {
     console.log("[IntlPriceCrawler] 정기 수집 시작 (화~토 08:10 KST)");
-    try {
-      const { runIntlPriceCrawler } = await import("./intlPriceCrawler");
-      await runIntlPriceCrawler();
-    } catch (e) {
-      console.error("[IntlPriceCrawler] 스케줄 실행 오류:", e);
-    }
+    await runIntlPriceCrawlerWithRetry();
   }, { timezone: "Asia/Seoul" });
 
   console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:10 KST)");

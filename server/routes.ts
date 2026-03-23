@@ -1223,12 +1223,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── 대시보드 유가 분석 API ─────────────────────────────────────────────────
 
-  // GET /api/dashboard/wti — WTI 국제 유가 (Yahoo Finance)
+  // GET /api/dashboard/wti — 국제 원유 3종 (Petronet DB) + WTI 히스토리 (Yahoo Finance)
   app.get("/api/dashboard/wti", requireAuth, async (_req, res) => {
     try {
-      const { getWtiData, getWtiHistory } = await import("./services/externalData");
-      const [current, history] = await Promise.all([getWtiData(), getWtiHistory()]);
-      res.json({ current, history });
+      const { getWtiHistory } = await import("./services/externalData");
+      const { getLatestCrudeOilPrices } = await import("./services/intlPriceCrawler");
+      const [crude, history] = await Promise.all([getLatestCrudeOilPrices(), getWtiHistory()]);
+      res.json({ current: crude.wti, brent: crude.brent, dubai: crude.dubai, crudeDate: crude.date, history });
     } catch (e) {
       res.status(500).json({ message: "WTI 조회 실패" });
     }
@@ -1371,12 +1372,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── 공개 대시보드 API (인증 불필요) ────────────────────────────────────────
 
-  // GET /api/public/wti
+  // GET /api/public/wti — 국제 원유 3종 (Petronet DB) + WTI 히스토리 (Yahoo Finance)
   app.get("/api/public/wti", async (_req, res) => {
     try {
-      const { getWtiData, getWtiHistory } = await import("./services/externalData");
-      const [current, history] = await Promise.all([getWtiData(), getWtiHistory()]);
-      res.json({ current, history });
+      const { getWtiHistory } = await import("./services/externalData");
+      const { getLatestCrudeOilPrices } = await import("./services/intlPriceCrawler");
+      const [crude, history] = await Promise.all([getLatestCrudeOilPrices(), getWtiHistory()]);
+      res.json({ current: crude.wti, brent: crude.brent, dubai: crude.dubai, crudeDate: crude.date, history });
     } catch (e) {
       res.status(500).json({ message: "WTI 조회 실패" });
     }

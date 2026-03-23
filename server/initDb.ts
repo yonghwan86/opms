@@ -128,6 +128,10 @@ export async function initDb() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+    // 원유 3종 컬럼 추가 (기존 테이블에 없는 경우)
+    await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS wti NUMERIC;`);
+    await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS brent NUMERIC;`);
+    await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS dubai NUMERIC;`);
 
     // oil_weekly_supply_prices 테이블 생성 (주간공급가격)
     await client.query(`

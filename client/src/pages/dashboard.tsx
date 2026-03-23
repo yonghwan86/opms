@@ -125,8 +125,12 @@ function DateWeatherWidget({ isMaster, headquartersCode }: { isMaster: boolean; 
 }
 
 // ─── 타입 ────────────────────────────────────────────────────────────────────
+interface CrudePrice { price: number; change: number; changePercent: number; }
 interface WtiResponse {
-  current: { price: number; change: number; changePercent: number } | null;
+  current: CrudePrice | null;
+  brent: CrudePrice | null;
+  dubai: CrudePrice | null;
+  crudeDate: string | null;
   history: { date: string; value: number }[];
 }
 interface ExchangeRate {
@@ -556,6 +560,9 @@ export default function DashboardPage() {
   })();
 
   const wti = wtiRes?.current;
+  const brent = wtiRes?.brent;
+  const dubai = wtiRes?.dubai;
+  const crudeDate = wtiRes?.crudeDate;
   const avg = fuelStats?.averages;
   const spread = fuelStats?.spread;
   const latestDateFmt = latestDate
@@ -597,23 +604,34 @@ export default function DashboardPage() {
         {/* ── 상단 4 카드 ── */}
         <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
 
-          {/* WTI 국제 유가 */}
-          <MetricCard title="국제 유가 (WTI)" icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Yahoo Finance" live>
-            {wti ? (
-              <>
-                <div className="flex items-center justify-between gap-1.5 overflow-hidden">
-                  <p className="text-xl md:text-3xl font-bold text-foreground tracking-tight shrink-0">{fmtUsd(wti.price)}</p>
-                  {fx && (
-                    <div className="flex flex-col items-end shrink-0 border border-border rounded-lg px-2 py-1 bg-muted/70 dark:bg-muted/50">
-                      <span className="text-[11px] md:text-sm font-bold text-foreground whitespace-nowrap leading-tight">{fmt(Math.round(fx.rate))}원/달러</span>
-                      <ChangeChip val={fx.change} unit="원" />
-                    </div>
-                  )}
-                </div>
-                <div className="mt-1.5">
-                  <ChangeChip val={wti.change} unit="$" percent={wti.changePercent} decimals={2} />
-                </div>
-              </>
+          {/* 국제 원유 가격 */}
+          <MetricCard
+            title="국제 원유 가격"
+            subtitle={crudeDate ? `${crudeDate.slice(0,4)}.${crudeDate.slice(4,6)}.${crudeDate.slice(6,8)} 기준` : undefined}
+            icon={Globe} iconBg="bg-amber-600" loading={wtiLoading} source="Petronet"
+          >
+            {(wti || brent || dubai) ? (
+              <div className="space-y-1.5 mt-0.5">
+                {[
+                  { label: "WTI", data: wti },
+                  { label: "브렌트", data: brent },
+                  { label: "두바이", data: dubai },
+                ].map(({ label, data }) => (
+                  <div key={label} className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{label}</span>
+                    <span className="text-sm font-bold text-foreground shrink-0">{data ? fmtUsd(data.price) : "—"}</span>
+                    <span className="shrink-0">
+                      {data ? <ChangeChip val={data.change} unit="$" percent={data.changePercent} decimals={2} /> : null}
+                    </span>
+                  </div>
+                ))}
+                {fx && (
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/60 mt-1">
+                    <span className="text-[11px] text-muted-foreground">{fmt(Math.round(fx.rate))}원/달러</span>
+                    <ChangeChip val={fx.change} unit="원" />
+                  </div>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">데이터 없음</p>
             )}

@@ -252,6 +252,9 @@ export const intlFuelPrices = pgTable("intl_fuel_prices", {
   gasoline: numeric("gasoline"),
   diesel: numeric("diesel"),
   kerosene: numeric("kerosene"),
+  wti: numeric("wti"),
+  brent: numeric("brent"),
+  dubai: numeric("dubai"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
