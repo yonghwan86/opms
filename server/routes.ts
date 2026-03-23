@@ -1235,7 +1235,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         dubaiHistory: crudeHistory.dubai,
       });
     } catch (e) {
-      res.status(500).json({ message: "WTI 조회 실패" });
+      res.status(500).json({ message: "원유 가격 조회 실패" });
     }
   });
 
@@ -1388,7 +1388,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         dubaiHistory: crudeHistory.dubai,
       });
     } catch (e) {
-      res.status(500).json({ message: "WTI 조회 실패" });
+      res.status(500).json({ message: "원유 가격 조회 실패" });
     }
   });
 
