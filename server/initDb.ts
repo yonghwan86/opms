@@ -132,6 +132,10 @@ export async function initDb() {
     await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS wti NUMERIC;`);
     await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS brent NUMERIC;`);
     await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS dubai NUMERIC;`);
+    // Petronet 제공 전일 대비 변동값 컬럼
+    await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS wti_change NUMERIC;`);
+    await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS brent_change NUMERIC;`);
+    await client.query(`ALTER TABLE intl_fuel_prices ADD COLUMN IF NOT EXISTS dubai_change NUMERIC;`);
 
     // oil_weekly_supply_prices 테이블 생성 (주간공급가격)
     await client.query(`

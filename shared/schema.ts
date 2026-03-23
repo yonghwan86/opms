@@ -255,6 +255,9 @@ export const intlFuelPrices = pgTable("intl_fuel_prices", {
   wti: numeric("wti"),
   brent: numeric("brent"),
   dubai: numeric("dubai"),
+  wtiChange: numeric("wti_change"),
+  brentChange: numeric("brent_change"),
+  dubaiChange: numeric("dubai_change"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
