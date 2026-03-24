@@ -205,7 +205,7 @@ export type OilCollectionLog = typeof oilCollectionLogs.$inferSelect;
 // ─── 만족도 조사 (User Satisfactions) ────────────────────────────────────────
 export const userSatisfactions = pgTable("user_satisfactions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
   rating: varchar("rating", { length: 20 }).notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

@@ -2129,6 +2129,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── 만족도 조사 ────────────────────────────────────────────────────────────
+  // POST /api/public/satisfaction — 비로그인 공개 만족도 저장
+  app.post("/api/public/satisfaction", async (req, res) => {
+    try {
+      const { rating } = req.body;
+      const valid = ["매우만족", "만족", "보통", "불만족", "매우불만족"];
+      if (!rating || !valid.includes(rating)) {
+        return res.status(400).json({ message: "올바른 만족도를 선택해주세요." });
+      }
+      const kstToday = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const sess = req.session as any;
+      if (sess.publicSurveyDate === kstToday) {
+        return res.status(400).json({ message: "오늘은 이미 만족도 조사에 참여하셨습니다." });
+      }
+      await storage.savePublicSatisfaction(rating);
+      sess.publicSurveyDate = kstToday;
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   // GET /api/satisfaction/list — 관리자 전체 조회 (MASTER only)
   app.get("/api/satisfaction/list", requireMaster, async (req, res) => {
     try {

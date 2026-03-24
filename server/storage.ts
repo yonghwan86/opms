@@ -238,6 +238,7 @@ export interface IStorage {
 
   // 만족도 조사
   saveSatisfaction(userId: number, rating: string): Promise<void>;
+  savePublicSatisfaction(rating: string): Promise<void>;
   hasSatisfactionToday(userId: number): Promise<boolean>;
   getSatisfactionList(params: { page: number; pageSize: number; search?: string }): Promise<{ data: any[]; total: number }>;
 
@@ -1423,6 +1424,10 @@ export class PostgresStorage implements IStorage {
     await db.insert(userSatisfactions).values({ userId, rating });
   }
 
+  async savePublicSatisfaction(rating: string): Promise<void> {
+    await db.insert(userSatisfactions).values({ userId: null, rating });
+  }
+
   async getSatisfactionList({ page, pageSize, search }: { page: number; pageSize: number; search?: string }): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const searchCond = search
@@ -1431,7 +1436,7 @@ export class PostgresStorage implements IStorage {
     const rows = await db.execute(
       sql`SELECT s.id, s.rating, s.created_at, u.username, u.display_name
           FROM user_satisfactions s
-          JOIN users u ON u.id = s.user_id
+          LEFT JOIN users u ON u.id = s.user_id
           WHERE 1=1 ${searchCond}
           ORDER BY s.created_at DESC
           LIMIT ${pageSize} OFFSET ${offset}`
@@ -1439,7 +1444,7 @@ export class PostgresStorage implements IStorage {
     const countResult = await db.execute(
       sql`SELECT COUNT(*) AS cnt
           FROM user_satisfactions s
-          JOIN users u ON u.id = s.user_id
+          LEFT JOIN users u ON u.id = s.user_id
           WHERE 1=1 ${searchCond}`
     );
     const total = Number((countResult.rows[0] as any)?.cnt ?? 0);

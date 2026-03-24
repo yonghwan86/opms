@@ -1,9 +1,11 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ComposedChart, Line, BarChart, Bar, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -11,10 +13,12 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Minus, Globe, Fuel, BarChart2, ShieldCheck,
-  MapPin, Loader2, Search, ChevronDown, DollarSign,
+  MapPin, Loader2, Search, ChevronDown, DollarSign, ClipboardList, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const appIconSrc = "/icon-192.png";
 
@@ -315,8 +319,28 @@ function ChartTooltip({ active, payload, label }: any) {
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function PublicDashboardPage() {
+  const { toast } = useToast();
   const geoData = useGeoRegion(); // undefined=감지중, null=전국, {region,sido}=성공
   const isGeoLoading = geoData === undefined;
+
+  // ── 만족도 조사 ────────────────────────────────────────────────────────────
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [surveyRating, setSurveyRating] = useState<string>("");
+  const kstToday = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [surveySubmitted, setSurveySubmitted] = useState<boolean>(() => {
+    try { return localStorage.getItem("pub_survey_date") === kstToday; } catch { return false; }
+  });
+  const surveyMutation = useMutation({
+    mutationFn: (rating: string) => apiRequest("POST", "/api/public/satisfaction", { rating }),
+    onSuccess: () => {
+      try { localStorage.setItem("pub_survey_date", kstToday); } catch {}
+      setSurveySubmitted(true);
+      setSurveyOpen(false);
+      setSurveyRating("");
+      toast({ title: "소중한 의견 감사합니다 🙏", description: "만족도 조사에 참여해 주셨습니다." });
+    },
+    onError: () => toast({ title: "제출 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" }),
+  });
 
   // 수동 지역 선택 (localStorage 유지)
   const [manualSido, setManualSido] = useState<string | null>(() => {
@@ -569,6 +593,23 @@ export default function PublicDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <button
+              onClick={() => { if (!surveySubmitted) setSurveyOpen(true); }}
+              disabled={surveySubmitted}
+              data-testid="button-public-survey-open"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-medium transition-colors",
+                surveySubmitted
+                  ? "border-muted-foreground/30 text-muted-foreground/50 bg-muted/40 cursor-default"
+                  : "border-green-600/60 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 hover:bg-green-100 dark:hover:bg-green-900/40 cursor-pointer"
+              )}
+              title={surveySubmitted ? "오늘 이미 참여하셨습니다" : "서비스 만족도 조사 참여"}
+            >
+              {surveySubmitted
+                ? <><CheckCircle2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">오늘 참여 완료</span></>
+                : <><ClipboardList className="w-3.5 h-3.5" /><span>만족도 조사</span></>
+              }
+            </button>
             <Popover open={regionOpen} onOpenChange={setRegionOpen}>
               <PopoverTrigger asChild>
                 <button className="flex flex-col items-end cursor-pointer hover:text-foreground transition-colors group">
@@ -1279,6 +1320,60 @@ export default function PublicDashboardPage() {
           <p className="mt-1">© 한국석유관리원 유가 모니터링 상황판</p>
         </div>
       </div>
+
+      {/* ── 만족도 조사 모달 ─────────────────────────────────────── */}
+      <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-public-survey">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-green-600" />
+              서비스 만족도 조사
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">
+            오늘 서비스 이용 경험을 알려주세요. <span className="text-xs">(1일 1회)</span>
+          </p>
+          <div className="space-y-2 mt-1">
+            {[
+              { value: "매우만족", emoji: "😄" },
+              { value: "만족",     emoji: "🙂" },
+              { value: "보통",     emoji: "😐" },
+              { value: "불만족",   emoji: "🙁" },
+              { value: "매우불만족", emoji: "😞" },
+            ].map(({ value, emoji }) => (
+              <label
+                key={value}
+                data-testid={`public-survey-option-${value}`}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg border cursor-pointer transition-colors select-none",
+                  surveyRating === value
+                    ? "border-green-600 bg-green-50 dark:bg-green-950/40 text-green-800 dark:text-green-300 font-medium"
+                    : "border-border hover:bg-muted/50"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="public-survey-rating"
+                  value={value}
+                  checked={surveyRating === value}
+                  onChange={() => setSurveyRating(value)}
+                  className="accent-green-600"
+                />
+                <span className="text-lg leading-none">{emoji}</span>
+                <span className="text-sm">{value}</span>
+              </label>
+            ))}
+          </div>
+          <Button
+            className="w-full mt-1 !bg-green-600 hover:!bg-green-700 text-white"
+            disabled={!surveyRating || surveyMutation.isPending}
+            onClick={() => surveyRating && surveyMutation.mutate(surveyRating)}
+            data-testid="button-public-survey-submit"
+          >
+            {surveyMutation.isPending ? "제출 중..." : "제출하기"}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
