@@ -35,6 +35,9 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   scheduled_afternoon_retry1: "오후 1차 재시도",
   scheduled_afternoon_retry2: "오후 2차 재시도",
   weekly_supply_price: "주간공급가격",
+  intl_price: "국제제품가격",
+  intl_price_retry1: "국제 1차 재시도",
+  intl_price_retry2: "국제 2차 재시도",
 };
 
 const JOB_TYPE_FILTER_OPTIONS = [
@@ -48,6 +51,9 @@ const JOB_TYPE_FILTER_OPTIONS = [
   { value: "scheduled_afternoon_retry1", label: "오후 1차 재시도" },
   { value: "scheduled_afternoon_retry2", label: "오후 2차 재시도" },
   { value: "weekly_supply_price", label: "주간공급가격" },
+  { value: "intl_price", label: "국제제품가격" },
+  { value: "intl_price_retry1", label: "국제 1차 재시도" },
+  { value: "intl_price_retry2", label: "국제 2차 재시도" },
 ];
 
 function StatusBadge({ status }: { status: string }) {

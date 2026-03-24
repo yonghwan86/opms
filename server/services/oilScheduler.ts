@@ -457,25 +457,59 @@ async function fetchOpinetFuelAverages(isStartup = false): Promise<void> {
 async function runIntlPriceCrawlerWithRetry(retryCount = 0): Promise<void> {
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 60 * 60 * 1000; // 1시간
+  const jobType = retryCount === 0 ? "intl_price" : `intl_price_retry${retryCount}`;
+  const start = Date.now();
 
   try {
     const { runIntlPriceCrawler } = await import("./intlPriceCrawler");
     const result = await runIntlPriceCrawler();
+    const durationMs = Date.now() - start;
 
     if (result.success) {
       console.log(`[IntlPriceCrawler] 수집 완료 (날짜: ${result.date})`);
+      await storage.saveOilCollectionLog({
+        jobType,
+        status: "success",
+        targetDate: result.date ?? undefined,
+        rawCount: 1,
+        rawDurationMs: durationMs,
+      });
       return;
     }
 
     // 수집 실패 또는 데이터 없음 → 재시도
     if (retryCount < MAX_RETRIES) {
-      console.warn(`[IntlPriceCrawler] 데이터 없음 또는 미갱신 — ${RETRY_DELAY_MS / 60000}분 후 재시도 (${retryCount + 1}/${MAX_RETRIES})`);
+      const errMsg = `Petronet 미갱신 또는 데이터 없음 — ${RETRY_DELAY_MS / 60000}분 후 재시도 (${retryCount + 1}/${MAX_RETRIES})`;
+      console.warn(`[IntlPriceCrawler] ${errMsg}`);
+      await storage.saveOilCollectionLog({
+        jobType,
+        status: "skipped",
+        targetDate: result.date ?? undefined,
+        rawDurationMs: durationMs,
+        errorMessage: errMsg,
+      });
       setTimeout(() => runIntlPriceCrawlerWithRetry(retryCount + 1), RETRY_DELAY_MS);
     } else {
-      console.error(`[IntlPriceCrawler] 최대 재시도 횟수 초과, 이전 데이터 유지`);
+      const errMsg = "최대 재시도 횟수 초과, 이전 데이터 유지";
+      console.error(`[IntlPriceCrawler] ${errMsg}`);
+      await storage.saveOilCollectionLog({
+        jobType,
+        status: "failed",
+        targetDate: result.date ?? undefined,
+        rawDurationMs: durationMs,
+        errorMessage: errMsg,
+      });
     }
   } catch (e) {
+    const durationMs = Date.now() - start;
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[IntlPriceCrawler] 실행 오류:", e);
+    await storage.saveOilCollectionLog({
+      jobType,
+      status: "failed",
+      rawDurationMs: durationMs,
+      errorMessage: msg,
+    });
     if (retryCount < MAX_RETRIES) {
       setTimeout(() => runIntlPriceCrawlerWithRetry(retryCount + 1), RETRY_DELAY_MS);
     }
