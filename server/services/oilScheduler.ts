@@ -7,6 +7,8 @@ import { sendPushToAll } from "./pushService";
 import { fetchFuelAveragesWithRetry, setCachedFuelAverages } from "./opinetApi";
 import { scrapeWeeklySupplyPrices } from "./weeklySupplyScraper";
 import { isKoreanHoliday } from "./koreanHoliday";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 
 function getDateStr(date: Date): string {
   const y = date.getFullYear();
@@ -573,6 +575,50 @@ export async function runWeeklySupplyJob(retryCount = 0): Promise<void> {
   }
 }
 
+async function checkAndRecoverIntlPriceOnStartup(): Promise<void> {
+  try {
+    const kstNow = getKSTNow();
+    const kstHour = kstNow.getUTCHours();
+    const kstMinute = kstNow.getUTCMinutes();
+    const kstDayOfWeek = kstNow.getUTCDay(); // 0=일, 1=월, 2=화, ..., 6=토
+
+    // 화~토(2~6)에만 실행 (Petronet 업데이트 요일)
+    if (kstDayOfWeek < 2 || kstDayOfWeek > 6) {
+      console.log(`[IntlPriceCrawler] 시작 복구: 오늘 요일(${kstDayOfWeek}) 화~토 아님 → 건너뜀`);
+      return;
+    }
+
+    // 08:30 이전이면 cron이 직접 실행할 예정이므로 건너뜀
+    if (kstHour < 8 || (kstHour === 8 && kstMinute < 30)) {
+      console.log(`[IntlPriceCrawler] 시작 복구: KST ${kstHour}:${String(kstMinute).padStart(2, "0")} (08:30 이전) → cron 대기`);
+      return;
+    }
+
+    // DB에서 최근 intl_fuel_prices 최신 날짜 확인 (제품가격 기준)
+    const result = await db.execute(sql`
+      SELECT date FROM intl_fuel_prices
+      WHERE gasoline IS NOT NULL OR diesel IS NOT NULL OR kerosene IS NOT NULL
+      ORDER BY date DESC LIMIT 1
+    `);
+    const latestDate = result.rows[0]?.date as string | undefined;
+
+    // 최근 5일 이내 데이터가 이미 있으면 건너뜀
+    const kstFiveDaysAgo = new Date(kstNow);
+    kstFiveDaysAgo.setUTCDate(kstFiveDaysAgo.getUTCDate() - 5);
+    const fiveDaysAgoStr = getDateStr(kstFiveDaysAgo);
+
+    if (latestDate && latestDate >= fiveDaysAgoStr) {
+      console.log(`[IntlPriceCrawler] 시작 복구: 최근 데이터 존재 (${latestDate}) → 건너뜀`);
+      return;
+    }
+
+    console.log(`[IntlPriceCrawler] 시작 복구: 최근 intl 데이터 없음 (최신: ${latestDate ?? "없음"}, 기준: ${fiveDaysAgoStr}) → 즉시 수집 시작`);
+    await runIntlPriceCrawlerWithRetry();
+  } catch (err) {
+    console.error("[IntlPriceCrawler] 시작 복구 확인 오류:", err);
+  }
+}
+
 export function startOilScheduler(): void {
   // 오전 9:30 — 전날 확정값 수집 (무조건 실행, 잠정값 덮어씌움)
   cron.schedule("30 9 * * *", async () => {
@@ -636,15 +682,18 @@ export function startOilScheduler(): void {
     await runWeeklySupplyJob();
   }, { timezone: "Asia/Seoul" });
 
-  // 화~토 08:10 KST — Petronet 국제가격(석유제품+원유 3종) 크롤링
-  cron.schedule("10 8 * * 2-6", async () => {
-    console.log("[IntlPriceCrawler] 정기 수집 시작 (화~토 08:10 KST)");
+  // 화~토 08:30 KST — Petronet 국제가격(석유제품+원유 3종) 크롤링
+  cron.schedule("30 8 * * 2-6", async () => {
+    console.log("[IntlPriceCrawler] 정기 수집 시작 (화~토 08:30 KST)");
     await runIntlPriceCrawlerWithRetry();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:10 KST)");
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:30 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
+
+  // 서버 시작 복구: 08:30 이후 시작 시 intl 데이터 누락이면 즉시 수집
+  setTimeout(() => checkAndRecoverIntlPriceOnStartup(), 7000);
 
   setTimeout(() => {
     console.log("[OpinetScheduler] 서버 시작 직후 유류 평균 즉시 수집");
