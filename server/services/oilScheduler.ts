@@ -446,6 +446,12 @@ async function checkAndRecoverOnStartup(): Promise<void> {
 
       if (latestAvailable && latestAvailable >= todayStr) {
         console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 오늘(${todayStr}), 수집 불필요`);
+        // 수집은 완료됐으나 예측이 미완료일 수 있으므로 별도 트리거 (runIfNotDoneToday 내부에서 중복 방지)
+        setImmediate(() => {
+          import("./forecastService")
+            .then(({ runIfNotDoneToday }) => runIfNotDoneToday())
+            .catch((e) => console.error("[OilScheduler] 시작 예측 트리거(오후) 오류:", e));
+        });
         return;
       }
 
@@ -487,6 +493,12 @@ async function checkAndRecoverOnStartup(): Promise<void> {
     const alreadyDone = await storage.hasSuccessfulMorningLog(morningDates.today, todayMorningUTC);
     if (alreadyDone) {
       console.log(`[OilScheduler] 시작 복구(오전): 오늘 오전 ${morningDates.today} 수집 성공 로그 확인됨, 건너뜀`);
+      // 수집은 완료됐으나 예측이 미완료일 수 있으므로 별도 트리거 (runIfNotDoneToday 내부에서 중복 방지)
+      setImmediate(() => {
+        import("./forecastService")
+          .then(({ runIfNotDoneToday }) => runIfNotDoneToday())
+          .catch((e) => console.error("[OilScheduler] 시작 예측 트리거(오전) 오류:", e));
+      });
       return;
     }
     console.log(`[OilScheduler] 시작 복구(오전): KST ${kstHour}시, 오늘 오전 수집 미완료 → 수집 시작`);
