@@ -258,8 +258,8 @@ def run_prophet_forecast(fuel_type, domestic_rows, intl_rows, exr_rows, policy_e
     ]
     mape = float(np.mean(mape_vals) * 100) if mape_vals else None
 
-    price_floor = 1000
-    price_cap = 3500 if fuel_type == "gasoline" else 4000
+    price_floor = 1400 if fuel_type == "gasoline" else 1200
+    price_cap = 2200 if fuel_type == "gasoline" else 2100
 
     future_points = []
     for i, (_, row) in enumerate(future_df.iterrows()):
