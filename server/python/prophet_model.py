@@ -128,20 +128,39 @@ def build_regressor_series(intl_rows, exr_rows, optimal_lag, fuel_col_idx):
     for r in intl_rows:
         d = str(r[0])
         price = float(r[fuel_col_idx]) if r[fuel_col_idx] is not None else None
-        intl_map[d] = price
+        if price is not None:
+            intl_map[d] = price
 
     exr_map = {}
     for r in exr_rows:
         d = str(r[0]).replace("-", "")[:8]
-        exr_map[d] = float(r[1]) if r[1] is not None else None
+        val = float(r[1]) if r[1] is not None else None
+        if val is not None:
+            exr_map[d] = val
+
+    intl_sorted = sorted(intl_map.keys())
+    exr_sorted = sorted(exr_map.keys())
+
+    def get_floor_value(date_str, data_map, sorted_keys):
+        """날짜가 없으면 가장 최근 알려진 값으로 forward-fill."""
+        lo, hi = 0, len(sorted_keys) - 1
+        result_key = None
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if sorted_keys[mid] <= date_str:
+                result_key = sorted_keys[mid]
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return data_map.get(result_key) if result_key is not None else None
 
     def get_lagged(ds, lag):
         from datetime import datetime, timedelta
         dt = datetime.strptime(str(ds), "%Y%m%d")
         lagged_dt = dt - timedelta(days=lag)
         lagged_date = lagged_dt.strftime("%Y%m%d")
-        raw_price = intl_map.get(lagged_date)
-        exr = exr_map.get(lagged_date)
+        raw_price = get_floor_value(lagged_date, intl_map, intl_sorted)
+        exr = get_floor_value(lagged_date, exr_map, exr_sorted)
         if raw_price is None or exr is None:
             return None
         return usd_per_barrel_to_krw_per_liter(raw_price, exr)
@@ -197,7 +216,7 @@ def run_prophet_forecast(fuel_type, domestic_rows, intl_rows, exr_rows, policy_e
         daily_seasonality=False,
         holidays=holidays,
         interval_width=0.95,
-        changepoint_prior_scale=0.05,
+        changepoint_prior_scale=0.02,
     )
     m.add_regressor("regressor")
 
@@ -239,14 +258,20 @@ def run_prophet_forecast(fuel_type, domestic_rows, intl_rows, exr_rows, policy_e
     ]
     mape = float(np.mean(mape_vals) * 100) if mape_vals else None
 
+    price_floor = 1000
+    price_cap = 3500 if fuel_type == "gasoline" else 4000
+
     future_points = []
     for i, (_, row) in enumerate(future_df.iterrows()):
         d_str = row["ds"].strftime("%Y%m%d")
+        yhat = max(price_floor, min(price_cap, float(row["yhat"])))
+        yhat_lower = max(price_floor, min(price_cap, float(row["yhat_lower"])))
+        yhat_upper = max(price_floor, min(price_cap, float(row["yhat_upper"])))
         future_points.append({
             "date": d_str,
-            "forecast": round(float(row["yhat"]), 2),
-            "lower": round(float(row["yhat_lower"]), 2),
-            "upper": round(float(row["yhat_upper"]), 2),
+            "forecast": round(yhat, 2),
+            "lower": round(yhat_lower, 2),
+            "upper": round(yhat_upper, 2),
             "phase": 1 if i < 7 else 2,
         })
 

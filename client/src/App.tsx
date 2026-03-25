@@ -100,7 +100,7 @@ function Router() {
       <Route path="/station-search" component={() => <ProtectedRoute component={StationSearchPage} />} />
       <Route path="/logs/satisfaction" component={() => <ProtectedRoute component={SatisfactionLogPage} masterOnly />} />
       <Route path="/ceiling-trend" component={() => <ProtectedRoute component={CeilingTrendPage} />} />
-      <Route path="/ai-forecast" component={() => <ProtectedRoute component={AiForecastPage} />} />
+      <Route path="/ai-forecast" component={() => <ProtectedRoute component={AiForecastPage} masterOnly />} />
       <Route path="/logs/ai-forecast" component={() => <ProtectedRoute component={AiForecastLogsPage} masterOnly />} />
       <Route component={NotFound} />
     </Switch>
