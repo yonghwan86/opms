@@ -1677,19 +1677,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // POST /api/admin/intl-fuel-prices/crawl — Petronet HTML 즉시 수집 (MASTER 전용)
   app.post("/api/admin/intl-fuel-prices/crawl", requireAuth, requireMaster, async (_req, res) => {
+    const start = Date.now();
     try {
       const { runIntlPriceCrawler } = await import("./services/intlPriceCrawler");
       await runIntlPriceCrawler();
+      const durationMs = Date.now() - start;
       // 마지막 저장된 행 반환
       const latest = await db.execute(sql`
         SELECT date, gasoline::text, diesel::text, kerosene::text
         FROM intl_fuel_prices ORDER BY date DESC LIMIT 1
       `);
       const row = latest.rows[0] as { date: string; gasoline: string; diesel: string; kerosene: string } | undefined;
-      if (!row) return res.json({ ok: false, message: "수집했으나 저장된 데이터 없음" });
+      if (!row) {
+        await storage.saveOilCollectionLog({ jobType: "intl_price_manual", status: "failed", rawDurationMs: durationMs, errorMessage: "수집했으나 저장된 데이터 없음" });
+        return res.json({ ok: false, message: "수집했으나 저장된 데이터 없음" });
+      }
+      await storage.saveOilCollectionLog({ jobType: "intl_price_manual", status: "success", targetDate: row.date, rawCount: 1, rawDurationMs: durationMs });
       res.json({ ok: true, date: row.date, gasoline: parseFloat(row.gasoline), diesel: parseFloat(row.diesel), kerosene: parseFloat(row.kerosene) });
     } catch (e) {
+      const durationMs = Date.now() - start;
+      const msg = e instanceof Error ? e.message : String(e);
       console.error("[IntlCrawl] 수동 실행 오류:", e);
+      await storage.saveOilCollectionLog({ jobType: "intl_price_manual", status: "failed", rawDurationMs: durationMs, errorMessage: msg });
       res.status(500).json({ message: "크롤링 실패" });
     }
   });
