@@ -646,17 +646,18 @@ async function checkAndRecoverIntlPriceOnStartup(): Promise<void> {
     `);
     const latestDate = result.rows[0]?.date as string | undefined;
 
-    // 최근 5일 이내 데이터가 이미 있으면 건너뜀
-    const kstFiveDaysAgo = new Date(kstNow);
-    kstFiveDaysAgo.setUTCDate(kstFiveDaysAgo.getUTCDate() - 5);
-    const fiveDaysAgoStr = getDateStr(kstFiveDaysAgo);
+    // 최근 3일 이내 데이터가 이미 있으면 건너뜀
+    // (정상 최대 공백: 토→화 2일. 3일 초과 시 수집 누락으로 판단)
+    const kstThreeDaysAgo = new Date(kstNow);
+    kstThreeDaysAgo.setUTCDate(kstThreeDaysAgo.getUTCDate() - 3);
+    const threeDaysAgoStr = getDateStr(kstThreeDaysAgo);
 
-    if (latestDate && latestDate >= fiveDaysAgoStr) {
+    if (latestDate && latestDate >= threeDaysAgoStr) {
       console.log(`[IntlPriceCrawler] 시작 복구: 최근 데이터 존재 (${latestDate}) → 건너뜀`);
       return;
     }
 
-    console.log(`[IntlPriceCrawler] 시작 복구: 최근 intl 데이터 없음 (최신: ${latestDate ?? "없음"}, 기준: ${fiveDaysAgoStr}) → 즉시 수집 시작`);
+    console.log(`[IntlPriceCrawler] 시작 복구: 최근 intl 데이터 없음 (최신: ${latestDate ?? "없음"}, 기준: ${threeDaysAgoStr}) → 즉시 수집 시작`);
     await runIntlPriceCrawlerWithRetry();
   } catch (err) {
     console.error("[IntlPriceCrawler] 시작 복구 확인 오류:", err);
