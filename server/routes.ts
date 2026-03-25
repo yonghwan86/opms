@@ -1689,16 +1689,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       `);
       const row = latest.rows[0] as { date: string; gasoline: string; diesel: string; kerosene: string } | undefined;
       if (!row) {
-        await storage.saveOilCollectionLog({ jobType: "intl_price_manual", status: "failed", rawDurationMs: durationMs, errorMessage: "수집했으나 저장된 데이터 없음" });
+        await storage.saveOilCollectionLog({ jobType: "manual", status: "failed", rawDurationMs: durationMs, errorMessage: "국제유가 수동수집: 저장된 데이터 없음" });
         return res.json({ ok: false, message: "수집했으나 저장된 데이터 없음" });
       }
-      await storage.saveOilCollectionLog({ jobType: "intl_price_manual", status: "success", targetDate: row.date, rawCount: 1, rawDurationMs: durationMs });
+      await storage.saveOilCollectionLog({ jobType: "manual", status: "success", targetDate: row.date, rawCount: 1, rawDurationMs: durationMs });
       res.json({ ok: true, date: row.date, gasoline: parseFloat(row.gasoline), diesel: parseFloat(row.diesel), kerosene: parseFloat(row.kerosene) });
     } catch (e) {
       const durationMs = Date.now() - start;
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[IntlCrawl] 수동 실행 오류:", e);
-      await storage.saveOilCollectionLog({ jobType: "intl_price_manual", status: "failed", rawDurationMs: durationMs, errorMessage: msg });
+      await storage.saveOilCollectionLog({ jobType: "manual", status: "failed", rawDurationMs: durationMs, errorMessage: `국제유가 수동수집 오류: ${msg}` });
       res.status(500).json({ message: "크롤링 실패" });
     }
   });
