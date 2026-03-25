@@ -272,6 +272,16 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
     if (notifyMasterOnSuccess) {
       await sendMasterPush(`${source} 수집 성공`, `수집 완료: 원본 ${result.rawCount}건, 분석 ${result.analysisCount}건`);
     }
+    // AI 예측 트리거: 수집 성공 시 당일 예측 미완료이면 실행
+    try {
+      const { runIfNotDoneToday, checkPriceChangeAlert } = await import("./forecastService");
+      setImmediate(() => {
+        runIfNotDoneToday().catch((e) => console.error("[OilScheduler] forecastService 오류:", e));
+        checkPriceChangeAlert(result.today).catch((e) => console.error("[OilScheduler] 가격변동 알림 오류:", e));
+      });
+    } catch (e) {
+      console.error("[OilScheduler] forecastService import 오류:", e);
+    }
     return;
   }
 
@@ -722,7 +732,21 @@ export function startOilScheduler(): void {
     await runIntlPriceCrawlerWithRetry();
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:30 KST)");
+  // 매월 1일 02:00 KST — 임계값 자동 갱신
+  cron.schedule("0 2 1 * *", async () => {
+    console.log("[ForecastService] 월간 임계값 갱신 시작 (매월 1일 02:00 KST)");
+    try {
+      const { runThresholdCalibrator } = await import("./forecastService");
+      const result = await runThresholdCalibrator();
+      const body = `임계값 갱신됨: ${result.oldThreshold ?? "없음"}원 → ${result.newThreshold ?? "실패"}원`;
+      await sendMasterPush("AI 임계값 갱신", body);
+      console.log("[ForecastService] 임계값 갱신 완료:", result);
+    } catch (e) {
+      console.error("[ForecastService] 임계값 갱신 오류:", e);
+    }
+  }, { timezone: "Asia/Seoul" });
+
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:30 KST / AI 임계값 갱신 매월1일 02:00 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 

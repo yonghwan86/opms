@@ -22,6 +22,8 @@ import StationSearchPage from "@/pages/station-search";
 import SatisfactionLogPage from "@/pages/satisfaction-log";
 import PublicDashboardPage from "@/pages/public-dashboard";
 import CeilingTrendPage from "@/pages/ceiling-trend";
+import AiForecastPage from "@/pages/ai-forecast";
+import AiForecastLogsPage from "@/pages/ai-forecast-logs";
 import NotFound from "@/pages/not-found";
 
 function LoadingScreen() {
@@ -98,6 +100,8 @@ function Router() {
       <Route path="/station-search" component={() => <ProtectedRoute component={StationSearchPage} />} />
       <Route path="/logs/satisfaction" component={() => <ProtectedRoute component={SatisfactionLogPage} masterOnly />} />
       <Route path="/ceiling-trend" component={() => <ProtectedRoute component={CeilingTrendPage} />} />
+      <Route path="/ai-forecast" component={() => <ProtectedRoute component={AiForecastPage} />} />
+      <Route path="/logs/ai-forecast" component={() => <ProtectedRoute component={AiForecastLogsPage} masterOnly />} />
       <Route component={NotFound} />
     </Switch>
   );

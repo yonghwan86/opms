@@ -271,3 +271,87 @@ export const gasStationsMaster = pgTable("gas_stations_master", {
   sido: text("sido"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// ─── AI 예측: 전국 일별 평균가 이력 ──────────────────────────────────────────
+export const domesticAvgPriceHistory = pgTable("domestic_avg_price_history", {
+  id: serial("id").primaryKey(),
+  date: varchar("date", { length: 8 }).notNull().unique(),
+  gasolineAvg: numeric("gasoline_avg"),
+  dieselAvg: numeric("diesel_avg"),
+  keroseneAvg: numeric("kerosene_avg"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertDomesticAvgPriceHistorySchema = createInsertSchema(domesticAvgPriceHistory).omit({ id: true, createdAt: true });
+export type InsertDomesticAvgPriceHistory = z.infer<typeof insertDomesticAvgPriceHistorySchema>;
+export type DomesticAvgPriceHistory = typeof domesticAvgPriceHistory.$inferSelect;
+
+// ─── AI 예측: 원/달러 환율 이력 ───────────────────────────────────────────────
+export const exchangeRateHistory = pgTable("exchange_rate_history", {
+  id: serial("id").primaryKey(),
+  date: varchar("date", { length: 10 }).notNull().unique(),
+  rate: numeric("rate").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertExchangeRateHistorySchema = createInsertSchema(exchangeRateHistory).omit({ id: true, createdAt: true });
+export type InsertExchangeRateHistory = z.infer<typeof insertExchangeRateHistorySchema>;
+export type ExchangeRateHistory = typeof exchangeRateHistory.$inferSelect;
+
+// ─── AI 예측: 예측 결과 ────────────────────────────────────────────────────────
+export const oilPriceForecasts = pgTable("oil_price_forecasts", {
+  id: serial("id").primaryKey(),
+  runDate: varchar("run_date", { length: 8 }).notNull(),
+  targetDate: varchar("target_date", { length: 8 }).notNull(),
+  fuelType: varchar("fuel_type", { length: 20 }).notNull(),
+  scope: varchar("scope", { length: 20 }).notNull().default("national"),
+  scopeId: varchar("scope_id", { length: 50 }),
+  forecastPrice: numeric("forecast_price").notNull(),
+  forecastLower: numeric("forecast_lower"),
+  forecastUpper: numeric("forecast_upper"),
+  actualPrice: numeric("actual_price"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  runDateFuelScopeIdx: uniqueIndex("oil_price_forecasts_run_fuel_scope_target_idx").on(table.runDate, table.fuelType, table.scope, table.scopeId, table.targetDate),
+}));
+
+export const insertOilPriceForecastSchema = createInsertSchema(oilPriceForecasts).omit({ id: true, createdAt: true });
+export type InsertOilPriceForecast = z.infer<typeof insertOilPriceForecastSchema>;
+export type OilPriceForecast = typeof oilPriceForecasts.$inferSelect;
+
+// ─── AI 예측: 정책 이벤트 ─────────────────────────────────────────────────────
+export const policyEvents = pgTable("policy_events", {
+  id: serial("id").primaryKey(),
+  eventDate: varchar("event_date", { length: 10 }).notNull(),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPolicyEventSchema = createInsertSchema(policyEvents).omit({ id: true, createdAt: true });
+export type InsertPolicyEvent = z.infer<typeof insertPolicyEventSchema>;
+export type PolicyEvent = typeof policyEvents.$inferSelect;
+
+// ─── AI 예측: 예측 실행 이력 로그 ────────────────────────────────────────────
+export const aiForecastLogs = pgTable("ai_forecast_logs", {
+  id: serial("id").primaryKey(),
+  runAt: timestamp("run_at").notNull().defaultNow(),
+  status: varchar("status", { length: 20 }).notNull(),
+  mape: numeric("mape"),
+  anomalyCount: integer("anomaly_count").default(0),
+  durationMs: integer("duration_ms"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAiForecastLogSchema = createInsertSchema(aiForecastLogs).omit({ id: true, createdAt: true });
+export type InsertAiForecastLog = z.infer<typeof insertAiForecastLogSchema>;
+export type AiForecastLog = typeof aiForecastLogs.$inferSelect;
+
+// ─── AI 예측: 설정 (임계값) ───────────────────────────────────────────────────
+export const aiForecastSettings = pgTable("ai_forecast_settings", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 50 }).notNull().unique(),
+  thresholdWon: numeric("threshold_won"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

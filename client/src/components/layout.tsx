@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
   Bell, BellOff, Upload, Eye, DatabaseZap, Search, SmilePlus, Globe, TrendingUp,
+  BrainCircuit, BotMessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { label: "공개 대시보드", href: "/public", icon: Globe, devOnly: true },
   { label: "최고가격제 변동추이", href: "/ceiling-trend", icon: TrendingUp },
   { label: "유가 분석", href: "/oil-prices", icon: Fuel },
+  { label: "AI 유가 예측", href: "/ai-forecast", icon: BrainCircuit },
   { label: "주유소 가격 검색", href: "/station-search", icon: Search },
   { label: "CSV 업로드", href: "/oil-prices/upload", icon: Upload, masterOnly: true },
   { label: "본부 권한", href: "/region-permissions", icon: MapPin, masterOnly: true },
@@ -41,6 +43,7 @@ const navItems: NavItem[] = [
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "페이지 뷰 로그", href: "/logs/page-views", icon: Eye, masterOnly: true },
   { label: "유가 수집 이력", href: "/logs/oil-collection", icon: DatabaseZap, masterOnly: true },
+  { label: "AI 예측 로그", href: "/logs/ai-forecast", icon: BotMessageSquare, masterOnly: true },
   { label: "만족도 조사 결과", href: "/logs/satisfaction", icon: SmilePlus, masterOnly: true },
 ];
 
@@ -48,6 +51,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/": "대시보드",
   "/public": "공개 대시보드",
   "/oil-prices": "유가 분석",
+  "/ai-forecast": "AI 유가 예측",
   "/station-search": "주유소 가격 검색",
   "/ceiling-trend": "최고가격제 변동추이",
   "/oil-prices/upload": "CSV 업로드",
@@ -58,6 +62,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/logs/audit": "감사 로그",
   "/logs/page-views": "페이지 뷰 로그",
   "/logs/oil-collection": "유가 수집 이력",
+  "/logs/ai-forecast": "AI 예측 로그",
   "/logs/satisfaction": "만족도 조사 결과",
   "/my-info": "내 정보",
 };

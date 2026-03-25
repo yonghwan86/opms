@@ -2195,5 +2195,356 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── AI 유가 예측 API ────────────────────────────────────────────────────────
+
+  // GET /api/forecast/lag-analysis — 교차상관 기반 최적 시차 분석
+  app.get("/api/forecast/lag-analysis", requireAuth, async (req, res) => {
+    try {
+      const dataResult = await db.execute(sql`
+        SELECT
+          i.date,
+          i.wti, i.brent, i.dubai,
+          d.gasoline_avg
+        FROM intl_fuel_prices i
+        JOIN domestic_avg_price_history d ON i.date = d.date
+        WHERE i.wti IS NOT NULL AND d.gasoline_avg IS NOT NULL
+        ORDER BY i.date ASC
+        LIMIT 365
+      `);
+
+      const rows = dataResult.rows as Array<{ date: string; wti: any; brent: any; dubai: any; gasoline_avg: any }>;
+      const rowCount = rows.length;
+
+      if (rowCount < 10) {
+        return res.json({
+          wti: { optimalLag: 7, correlations: [], dataAvailable: false },
+          brent: { optimalLag: 7, correlations: [], dataAvailable: false },
+          dubai: { optimalLag: 7, correlations: [], dataAvailable: false },
+          dataAvailable: false,
+          rowCount,
+        });
+      }
+
+      const gasolineArr = rows.map(r => parseFloat(String(r.gasoline_avg)));
+      const MAX_LAG = Math.min(21, Math.floor(rowCount / 3));
+
+      function crossCorrelation(intlArr: number[], domArr: number[], maxLag: number): { lag: number; r: number }[] {
+        const n = domArr.length;
+        const domMean = domArr.reduce((a, b) => a + b, 0) / n;
+        const domStd = Math.sqrt(domArr.reduce((a, b) => a + Math.pow(b - domMean, 2), 0) / n);
+        const results: { lag: number; r: number }[] = [];
+        for (let lag = 0; lag <= maxLag; lag++) {
+          const pairs: [number, number][] = [];
+          for (let i = lag; i < intlArr.length && (i - lag) < n; i++) {
+            const intlVal = intlArr[i - lag];
+            const domVal = domArr[i];
+            // Exclude NaN/null values (e.g. missing brent/dubai entries)
+            if (Number.isFinite(intlVal) && Number.isFinite(domVal)) pairs.push([intlVal, domVal]);
+          }
+          if (pairs.length < 5) { results.push({ lag, r: 0 }); continue; }
+          const intlMean = pairs.reduce((a, [x]) => a + x, 0) / pairs.length;
+          const intlStd = Math.sqrt(pairs.reduce((a, [x]) => a + Math.pow(x - intlMean, 2), 0) / pairs.length);
+          const coeff = pairs.reduce((a, [x, y]) => a + (x - intlMean) * (y - domMean), 0);
+          const denom = intlStd * domStd * pairs.length;
+          results.push({ lag, r: denom > 0 ? Math.round((coeff / denom) * 1000) / 1000 : 0 });
+        }
+        return results;
+      }
+
+      function optimalLag(corrs: { lag: number; r: number }[]): number {
+        if (corrs.length === 0) return 7;
+        return corrs.reduce((best, cur) => cur.r > best.r ? cur : best).lag;
+      }
+
+      const wtiArr = rows.map(r => parseFloat(String(r.wti)));
+      const brentArr = rows.map(r => parseFloat(String(r.brent)));
+      const dubaiArr = rows.map(r => parseFloat(String(r.dubai)));
+
+      const wtiCorrs = crossCorrelation(wtiArr, gasolineArr, MAX_LAG);
+      const brentCorrs = crossCorrelation(brentArr, gasolineArr, MAX_LAG);
+      const dubaiCorrs = crossCorrelation(dubaiArr, gasolineArr, MAX_LAG);
+
+      res.json({
+        wti: { optimalLag: optimalLag(wtiCorrs), correlations: wtiCorrs, dataAvailable: true },
+        brent: { optimalLag: optimalLag(brentCorrs), correlations: brentCorrs, dataAvailable: true },
+        dubai: { optimalLag: optimalLag(dubaiCorrs), correlations: dubaiCorrs, dataAvailable: true },
+        dataAvailable: true,
+        rowCount,
+      });
+    } catch (e) {
+      console.error("[ForecastAPI] lag-analysis 오류:", e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/forecast/national — 전국 평균 예측값
+  app.get("/api/forecast/national", requireAuth, async (req, res) => {
+    try {
+      const fuel = (req.query.fuel as string) || "gasoline";
+      const days = Math.min(14, Math.max(1, parseInt(String(req.query.days ?? "14"))));
+
+      // 최신 run_date 조회
+      const runDateResult = await db.execute(sql`
+        SELECT MAX(run_date) as latest FROM oil_price_forecasts
+        WHERE fuel_type = ${fuel} AND scope = 'national'
+      `);
+      const runDate = (runDateResult.rows[0] as any)?.latest;
+
+      if (!runDate) {
+        // 예측 데이터 없으면 빈 응답
+        return res.json({
+          runDate: null,
+          fuelType: fuel,
+          mape: null,
+          history: [],
+          forecast: [],
+          dataAvailable: false,
+        });
+      }
+
+      const forecastResult = await db.execute(sql`
+        SELECT target_date, forecast_price, forecast_lower, forecast_upper, actual_price
+        FROM oil_price_forecasts
+        WHERE run_date = ${runDate} AND fuel_type = ${fuel} AND scope = 'national'
+        ORDER BY target_date ASC
+        LIMIT ${days}
+      `);
+
+      // 과거 30일 실제값
+      const historyResult = await db.execute(sql`
+        SELECT date, ${fuel === "gasoline" ? sql`gasoline_avg` : sql`diesel_avg`} as price
+        FROM domestic_avg_price_history
+        WHERE date <= ${runDate}
+        ORDER BY date DESC
+        LIMIT 30
+      `);
+
+      // MAPE 계산
+      const mapeResult = await db.execute(sql`
+        SELECT AVG(ABS(actual_price::float - forecast_price::float) / NULLIF(actual_price::float, 0)) * 100 as mape
+        FROM oil_price_forecasts
+        WHERE fuel_type = ${fuel} AND scope = 'national'
+          AND actual_price IS NOT NULL
+          AND run_date >= to_char(NOW() - INTERVAL '14 days', 'YYYYMMDD')
+      `);
+      const mape = (mapeResult.rows[0] as any)?.mape;
+
+      const forecasts = forecastResult.rows.map((r: any, i: number) => ({
+        date: String(r.target_date),
+        forecast: r.forecast_price ? parseFloat(r.forecast_price) : null,
+        lower: r.forecast_lower ? parseFloat(r.forecast_lower) : null,
+        upper: r.forecast_upper ? parseFloat(r.forecast_upper) : null,
+        actual: r.actual_price ? parseFloat(r.actual_price) : null,
+        phase: i < 7 ? 1 : 2,
+      }));
+
+      const history = historyResult.rows.reverse().map((r: any) => ({
+        date: String(r.date),
+        price: r.price ? parseFloat(r.price) : null,
+      }));
+
+      res.json({
+        runDate: String(runDate),
+        fuelType: fuel,
+        mape: mape ? parseFloat(mape) : null,
+        history,
+        forecast: forecasts,
+        dataAvailable: true,
+      });
+    } catch (e) {
+      console.error("[ForecastAPI] national 오류:", e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/forecast/station/:stationId — 주유소별 예측값
+  app.get("/api/forecast/station/:stationId", requireAuth, async (req, res) => {
+    try {
+      const { stationId } = req.params;
+      const fuel = (req.query.fuel as string) || "gasoline";
+
+      const result = await db.execute(sql`
+        SELECT target_date, forecast_price, forecast_lower, forecast_upper, actual_price
+        FROM oil_price_forecasts
+        WHERE scope = 'station' AND scope_id = ${stationId}
+          AND fuel_type = ${fuel}
+          AND run_date = (SELECT MAX(run_date) FROM oil_price_forecasts WHERE scope = 'station' AND scope_id = ${stationId} AND fuel_type = ${fuel})
+        ORDER BY target_date ASC
+      `);
+
+      if (result.rows.length === 0) {
+        return res.json({ stationId, fuelType: fuel, forecast: [], dataAvailable: false });
+      }
+
+      const forecasts = result.rows.map((r: any, i: number) => ({
+        date: String(r.target_date),
+        forecast: r.forecast_price ? parseFloat(r.forecast_price) : null,
+        lower: r.forecast_lower ? parseFloat(r.forecast_lower) : null,
+        upper: r.forecast_upper ? parseFloat(r.forecast_upper) : null,
+        phase: i < 7 ? 1 : 2,
+      }));
+
+      res.json({ stationId, fuelType: fuel, forecast: forecasts, dataAvailable: true });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/forecast/high-margin — 마진 이상 업소 목록
+  app.get("/api/forecast/high-margin", requireAuth, async (req, res) => {
+    try {
+      const fuel = (req.query.fuel as string) || "gasoline";
+      const userId = req.session.userId!;
+      const role = req.session.role!;
+
+      let sidoFilter: string[] | undefined;
+      if (role !== "MASTER") {
+        const permitted = await storage.getUserPermittedRegions(userId);
+        if (permitted.sidoList.length > 0) {
+          sidoFilter = permitted.sidoList;
+        } else if (permitted.regionList.length > 0) {
+          // regionList만 있는 경우: sido 추출하여 필터 적용
+          sidoFilter = [...new Set(permitted.regionList.map(r => r.split(" ")[0]))];
+        }
+        // sidoList와 regionList 모두 비어있으면 전국 권한 (nationwide HQ_USER)
+      }
+
+      const sqlCol = fuel === "gasoline" ? "gasoline" : "diesel";
+
+      // 최신 날짜 조회
+      const dateResult = await db.execute(sql`SELECT MAX(date) as d FROM oil_price_raw`);
+      const latestDate = (dateResult.rows[0] as any)?.d;
+      if (!latestDate) return res.json({ anomalies: [], total: 0, fuelType: fuel });
+
+      // 최신 예측가 조회
+      const forecastResult = await db.execute(sql`
+        SELECT forecast_price FROM oil_price_forecasts
+        WHERE fuel_type = ${fuel} AND scope = 'national'
+          AND run_date = (SELECT MAX(run_date) FROM oil_price_forecasts WHERE fuel_type = ${fuel} AND scope = 'national')
+        ORDER BY target_date ASC LIMIT 1
+      `);
+      const forecastPrice = forecastResult.rows.length > 0
+        ? parseFloat(String((forecastResult.rows[0] as any).forecast_price))
+        : null;
+
+      // 공급가 조회
+      const supplyResult = await db.execute(sql`
+        SELECT company, ${fuel === "gasoline" ? sql`gasoline` : sql`diesel`} as supply_price
+        FROM oil_weekly_supply_prices
+        WHERE week = (SELECT MAX(week) FROM oil_weekly_supply_prices)
+          AND ${fuel === "gasoline" ? sql`gasoline` : sql`diesel`} IS NOT NULL
+      `);
+      const supplyMap: Record<string, number> = {};
+      let defaultSupply = 0;
+      for (const r of supplyResult.rows as any[]) {
+        supplyMap[r.company] = parseFloat(r.supply_price);
+        defaultSupply = parseFloat(r.supply_price);
+      }
+
+      // 판매가 조회
+      let saleQuery = sql`
+        SELECT station_id, station_name, brand, region, sido,
+               ${fuel === "gasoline" ? sql`gasoline` : sql`diesel`} as sale_price
+        FROM oil_price_raw
+        WHERE date = ${latestDate}
+          AND ${fuel === "gasoline" ? sql`gasoline` : sql`diesel`} IS NOT NULL
+      `;
+      const rawResult = await db.execute(saleQuery);
+      const rows = rawResult.rows as any[];
+
+      const BRAND_MAP: Record<string, string> = {
+        "SK에너지": "SK에너지", "GS칼텍스": "GS칼텍스",
+        "현대오일뱅크": "HD현대오일뱅크", "HD현대오일뱅크": "HD현대오일뱅크",
+        "S-OIL": "S-OIL", "에쓰오일": "S-OIL",
+      };
+
+      const stationData = rows
+        .filter(r => sidoFilter ? sidoFilter.some(s => r.sido?.includes(s)) : true)
+        .map(r => {
+          const salePrice = parseFloat(r.sale_price);
+          let supplyPrice = defaultSupply;
+          if (r.brand) {
+            for (const [k, v] of Object.entries(BRAND_MAP)) {
+              if (r.brand.includes(k)) { supplyPrice = supplyMap[v] ?? defaultSupply; break; }
+            }
+          }
+          const margin = salePrice - supplyPrice;
+          const forecastDev = forecastPrice !== null ? Math.abs(salePrice - forecastPrice) : 0;
+          return {
+            stationId: r.station_id, stationName: r.station_name, brand: r.brand,
+            region: r.region, sido: r.sido, salePrice, supplyPrice,
+            margin: Math.round(margin * 100) / 100,
+            forecastDev: Math.round(forecastDev * 100) / 100,
+          };
+        });
+
+      // 지역별 통계
+      const sidoGroups: Record<string, number[]> = {};
+      for (const s of stationData) {
+        if (!sidoGroups[s.sido]) sidoGroups[s.sido] = [];
+        sidoGroups[s.sido].push(s.margin);
+      }
+      const sidoStats: Record<string, { mean: number; std: number }> = {};
+      for (const [sido, margins] of Object.entries(sidoGroups)) {
+        const mean = margins.reduce((a, b) => a + b, 0) / margins.length;
+        const std = Math.sqrt(margins.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / margins.length);
+        sidoStats[sido] = { mean, std };
+      }
+
+      const allDevs = stationData.map(s => s.forecastDev);
+      const devMean = allDevs.reduce((a, b) => a + b, 0) / (allDevs.length || 1);
+      const devStd = Math.sqrt(allDevs.reduce((a, b) => a + Math.pow(b - devMean, 2), 0) / (allDevs.length || 1));
+
+      const SIGMA = 1.5;
+      const anomalies = stationData
+        .filter(s => {
+          const stats = sidoStats[s.sido] ?? { mean: 0, std: 0 };
+          const marginThreshold = stats.mean + SIGMA * stats.std;
+          const forecastThreshold = devMean + SIGMA * devStd;
+          return s.margin > marginThreshold && s.forecastDev > forecastThreshold;
+        })
+        .sort((a, b) => b.margin - a.margin);
+
+      res.json({ anomalies, total: anomalies.length, fuelType: fuel, forecastPrice });
+    } catch (e) {
+      console.error("[ForecastAPI] high-margin 오류:", e);
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/logs/ai-forecast — 마스터 전용, 예측 실행 이력
+  app.get("/api/logs/ai-forecast", requireMaster, async (req, res) => {
+    try {
+      const page = Math.max(1, parseInt(String(req.query.page ?? "1")));
+      const pageSize = Math.max(1, Math.min(100, parseInt(String(req.query.pageSize ?? "20"))));
+      const offset = (page - 1) * pageSize;
+
+      const [dataResult, countResult] = await Promise.all([
+        db.execute(sql`
+          SELECT id, run_at, status, mape, anomaly_count, duration_ms, error_message
+          FROM ai_forecast_logs
+          ORDER BY run_at DESC
+          LIMIT ${pageSize} OFFSET ${offset}
+        `),
+        db.execute(sql`SELECT COUNT(*) as total FROM ai_forecast_logs`),
+      ]);
+
+      const total = parseInt(String((countResult.rows[0] as any)?.total ?? "0"));
+      const data = dataResult.rows.map((r: any) => ({
+        id: r.id,
+        runAt: r.run_at,
+        status: r.status,
+        mape: r.mape ? parseFloat(r.mape) : null,
+        anomalyCount: r.anomaly_count,
+        durationMs: r.duration_ms,
+        errorMessage: r.error_message,
+      }));
+
+      res.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
   return httpServer;
 }

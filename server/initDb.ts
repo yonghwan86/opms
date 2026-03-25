@@ -153,6 +153,84 @@ export async function initDb() {
         ON oil_weekly_supply_prices (week, company);
     `);
 
+    // ── AI 유가 예측 테이블 신설 ──────────────────────────────────────────────
+
+    // domestic_avg_price_history: 전국 일별 평균가 누적
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS domestic_avg_price_history (
+        id SERIAL PRIMARY KEY,
+        date VARCHAR(8) NOT NULL UNIQUE,
+        gasoline_avg NUMERIC,
+        diesel_avg NUMERIC,
+        kerosene_avg NUMERIC,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // exchange_rate_history: 원/달러 환율 이력
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS exchange_rate_history (
+        id SERIAL PRIMARY KEY,
+        date VARCHAR(10) NOT NULL UNIQUE,
+        rate NUMERIC NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // oil_price_forecasts: 예측 결과
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS oil_price_forecasts (
+        id SERIAL PRIMARY KEY,
+        run_date VARCHAR(8) NOT NULL,
+        target_date VARCHAR(8) NOT NULL,
+        fuel_type VARCHAR(20) NOT NULL,
+        scope VARCHAR(20) NOT NULL DEFAULT 'national',
+        scope_id VARCHAR(50),
+        forecast_price NUMERIC NOT NULL,
+        forecast_lower NUMERIC,
+        forecast_upper NUMERIC,
+        actual_price NUMERIC,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT oil_price_forecasts_run_fuel_scope_target_idx
+          UNIQUE (run_date, fuel_type, scope, scope_id, target_date)
+      );
+    `);
+
+    // policy_events: 유류세 등 정책 이벤트
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS policy_events (
+        id SERIAL PRIMARY KEY,
+        event_date VARCHAR(10) NOT NULL,
+        event_type VARCHAR(50) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // ai_forecast_logs: 예측 실행 이력
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_forecast_logs (
+        id SERIAL PRIMARY KEY,
+        run_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        status VARCHAR(20) NOT NULL,
+        mape NUMERIC,
+        anomaly_count INTEGER DEFAULT 0,
+        duration_ms INTEGER,
+        error_message TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // ai_forecast_settings: 임계값 등 설정
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_forecast_settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(50) NOT NULL UNIQUE,
+        threshold_won NUMERIC,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
     console.log("DB 테이블 초기화 완료");
   } finally {
     client.release();
