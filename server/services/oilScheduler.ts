@@ -261,7 +261,57 @@ interface RunJobOptions {
   jobDates?: { today: string; yesterday: string };
 }
 
+// ─── 슬롯별 중복 실행 방지 잠금 ───────────────────────────────────────────────
+const collectionStartedAt: Record<string, number | null> = {
+  morning: null,
+  afternoon: null,
+};
+const COLLECTION_LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15분 — stuck 시 자동 해제
+const COLLECTION_HEARTBEAT_MS = 5 * 60 * 1000;     // 5분마다 타임스탬프 갱신 (재시도 대기 중 만료 방지)
+
+function isSlotRunning(slot: string): boolean {
+  const startedAt = collectionStartedAt[slot];
+  if (!startedAt) return false;
+  if (Date.now() - startedAt > COLLECTION_LOCK_TIMEOUT_MS) {
+    console.warn(`[OilScheduler] ${slot} 수집 잠금 타임아웃 초과(15분) — 자동 해제`);
+    collectionStartedAt[slot] = null;
+    return false;
+  }
+  return true;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
+  const { slot } = opts;
+
+  if (isSlotRunning(slot)) {
+    const elapsed = Math.round((Date.now() - collectionStartedAt[slot]!) / 1000);
+    console.log(`[OilScheduler] ${slot} 수집 이미 진행 중 (${elapsed}초 경과) — 중복 실행 방지 skip`);
+    return;
+  }
+
+  collectionStartedAt[slot] = Date.now();
+
+  // 하트비트: 5분마다 타임스탬프 갱신 → 재시도 대기(10분) 중 15분 timeout 조기 해제 방지
+  const heartbeat = setInterval(() => {
+    if (collectionStartedAt[slot] !== null) {
+      collectionStartedAt[slot] = Date.now();
+    }
+  }, COLLECTION_HEARTBEAT_MS);
+
+  try {
+    await runCollectionWithRetries(opts);
+  } finally {
+    clearInterval(heartbeat);
+    collectionStartedAt[slot] = null;
+  }
+}
+
+async function runCollectionWithRetries(opts: RunJobOptions): Promise<void> {
   const { source, slot, pushMessage, notifyMasterOnSuccess = false, jobDates } = opts;
   const baseJobType = slot === "morning" ? "scheduled_morning" : "scheduled_afternoon";
   const result = await runOilPriceJob(jobDates?.today, jobDates?.yesterday, baseJobType);
@@ -328,46 +378,44 @@ async function runWithRetryAndNotify(opts: RunJobOptions): Promise<void> {
     }
   };
 
-  // 1차 재시도 (10분 후)
-  setTimeout(async () => {
-    if (await checkAlreadySucceeded()) {
-      console.log(`[OilScheduler] ${source} 1차 재시도 건너뜀 — 다른 경로로 이미 수집 성공됨 (${result.today})`);
-      return;
-    }
-    console.log(`[OilScheduler] ${source} 1차 재시도 시작`);
-    const retry1 = await retryFn("1차 재시도", `${baseJobType}_retry1`);
-    console.log(`[OilScheduler] ${source} 1차 재시도 결과:`, retry1);
+  // 1차 재시도 (10분 후) — await sleep으로 잠금 유지 (setTimeout 중첩 방식 대비 공백 없음)
+  await sleep(10 * 60 * 1000);
+  if (await checkAlreadySucceeded()) {
+    console.log(`[OilScheduler] ${source} 1차 재시도 건너뜀 — 다른 경로로 이미 수집 성공됨 (${result.today})`);
+    return;
+  }
+  console.log(`[OilScheduler] ${source} 1차 재시도 시작`);
+  const retry1 = await retryFn("1차 재시도", `${baseJobType}_retry1`);
+  console.log(`[OilScheduler] ${source} 1차 재시도 결과:`, retry1);
 
-    if (retry1.success && retry1.analysisCount > 0) {
-      await sendUserPush(result.today, pushMessage, slot);
-      await sendMasterPush(`${source} 1차 재시도 성공`, `재시도 완료: 분석 ${retry1.analysisCount}건`);
-      return;
-    }
+  if (retry1.success && retry1.analysisCount > 0) {
+    await sendUserPush(result.today, pushMessage, slot);
+    await sendMasterPush(`${source} 1차 재시도 성공`, `재시도 완료: 분석 ${retry1.analysisCount}건`);
+    return;
+  }
 
-    console.log(`[OilScheduler] ${source} 1차 재시도 실패, 10분 후 2차 재시도 예정`);
-    await sendMasterPush("1차 재시도 실패", `${source}: 1차 재시도 실패 — 10분 후 2차 재시도합니다.`);
+  console.log(`[OilScheduler] ${source} 1차 재시도 실패, 10분 후 2차 재시도 예정`);
+  await sendMasterPush("1차 재시도 실패", `${source}: 1차 재시도 실패 — 10분 후 2차 재시도합니다.`);
 
-    // 2차 재시도 (20분 후)
-    setTimeout(async () => {
-      if (await checkAlreadySucceeded()) {
-        console.log(`[OilScheduler] ${source} 2차 재시도 건너뜀 — 다른 경로로 이미 수집 성공됨 (${result.today})`);
-        return;
-      }
-      console.log(`[OilScheduler] ${source} 2차 재시도 시작`);
-      const retry2 = await retryFn("2차 재시도", `${baseJobType}_retry2`);
-      console.log(`[OilScheduler] ${source} 2차 재시도 결과:`, retry2);
+  // 2차 재시도 (20분 후) — await sleep으로 잠금 유지
+  await sleep(10 * 60 * 1000);
+  if (await checkAlreadySucceeded()) {
+    console.log(`[OilScheduler] ${source} 2차 재시도 건너뜀 — 다른 경로로 이미 수집 성공됨 (${result.today})`);
+    return;
+  }
+  console.log(`[OilScheduler] ${source} 2차 재시도 시작`);
+  const retry2 = await retryFn("2차 재시도", `${baseJobType}_retry2`);
+  console.log(`[OilScheduler] ${source} 2차 재시도 결과:`, retry2);
 
-      if (retry2.success && retry2.analysisCount > 0) {
-        await sendUserPush(result.today, pushMessage, slot);
-        await sendMasterPush(`${source} 2차 재시도 성공`, `2차 재시도 완료: 분석 ${retry2.analysisCount}건`);
-      } else {
-        await sendMasterPush(
-          "유가 수집 최종 실패",
-          `${source} 2차 재시도까지 실패했습니다.\n오류: ${retry2.error ?? `분석 ${retry2.analysisCount}건`}\n수동 수집이 필요합니다.`,
-        );
-      }
-    }, 10 * 60 * 1000);
-  }, 10 * 60 * 1000);
+  if (retry2.success && retry2.analysisCount > 0) {
+    await sendUserPush(result.today, pushMessage, slot);
+    await sendMasterPush(`${source} 2차 재시도 성공`, `2차 재시도 완료: 분석 ${retry2.analysisCount}건`);
+  } else {
+    await sendMasterPush(
+      "유가 수집 최종 실패",
+      `${source} 2차 재시도까지 실패했습니다.\n오류: ${retry2.error ?? `분석 ${retry2.analysisCount}건`}\n수동 수집이 필요합니다.`,
+    );
+  }
 }
 
 async function checkAndRecoverOnStartup(): Promise<void> {
