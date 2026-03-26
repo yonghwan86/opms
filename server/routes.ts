@@ -2555,5 +2555,55 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── 임시: 배포 DB 2025년 이력 데이터 삽입 (1회성, 완료 후 제거) ───
+  app.post("/api/admin/seed-historical-2025", requireMaster, async (_req, res) => {
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const { fileURLToPath } = await import("url");
+      const __dirname = path.dirname(fileURLToPath(import.meta.url));
+      const seedPath = path.join(__dirname, "data", "intl_fuel_2025_seed.json");
+      const intlRows: Array<{date:string;wti:number|null;brent:number|null;dubai:number|null;gasoline:number|null;diesel:number|null;kerosene:number|null}> = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
+
+      // 1. intl_fuel_prices 2025년 INSERT (ON CONFLICT DO NOTHING)
+      let intlInserted = 0;
+      for (const row of intlRows) {
+        const result = await db.execute(sql`
+          INSERT INTO intl_fuel_prices (date, wti, brent, dubai, gasoline, diesel, kerosene)
+          VALUES (${row.date}, ${row.wti}, ${row.brent}, ${row.dubai}, ${row.gasoline}, ${row.diesel}, ${row.kerosene})
+          ON CONFLICT (date) DO NOTHING
+        `);
+        intlInserted += (result as any).rowCount ?? 0;
+      }
+
+      // 2. domestic_avg_price_history 2025년 1~12월 oil_price_raw 집계 INSERT
+      const aggResult = await db.execute(sql`
+        INSERT INTO domestic_avg_price_history (date, gasoline_avg, diesel_avg, kerosene_avg)
+        SELECT
+          date,
+          ROUND(AVG(NULLIF(gasoline, 0))::numeric, 2) AS gasoline_avg,
+          ROUND(AVG(NULLIF(diesel, 0))::numeric, 2)   AS diesel_avg,
+          ROUND(AVG(NULLIF(kerosene, 0))::numeric, 2) AS kerosene_avg
+        FROM oil_price_raw
+        WHERE date LIKE '2025%'
+        GROUP BY date
+        HAVING COUNT(*) >= 100
+        ON CONFLICT (date) DO NOTHING
+      `);
+      const domesticInserted = (aggResult as any).rowCount ?? 0;
+
+      res.json({
+        ok: true,
+        intlInserted,
+        domesticInserted,
+        message: `국제유가 ${intlInserted}행, 국내평균 ${domesticInserted}행 삽입 완료`,
+      });
+    } catch (e: any) {
+      console.error("[seed-historical-2025]", e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+  // ─── 임시 엔드포인트 END ───
+
   return httpServer;
 }

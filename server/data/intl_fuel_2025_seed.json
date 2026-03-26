@@ -1,0 +1,2324 @@
+[
+  {
+    "date": "20250102",
+    "wti": 73.13,
+    "brent": 75.93,
+    "dubai": 75.18,
+    "gasoline": 82.94,
+    "diesel": 92.3,
+    "kerosene": 89.16
+  },
+  {
+    "date": "20250103",
+    "wti": 73.96,
+    "brent": 76.51,
+    "dubai": 76.54,
+    "gasoline": 83.75,
+    "diesel": 93.49,
+    "kerosene": 90.5
+  },
+  {
+    "date": "20250106",
+    "wti": 73.56,
+    "brent": 76.3,
+    "dubai": 76.55,
+    "gasoline": 83.62,
+    "diesel": 92.72,
+    "kerosene": 90.36
+  },
+  {
+    "date": "20250107",
+    "wti": 74.25,
+    "brent": 77.05,
+    "dubai": 76.3,
+    "gasoline": 83.13,
+    "diesel": 92.41,
+    "kerosene": 90.13
+  },
+  {
+    "date": "20250108",
+    "wti": 73.32,
+    "brent": 76.16,
+    "dubai": 77.68,
+    "gasoline": 83.34,
+    "diesel": 93.56,
+    "kerosene": 91.37
+  },
+  {
+    "date": "20250109",
+    "wti": 73.92,
+    "brent": 76.92,
+    "dubai": 76.43,
+    "gasoline": 82.76,
+    "diesel": 92.38,
+    "kerosene": 90.49
+  },
+  {
+    "date": "20250110",
+    "wti": 76.57,
+    "brent": 79.76,
+    "dubai": 77.93,
+    "gasoline": 83.98,
+    "diesel": 94.08,
+    "kerosene": 92.03
+  },
+  {
+    "date": "20250113",
+    "wti": 78.82,
+    "brent": 81.01,
+    "dubai": 82.41,
+    "gasoline": 87.15,
+    "diesel": 99.12,
+    "kerosene": 96.12
+  },
+  {
+    "date": "20250114",
+    "wti": 77.5,
+    "brent": 79.92,
+    "dubai": 82.23,
+    "gasoline": 86.28,
+    "diesel": 96.71,
+    "kerosene": 94.86
+  },
+  {
+    "date": "20250115",
+    "wti": 80.04,
+    "brent": 82.03,
+    "dubai": 82.24,
+    "gasoline": 86.35,
+    "diesel": 97.59,
+    "kerosene": 95.49
+  },
+  {
+    "date": "20250116",
+    "wti": 78.68,
+    "brent": 81.29,
+    "dubai": 84.54,
+    "gasoline": 86.76,
+    "diesel": 99.57,
+    "kerosene": 97.44
+  },
+  {
+    "date": "20250117",
+    "wti": 77.88,
+    "brent": 80.79,
+    "dubai": 84.61,
+    "gasoline": 85.57,
+    "diesel": 100.2,
+    "kerosene": 97.7
+  },
+  {
+    "date": "20250120",
+    "wti": null,
+    "brent": 80.15,
+    "dubai": 83.53,
+    "gasoline": 84.52,
+    "diesel": 99.75,
+    "kerosene": 96.88
+  },
+  {
+    "date": "20250121",
+    "wti": 75.89,
+    "brent": 79.29,
+    "dubai": 83.09,
+    "gasoline": 83.42,
+    "diesel": 97.71,
+    "kerosene": 95.55
+  },
+  {
+    "date": "20250122",
+    "wti": 75.44,
+    "brent": 79,
+    "dubai": 82.21,
+    "gasoline": 83.27,
+    "diesel": 96.83,
+    "kerosene": 94.78
+  },
+  {
+    "date": "20250123",
+    "wti": 74.62,
+    "brent": 78.29,
+    "dubai": 82.11,
+    "gasoline": 83.88,
+    "diesel": 95.62,
+    "kerosene": 93.94
+  },
+  {
+    "date": "20250124",
+    "wti": 74.66,
+    "brent": 78.5,
+    "dubai": 81.82,
+    "gasoline": 83.87,
+    "diesel": 94.87,
+    "kerosene": 93.84
+  },
+  {
+    "date": "20250127",
+    "wti": 73.17,
+    "brent": 77.08,
+    "dubai": 81.59,
+    "gasoline": 85.07,
+    "diesel": 93.28,
+    "kerosene": 92.94
+  },
+  {
+    "date": "20250128",
+    "wti": 73.77,
+    "brent": 77.49,
+    "dubai": 81.28,
+    "gasoline": 84.93,
+    "diesel": 93.03,
+    "kerosene": 92.72
+  },
+  {
+    "date": "20250129",
+    "wti": 72.62,
+    "brent": 76.58,
+    "dubai": null,
+    "gasoline": null,
+    "diesel": null,
+    "kerosene": null
+  },
+  {
+    "date": "20250130",
+    "wti": 72.73,
+    "brent": 76.87,
+    "dubai": null,
+    "gasoline": null,
+    "diesel": null,
+    "kerosene": null
+  },
+  {
+    "date": "20250131",
+    "wti": 72.53,
+    "brent": 76.76,
+    "dubai": 79.9,
+    "gasoline": 84.87,
+    "diesel": 92.9,
+    "kerosene": 92.63
+  },
+  {
+    "date": "20250203",
+    "wti": 73.16,
+    "brent": 75.96,
+    "dubai": 79.04,
+    "gasoline": 86.42,
+    "diesel": 93.41,
+    "kerosene": 93.93
+  },
+  {
+    "date": "20250204",
+    "wti": 72.7,
+    "brent": 76.2,
+    "dubai": 77.45,
+    "gasoline": 83.28,
+    "diesel": 91.38,
+    "kerosene": 91.93
+  },
+  {
+    "date": "20250205",
+    "wti": 71.03,
+    "brent": 74.61,
+    "dubai": 78.39,
+    "gasoline": 84.07,
+    "diesel": 92.12,
+    "kerosene": 92.27
+  },
+  {
+    "date": "20250206",
+    "wti": 70.61,
+    "brent": 74.29,
+    "dubai": 77.45,
+    "gasoline": 83.19,
+    "diesel": 90.62,
+    "kerosene": 91.22
+  },
+  {
+    "date": "20250207",
+    "wti": 71,
+    "brent": 74.66,
+    "dubai": 77.78,
+    "gasoline": 83.87,
+    "diesel": 91.45,
+    "kerosene": 91.76
+  },
+  {
+    "date": "20250210",
+    "wti": 72.32,
+    "brent": 75.87,
+    "dubai": 77.96,
+    "gasoline": 85.03,
+    "diesel": 91.79,
+    "kerosene": 91.9
+  },
+  {
+    "date": "20250211",
+    "wti": 73.32,
+    "brent": 77,
+    "dubai": 79.3,
+    "gasoline": 86.02,
+    "diesel": 93.27,
+    "kerosene": 93.33
+  },
+  {
+    "date": "20250212",
+    "wti": 71.37,
+    "brent": 75.18,
+    "dubai": 79.02,
+    "gasoline": 86.16,
+    "diesel": 93.85,
+    "kerosene": 93.72
+  },
+  {
+    "date": "20250213",
+    "wti": 71.29,
+    "brent": 75.02,
+    "dubai": 76.98,
+    "gasoline": 84.6,
+    "diesel": 91.97,
+    "kerosene": 91.64
+  },
+  {
+    "date": "20250214",
+    "wti": 70.74,
+    "brent": 74.74,
+    "dubai": 77.78,
+    "gasoline": 85.58,
+    "diesel": 92.45,
+    "kerosene": 92.35
+  },
+  {
+    "date": "20250217",
+    "wti": null,
+    "brent": 75.22,
+    "dubai": 77.56,
+    "gasoline": 86.28,
+    "diesel": 91.93,
+    "kerosene": 91.91
+  },
+  {
+    "date": "20250218",
+    "wti": 71.85,
+    "brent": 75.84,
+    "dubai": 77.88,
+    "gasoline": 86.61,
+    "diesel": 92.17,
+    "kerosene": 92.63
+  },
+  {
+    "date": "20250219",
+    "wti": 72.25,
+    "brent": 76.04,
+    "dubai": 79.41,
+    "gasoline": 87.02,
+    "diesel": 92.73,
+    "kerosene": 93.26
+  },
+  {
+    "date": "20250220",
+    "wti": 72.57,
+    "brent": 76.48,
+    "dubai": 78.93,
+    "gasoline": 86.74,
+    "diesel": 93.21,
+    "kerosene": 93.27
+  },
+  {
+    "date": "20250221",
+    "wti": 70.4,
+    "brent": 74.43,
+    "dubai": 78.83,
+    "gasoline": 85.51,
+    "diesel": 93.22,
+    "kerosene": 92.9
+  },
+  {
+    "date": "20250224",
+    "wti": 70.7,
+    "brent": 74.78,
+    "dubai": 77.02,
+    "gasoline": 84.41,
+    "diesel": 90.81,
+    "kerosene": 90.31
+  },
+  {
+    "date": "20250225",
+    "wti": 68.93,
+    "brent": 73.02,
+    "dubai": 77.81,
+    "gasoline": 84.6,
+    "diesel": 91.22,
+    "kerosene": 90.83
+  },
+  {
+    "date": "20250226",
+    "wti": 68.62,
+    "brent": 72.53,
+    "dubai": 76.27,
+    "gasoline": 82.56,
+    "diesel": 89.18,
+    "kerosene": 88.72
+  },
+  {
+    "date": "20250227",
+    "wti": 70.35,
+    "brent": 74.04,
+    "dubai": 76.01,
+    "gasoline": 81.95,
+    "diesel": 88.18,
+    "kerosene": 87.76
+  },
+  {
+    "date": "20250228",
+    "wti": 69.76,
+    "brent": 73.18,
+    "dubai": 77.52,
+    "gasoline": 82.77,
+    "diesel": 89.12,
+    "kerosene": 88.3
+  },
+  {
+    "date": "20250303",
+    "wti": 68.37,
+    "brent": 71.62,
+    "dubai": 73.23,
+    "gasoline": 82.19,
+    "diesel": 88.63,
+    "kerosene": 87.21
+  },
+  {
+    "date": "20250304",
+    "wti": 68.26,
+    "brent": 71.04,
+    "dubai": 70.44,
+    "gasoline": 78.42,
+    "diesel": 86.87,
+    "kerosene": 85.25
+  },
+  {
+    "date": "20250305",
+    "wti": 66.31,
+    "brent": 69.3,
+    "dubai": 71.41,
+    "gasoline": 78.32,
+    "diesel": 86.93,
+    "kerosene": 85.04
+  },
+  {
+    "date": "20250306",
+    "wti": 66.36,
+    "brent": 69.46,
+    "dubai": 70.23,
+    "gasoline": 77.02,
+    "diesel": 86.04,
+    "kerosene": 84.58
+  },
+  {
+    "date": "20250307",
+    "wti": 67.04,
+    "brent": 70.36,
+    "dubai": 70.84,
+    "gasoline": 76.99,
+    "diesel": 86.12,
+    "kerosene": 84.4
+  },
+  {
+    "date": "20250310",
+    "wti": 66.03,
+    "brent": 69.28,
+    "dubai": 71.38,
+    "gasoline": 77.29,
+    "diesel": 86.31,
+    "kerosene": 84.44
+  },
+  {
+    "date": "20250311",
+    "wti": 66.25,
+    "brent": 69.56,
+    "dubai": 70.53,
+    "gasoline": 76.66,
+    "diesel": 85.25,
+    "kerosene": 83.46
+  },
+  {
+    "date": "20250312",
+    "wti": 67.68,
+    "brent": 70.95,
+    "dubai": 70.64,
+    "gasoline": 77.72,
+    "diesel": 85.53,
+    "kerosene": 84.01
+  },
+  {
+    "date": "20250313",
+    "wti": 66.55,
+    "brent": 69.88,
+    "dubai": 72.07,
+    "gasoline": 79.1,
+    "diesel": 85.79,
+    "kerosene": 84.69
+  },
+  {
+    "date": "20250314",
+    "wti": 67.18,
+    "brent": 70.58,
+    "dubai": 71.54,
+    "gasoline": 78.63,
+    "diesel": 84.94,
+    "kerosene": 83.83
+  },
+  {
+    "date": "20250317",
+    "wti": 67.58,
+    "brent": 71.07,
+    "dubai": 72.22,
+    "gasoline": 79.63,
+    "diesel": 85.53,
+    "kerosene": 84.09
+  },
+  {
+    "date": "20250318",
+    "wti": 66.9,
+    "brent": 70.56,
+    "dubai": 73.04,
+    "gasoline": 80.53,
+    "diesel": 86.03,
+    "kerosene": 84.72
+  },
+  {
+    "date": "20250319",
+    "wti": 67.16,
+    "brent": 70.78,
+    "dubai": 71.88,
+    "gasoline": 78.82,
+    "diesel": 84.85,
+    "kerosene": 83.67
+  },
+  {
+    "date": "20250320",
+    "wti": 68.26,
+    "brent": 72,
+    "dubai": 72.94,
+    "gasoline": 79.55,
+    "diesel": 86.2,
+    "kerosene": 85.39
+  },
+  {
+    "date": "20250321",
+    "wti": 68.28,
+    "brent": 72.16,
+    "dubai": 73.81,
+    "gasoline": 80.58,
+    "diesel": 86.72,
+    "kerosene": 86.08
+  },
+  {
+    "date": "20250324",
+    "wti": 69.11,
+    "brent": 73,
+    "dubai": 73.43,
+    "gasoline": 80.72,
+    "diesel": 86.79,
+    "kerosene": 86.32
+  },
+  {
+    "date": "20250325",
+    "wti": 69,
+    "brent": 73.02,
+    "dubai": 74.69,
+    "gasoline": 81.93,
+    "diesel": 87.07,
+    "kerosene": 86.48
+  },
+  {
+    "date": "20250326",
+    "wti": 69.65,
+    "brent": 73.79,
+    "dubai": 74.7,
+    "gasoline": 82.33,
+    "diesel": 87.87,
+    "kerosene": 87.2
+  },
+  {
+    "date": "20250327",
+    "wti": 69.92,
+    "brent": 74.03,
+    "dubai": 74.8,
+    "gasoline": 82.34,
+    "diesel": 87.84,
+    "kerosene": 87.09
+  },
+  {
+    "date": "20250328",
+    "wti": 69.36,
+    "brent": 73.63,
+    "dubai": 75.88,
+    "gasoline": 82.38,
+    "diesel": 88.16,
+    "kerosene": 87.29
+  },
+  {
+    "date": "20250331",
+    "wti": 71.48,
+    "brent": 74.74,
+    "dubai": null,
+    "gasoline": null,
+    "diesel": null,
+    "kerosene": null
+  },
+  {
+    "date": "20250401",
+    "wti": 71.2,
+    "brent": 74.49,
+    "dubai": 75.97,
+    "gasoline": 83.68,
+    "diesel": 89.17,
+    "kerosene": 87.79
+  },
+  {
+    "date": "20250402",
+    "wti": 71.71,
+    "brent": 74.95,
+    "dubai": 76.15,
+    "gasoline": 84.04,
+    "diesel": 88.82,
+    "kerosene": 87.69
+  },
+  {
+    "date": "20250403",
+    "wti": 66.95,
+    "brent": 70.14,
+    "dubai": 75.08,
+    "gasoline": 81.59,
+    "diesel": 87.18,
+    "kerosene": 86.11
+  },
+  {
+    "date": "20250404",
+    "wti": 61.99,
+    "brent": 65.58,
+    "dubai": 70.48,
+    "gasoline": 76.32,
+    "diesel": 82.65,
+    "kerosene": 81.7
+  },
+  {
+    "date": "20250407",
+    "wti": 60.7,
+    "brent": 64.21,
+    "dubai": 64.57,
+    "gasoline": 71.38,
+    "diesel": 78.24,
+    "kerosene": 77.47
+  },
+  {
+    "date": "20250408",
+    "wti": 59.58,
+    "brent": 62.82,
+    "dubai": 65.21,
+    "gasoline": 72.7,
+    "diesel": 79.53,
+    "kerosene": 78.42
+  },
+  {
+    "date": "20250409",
+    "wti": 62.35,
+    "brent": 65.48,
+    "dubai": 61.88,
+    "gasoline": 68.87,
+    "diesel": 75.89,
+    "kerosene": 74.87
+  },
+  {
+    "date": "20250410",
+    "wti": 60.07,
+    "brent": 63.33,
+    "dubai": 65.41,
+    "gasoline": 70.98,
+    "diesel": 79.01,
+    "kerosene": 77.73
+  },
+  {
+    "date": "20250411",
+    "wti": 61.5,
+    "brent": 64.76,
+    "dubai": 64.91,
+    "gasoline": 70.36,
+    "diesel": 78.56,
+    "kerosene": 77.16
+  },
+  {
+    "date": "20250414",
+    "wti": 61.53,
+    "brent": 64.88,
+    "dubai": 66.24,
+    "gasoline": 72.81,
+    "diesel": 79.96,
+    "kerosene": 78.68
+  },
+  {
+    "date": "20250415",
+    "wti": 61.33,
+    "brent": 64.67,
+    "dubai": 66.61,
+    "gasoline": 73.14,
+    "diesel": 80.74,
+    "kerosene": 79.75
+  },
+  {
+    "date": "20250416",
+    "wti": 62.47,
+    "brent": 65.85,
+    "dubai": 66.63,
+    "gasoline": 73.81,
+    "diesel": 80.92,
+    "kerosene": 79.76
+  },
+  {
+    "date": "20250417",
+    "wti": 64.68,
+    "brent": 67.96,
+    "dubai": 68.14,
+    "gasoline": 74.97,
+    "diesel": 81.92,
+    "kerosene": 80.72
+  },
+  {
+    "date": "20250421",
+    "wti": 63.08,
+    "brent": 66.26,
+    "dubai": 68.41,
+    "gasoline": 75.55,
+    "diesel": 81.9,
+    "kerosene": 80.71
+  },
+  {
+    "date": "20250422",
+    "wti": 64.31,
+    "brent": 67.44,
+    "dubai": 68.52,
+    "gasoline": 75.83,
+    "diesel": 82.09,
+    "kerosene": 81.01
+  },
+  {
+    "date": "20250423",
+    "wti": 62.27,
+    "brent": 66.12,
+    "dubai": 69.47,
+    "gasoline": 77.57,
+    "diesel": 83.41,
+    "kerosene": 82.56
+  },
+  {
+    "date": "20250424",
+    "wti": 62.79,
+    "brent": 66.55,
+    "dubai": 67.6,
+    "gasoline": 76.2,
+    "diesel": 81.83,
+    "kerosene": 81.21
+  },
+  {
+    "date": "20250425",
+    "wti": 63.02,
+    "brent": 66.87,
+    "dubai": 67.23,
+    "gasoline": 76.65,
+    "diesel": 82.63,
+    "kerosene": 82
+  },
+  {
+    "date": "20250428",
+    "wti": 62.05,
+    "brent": 65.86,
+    "dubai": 66.85,
+    "gasoline": 76.28,
+    "diesel": 82.56,
+    "kerosene": 81.79
+  },
+  {
+    "date": "20250429",
+    "wti": 60.42,
+    "brent": 64.25,
+    "dubai": 64.61,
+    "gasoline": 75.32,
+    "diesel": 81.27,
+    "kerosene": 80.52
+  },
+  {
+    "date": "20250430",
+    "wti": 58.21,
+    "brent": 63.12,
+    "dubai": 62.53,
+    "gasoline": 73.35,
+    "diesel": 79.01,
+    "kerosene": 78.42
+  },
+  {
+    "date": "20250501",
+    "wti": 59.24,
+    "brent": 62.13,
+    "dubai": null,
+    "gasoline": null,
+    "diesel": null,
+    "kerosene": null
+  },
+  {
+    "date": "20250502",
+    "wti": 58.29,
+    "brent": 61.29,
+    "dubai": 62,
+    "gasoline": 73.72,
+    "diesel": 78.38,
+    "kerosene": 77.23
+  },
+  {
+    "date": "20250505",
+    "wti": 57.13,
+    "brent": 60.23,
+    "dubai": 59.56,
+    "gasoline": 71.6,
+    "diesel": 76.51,
+    "kerosene": 75.51
+  },
+  {
+    "date": "20250506",
+    "wti": 59.09,
+    "brent": 62.15,
+    "dubai": 61.7,
+    "gasoline": 73.48,
+    "diesel": 77.69,
+    "kerosene": 76.97
+  },
+  {
+    "date": "20250507",
+    "wti": 58.07,
+    "brent": 61.12,
+    "dubai": 63.62,
+    "gasoline": 74.81,
+    "diesel": 78.6,
+    "kerosene": 77.86
+  },
+  {
+    "date": "20250508",
+    "wti": 59.91,
+    "brent": 62.84,
+    "dubai": 62.17,
+    "gasoline": 73.39,
+    "diesel": 77.12,
+    "kerosene": 76.05
+  },
+  {
+    "date": "20250509",
+    "wti": 61.02,
+    "brent": 63.91,
+    "dubai": 63.91,
+    "gasoline": 75.23,
+    "diesel": 78.91,
+    "kerosene": 77.48
+  },
+  {
+    "date": "20250512",
+    "wti": 61.95,
+    "brent": 64.96,
+    "dubai": null,
+    "gasoline": null,
+    "diesel": null,
+    "kerosene": null
+  },
+  {
+    "date": "20250513",
+    "wti": 63.67,
+    "brent": 66.63,
+    "dubai": 65.27,
+    "gasoline": 76.21,
+    "diesel": 80.86,
+    "kerosene": 79.19
+  },
+  {
+    "date": "20250514",
+    "wti": 63.15,
+    "brent": 66.09,
+    "dubai": 66.01,
+    "gasoline": 77.17,
+    "diesel": 82.5,
+    "kerosene": 80.79
+  },
+  {
+    "date": "20250515",
+    "wti": 61.62,
+    "brent": 64.53,
+    "dubai": 63.7,
+    "gasoline": 75.05,
+    "diesel": 80.83,
+    "kerosene": 79.25
+  },
+  {
+    "date": "20250516",
+    "wti": 62.49,
+    "brent": 65.41,
+    "dubai": 63.78,
+    "gasoline": 75.09,
+    "diesel": 80.49,
+    "kerosene": 78.74
+  },
+  {
+    "date": "20250519",
+    "wti": 62.69,
+    "brent": 65.54,
+    "dubai": 64.24,
+    "gasoline": 75.08,
+    "diesel": 80.31,
+    "kerosene": 78.66
+  },
+  {
+    "date": "20250520",
+    "wti": 62.56,
+    "brent": 65.38,
+    "dubai": 64.99,
+    "gasoline": 74.78,
+    "diesel": 80.38,
+    "kerosene": 78.72
+  },
+  {
+    "date": "20250521",
+    "wti": 61.57,
+    "brent": 64.91,
+    "dubai": 66.04,
+    "gasoline": 76.06,
+    "diesel": 80.85,
+    "kerosene": 79.21
+  },
+  {
+    "date": "20250522",
+    "wti": 61.2,
+    "brent": 64.44,
+    "dubai": 63.75,
+    "gasoline": 75.85,
+    "diesel": 78.93,
+    "kerosene": 77.65
+  },
+  {
+    "date": "20250523",
+    "wti": 61.53,
+    "brent": 64.78,
+    "dubai": 63.21,
+    "gasoline": 75.51,
+    "diesel": 78.36,
+    "kerosene": 77.41
+  },
+  {
+    "date": "20250526",
+    "wti": null,
+    "brent": 64.74,
+    "dubai": 63.74,
+    "gasoline": 76.02,
+    "diesel": 79.18,
+    "kerosene": 78.16
+  },
+  {
+    "date": "20250527",
+    "wti": 60.89,
+    "brent": 64.09,
+    "dubai": 64,
+    "gasoline": 75.59,
+    "diesel": 79.07,
+    "kerosene": 77.85
+  },
+  {
+    "date": "20250528",
+    "wti": 61.84,
+    "brent": 64.9,
+    "dubai": 63.8,
+    "gasoline": 75.18,
+    "diesel": 78.93,
+    "kerosene": 77.76
+  },
+  {
+    "date": "20250529",
+    "wti": 60.94,
+    "brent": 64.15,
+    "dubai": 65.34,
+    "gasoline": 76.06,
+    "diesel": 80.6,
+    "kerosene": 79.36
+  },
+  {
+    "date": "20250530",
+    "wti": 60.79,
+    "brent": 63.9,
+    "dubai": 63.83,
+    "gasoline": 74.66,
+    "diesel": 78.8,
+    "kerosene": 77.31
+  },
+  {
+    "date": "20250602",
+    "wti": 62.52,
+    "brent": 64.63,
+    "dubai": 63.93,
+    "gasoline": 75.48,
+    "diesel": 80.04,
+    "kerosene": 78.15
+  },
+  {
+    "date": "20250603",
+    "wti": 63.41,
+    "brent": 65.63,
+    "dubai": 64.25,
+    "gasoline": 75.87,
+    "diesel": 80.24,
+    "kerosene": 78.32
+  },
+  {
+    "date": "20250604",
+    "wti": 62.85,
+    "brent": 64.86,
+    "dubai": 64.62,
+    "gasoline": 76.25,
+    "diesel": 81.24,
+    "kerosene": 79.15
+  },
+  {
+    "date": "20250605",
+    "wti": 63.37,
+    "brent": 65.34,
+    "dubai": 64.02,
+    "gasoline": 75.19,
+    "diesel": 80.4,
+    "kerosene": 78.28
+  },
+  {
+    "date": "20250606",
+    "wti": 64.58,
+    "brent": 66.47,
+    "dubai": 64.42,
+    "gasoline": 75.59,
+    "diesel": 81.05,
+    "kerosene": 78.96
+  },
+  {
+    "date": "20250609",
+    "wti": 65.29,
+    "brent": 67.04,
+    "dubai": 65.81,
+    "gasoline": 76.86,
+    "diesel": 82.37,
+    "kerosene": 80.46
+  },
+  {
+    "date": "20250610",
+    "wti": 64.98,
+    "brent": 66.87,
+    "dubai": 66.86,
+    "gasoline": 78.19,
+    "diesel": 82.74,
+    "kerosene": 80.69
+  },
+  {
+    "date": "20250611",
+    "wti": 68.15,
+    "brent": 69.77,
+    "dubai": 66.63,
+    "gasoline": 77.9,
+    "diesel": 82.52,
+    "kerosene": 80.34
+  },
+  {
+    "date": "20250612",
+    "wti": 68.04,
+    "brent": 69.36,
+    "dubai": 68.57,
+    "gasoline": 79.61,
+    "diesel": 84.63,
+    "kerosene": 82.37
+  },
+  {
+    "date": "20250613",
+    "wti": 72.98,
+    "brent": 74.23,
+    "dubai": 72.49,
+    "gasoline": 83.32,
+    "diesel": 88.36,
+    "kerosene": 85.97
+  },
+  {
+    "date": "20250616",
+    "wti": 71.77,
+    "brent": 73.23,
+    "dubai": 72.9,
+    "gasoline": 83.02,
+    "diesel": 90.68,
+    "kerosene": 88.33
+  },
+  {
+    "date": "20250617",
+    "wti": 74.84,
+    "brent": 76.45,
+    "dubai": 73.65,
+    "gasoline": 83.9,
+    "diesel": 91.62,
+    "kerosene": 89.23
+  },
+  {
+    "date": "20250618",
+    "wti": 75.14,
+    "brent": 76.7,
+    "dubai": 75.51,
+    "gasoline": 85.58,
+    "diesel": 94.51,
+    "kerosene": 91.94
+  },
+  {
+    "date": "20250619",
+    "wti": null,
+    "brent": 78.85,
+    "dubai": 76.89,
+    "gasoline": 86.68,
+    "diesel": 98.05,
+    "kerosene": 95.11
+  },
+  {
+    "date": "20250620",
+    "wti": 74.93,
+    "brent": 77.01,
+    "dubai": 76.84,
+    "gasoline": 88,
+    "diesel": 97.81,
+    "kerosene": 94.94
+  },
+  {
+    "date": "20250623",
+    "wti": 68.51,
+    "brent": 71.48,
+    "dubai": 75.71,
+    "gasoline": 87.44,
+    "diesel": 94.71,
+    "kerosene": 92.04
+  },
+  {
+    "date": "20250624",
+    "wti": 64.37,
+    "brent": 67.14,
+    "dubai": 68.75,
+    "gasoline": 80.73,
+    "diesel": 86.83,
+    "kerosene": 83.88
+  },
+  {
+    "date": "20250625",
+    "wti": 64.92,
+    "brent": 67.68,
+    "dubai": 67.82,
+    "gasoline": 79.31,
+    "diesel": 87.74,
+    "kerosene": 84.71
+  },
+  {
+    "date": "20250626",
+    "wti": 65.24,
+    "brent": 67.73,
+    "dubai": 67.66,
+    "gasoline": 78.04,
+    "diesel": 86.98,
+    "kerosene": 84.37
+  },
+  {
+    "date": "20250627",
+    "wti": 65.52,
+    "brent": 67.77,
+    "dubai": 68.46,
+    "gasoline": 77.8,
+    "diesel": 87.99,
+    "kerosene": 85.46
+  },
+  {
+    "date": "20250630",
+    "wti": 65.11,
+    "brent": 67.61,
+    "dubai": 68.75,
+    "gasoline": 77.38,
+    "diesel": 87.09,
+    "kerosene": 84.46
+  },
+  {
+    "date": "20250701",
+    "wti": 65.45,
+    "brent": 67.11,
+    "dubai": 68.16,
+    "gasoline": 77.66,
+    "diesel": 87.07,
+    "kerosene": 83.89
+  },
+  {
+    "date": "20250702",
+    "wti": 67.45,
+    "brent": 69.11,
+    "dubai": 68.59,
+    "gasoline": 78.24,
+    "diesel": 88.58,
+    "kerosene": 84.72
+  },
+  {
+    "date": "20250703",
+    "wti": 67,
+    "brent": 68.8,
+    "dubai": 69.62,
+    "gasoline": 78.84,
+    "diesel": 89.67,
+    "kerosene": 85.62
+  },
+  {
+    "date": "20250704",
+    "wti": null,
+    "brent": 68.3,
+    "dubai": 69.58,
+    "gasoline": 79.34,
+    "diesel": 89.12,
+    "kerosene": 85.19
+  },
+  {
+    "date": "20250707",
+    "wti": 67.93,
+    "brent": 69.58,
+    "dubai": 69.45,
+    "gasoline": 78.43,
+    "diesel": 90.22,
+    "kerosene": 86.13
+  },
+  {
+    "date": "20250708",
+    "wti": 68.33,
+    "brent": 70.15,
+    "dubai": 70.45,
+    "gasoline": 78.29,
+    "diesel": 89.75,
+    "kerosene": 86.05
+  },
+  {
+    "date": "20250709",
+    "wti": 68.38,
+    "brent": 70.19,
+    "dubai": 71.78,
+    "gasoline": 79.68,
+    "diesel": 91.83,
+    "kerosene": 88.02
+  },
+  {
+    "date": "20250710",
+    "wti": 66.57,
+    "brent": 68.64,
+    "dubai": 71.23,
+    "gasoline": 78.59,
+    "diesel": 90.42,
+    "kerosene": 86.72
+  },
+  {
+    "date": "20250711",
+    "wti": 68.45,
+    "brent": 70.36,
+    "dubai": 70.06,
+    "gasoline": 77.59,
+    "diesel": 89.7,
+    "kerosene": 85.72
+  },
+  {
+    "date": "20250714",
+    "wti": 66.98,
+    "brent": 69.21,
+    "dubai": 72.2,
+    "gasoline": 79.13,
+    "diesel": 92.56,
+    "kerosene": 88.41
+  },
+  {
+    "date": "20250715",
+    "wti": 66.52,
+    "brent": 68.71,
+    "dubai": 70.11,
+    "gasoline": 77.17,
+    "diesel": 89.75,
+    "kerosene": 86.02
+  },
+  {
+    "date": "20250716",
+    "wti": 66.38,
+    "brent": 68.52,
+    "dubai": 69.9,
+    "gasoline": 77.49,
+    "diesel": 89.98,
+    "kerosene": 86.19
+  },
+  {
+    "date": "20250717",
+    "wti": 67.54,
+    "brent": 69.52,
+    "dubai": 69.56,
+    "gasoline": 77.4,
+    "diesel": 90.45,
+    "kerosene": 86.18
+  },
+  {
+    "date": "20250718",
+    "wti": 67.34,
+    "brent": 69.28,
+    "dubai": 70.76,
+    "gasoline": 77.72,
+    "diesel": 93.86,
+    "kerosene": 89.23
+  },
+  {
+    "date": "20250721",
+    "wti": 67.2,
+    "brent": 69.21,
+    "dubai": 70.78,
+    "gasoline": 76.99,
+    "diesel": 91.87,
+    "kerosene": 87.28
+  },
+  {
+    "date": "20250722",
+    "wti": 66.21,
+    "brent": 68.59,
+    "dubai": 70.53,
+    "gasoline": 76.4,
+    "diesel": 92.48,
+    "kerosene": 88.16
+  },
+  {
+    "date": "20250723",
+    "wti": 65.25,
+    "brent": 68.51,
+    "dubai": 70.41,
+    "gasoline": 75.54,
+    "diesel": 90.88,
+    "kerosene": 87.35
+  },
+  {
+    "date": "20250724",
+    "wti": 66.03,
+    "brent": 69.18,
+    "dubai": 71.18,
+    "gasoline": 76.46,
+    "diesel": 91.65,
+    "kerosene": 88.12
+  },
+  {
+    "date": "20250725",
+    "wti": 65.16,
+    "brent": 68.44,
+    "dubai": 71.8,
+    "gasoline": 76.51,
+    "diesel": 91.59,
+    "kerosene": 87.53
+  },
+  {
+    "date": "20250728",
+    "wti": 66.71,
+    "brent": 70.04,
+    "dubai": 71.11,
+    "gasoline": 76.25,
+    "diesel": 90.91,
+    "kerosene": 86.94
+  },
+  {
+    "date": "20250729",
+    "wti": 69.21,
+    "brent": 72.51,
+    "dubai": 72.51,
+    "gasoline": 77.78,
+    "diesel": 91.73,
+    "kerosene": 88.15
+  },
+  {
+    "date": "20250730",
+    "wti": 70,
+    "brent": 73.24,
+    "dubai": 74.94,
+    "gasoline": 80.01,
+    "diesel": 92.81,
+    "kerosene": 89.45
+  },
+  {
+    "date": "20250731",
+    "wti": 69.26,
+    "brent": 72.53,
+    "dubai": 75.23,
+    "gasoline": 80.7,
+    "diesel": 93.49,
+    "kerosene": 90.02
+  },
+  {
+    "date": "20250801",
+    "wti": 67.33,
+    "brent": 69.67,
+    "dubai": 73.75,
+    "gasoline": 79.76,
+    "diesel": 92.7,
+    "kerosene": 89.01
+  },
+  {
+    "date": "20250804",
+    "wti": 66.29,
+    "brent": 68.76,
+    "dubai": 71.16,
+    "gasoline": 77.48,
+    "diesel": 89.4,
+    "kerosene": 86.37
+  },
+  {
+    "date": "20250805",
+    "wti": 65.16,
+    "brent": 67.64,
+    "dubai": 70.31,
+    "gasoline": 77.34,
+    "diesel": 89.43,
+    "kerosene": 86.74
+  },
+  {
+    "date": "20250806",
+    "wti": 64.35,
+    "brent": 66.89,
+    "dubai": 70.36,
+    "gasoline": 77.22,
+    "diesel": 87.89,
+    "kerosene": 85.95
+  },
+  {
+    "date": "20250807",
+    "wti": 63.88,
+    "brent": 66.43,
+    "dubai": 69.31,
+    "gasoline": 76.21,
+    "diesel": 86.25,
+    "kerosene": 84.76
+  },
+  {
+    "date": "20250808",
+    "wti": 63.88,
+    "brent": 66.59,
+    "dubai": 68.52,
+    "gasoline": 76.47,
+    "diesel": 86.66,
+    "kerosene": 84.12
+  },
+  {
+    "date": "20250811",
+    "wti": 63.96,
+    "brent": 66.63,
+    "dubai": 68.04,
+    "gasoline": 77.07,
+    "diesel": 85.46,
+    "kerosene": 83.26
+  },
+  {
+    "date": "20250812",
+    "wti": 63.17,
+    "brent": 66.12,
+    "dubai": 68.51,
+    "gasoline": 78.36,
+    "diesel": 86.9,
+    "kerosene": 84.66
+  },
+  {
+    "date": "20250813",
+    "wti": 62.65,
+    "brent": 65.63,
+    "dubai": 67.4,
+    "gasoline": 77.02,
+    "diesel": 84.94,
+    "kerosene": 82.82
+  },
+  {
+    "date": "20250814",
+    "wti": 63.96,
+    "brent": 66.84,
+    "dubai": 67.69,
+    "gasoline": 77.41,
+    "diesel": 84.84,
+    "kerosene": 82.75
+  },
+  {
+    "date": "20250815",
+    "wti": 62.8,
+    "brent": 65.85,
+    "dubai": 68.2,
+    "gasoline": 78.19,
+    "diesel": 83.63,
+    "kerosene": 82.41
+  },
+  {
+    "date": "20250818",
+    "wti": 63.42,
+    "brent": 66.6,
+    "dubai": 67.66,
+    "gasoline": 76.7,
+    "diesel": 83.1,
+    "kerosene": 81.88
+  },
+  {
+    "date": "20250819",
+    "wti": 62.35,
+    "brent": 65.79,
+    "dubai": 68.05,
+    "gasoline": 76.96,
+    "diesel": 83.87,
+    "kerosene": 82.36
+  },
+  {
+    "date": "20250820",
+    "wti": 63.21,
+    "brent": 66.84,
+    "dubai": 68.81,
+    "gasoline": 78.14,
+    "diesel": 85.33,
+    "kerosene": 83.56
+  },
+  {
+    "date": "20250821",
+    "wti": 63.52,
+    "brent": 67.67,
+    "dubai": 69.67,
+    "gasoline": 79,
+    "diesel": 85.65,
+    "kerosene": 83.91
+  },
+  {
+    "date": "20250822",
+    "wti": 63.66,
+    "brent": 67.73,
+    "dubai": 69.92,
+    "gasoline": 79.94,
+    "diesel": 86.79,
+    "kerosene": 85.08
+  },
+  {
+    "date": "20250825",
+    "wti": 64.8,
+    "brent": 68.8,
+    "dubai": 70.01,
+    "gasoline": 79.58,
+    "diesel": 86.88,
+    "kerosene": 85.38
+  },
+  {
+    "date": "20250826",
+    "wti": 63.25,
+    "brent": 67.22,
+    "dubai": 70.36,
+    "gasoline": 79.17,
+    "diesel": 86.7,
+    "kerosene": 85.36
+  },
+  {
+    "date": "20250827",
+    "wti": 64.15,
+    "brent": 68.05,
+    "dubai": 69.26,
+    "gasoline": 77.43,
+    "diesel": 85.54,
+    "kerosene": 84.05
+  },
+  {
+    "date": "20250828",
+    "wti": 64.6,
+    "brent": 68.62,
+    "dubai": 69.71,
+    "gasoline": 78.28,
+    "diesel": 85.74,
+    "kerosene": 84.11
+  },
+  {
+    "date": "20250829",
+    "wti": 64.01,
+    "brent": 68.12,
+    "dubai": 70.48,
+    "gasoline": 79.45,
+    "diesel": 86.35,
+    "kerosene": 84.59
+  },
+  {
+    "date": "20250901",
+    "wti": null,
+    "brent": 68.15,
+    "dubai": 70.72,
+    "gasoline": 79.3,
+    "diesel": 86.2,
+    "kerosene": 84.43
+  },
+  {
+    "date": "20250902",
+    "wti": 65.59,
+    "brent": 69.14,
+    "dubai": 71.72,
+    "gasoline": 80.77,
+    "diesel": 88.13,
+    "kerosene": 85.91
+  },
+  {
+    "date": "20250903",
+    "wti": 63.97,
+    "brent": 67.6,
+    "dubai": 71.52,
+    "gasoline": 80.72,
+    "diesel": 89.83,
+    "kerosene": 87.4
+  },
+  {
+    "date": "20250904",
+    "wti": 63.48,
+    "brent": 66.99,
+    "dubai": 69.49,
+    "gasoline": 79.29,
+    "diesel": 88.46,
+    "kerosene": 85.66
+  },
+  {
+    "date": "20250905",
+    "wti": 61.87,
+    "brent": 65.5,
+    "dubai": 69.23,
+    "gasoline": 79.21,
+    "diesel": 88.51,
+    "kerosene": 85.5
+  },
+  {
+    "date": "20250908",
+    "wti": 62.26,
+    "brent": 66.02,
+    "dubai": 69.24,
+    "gasoline": 78.86,
+    "diesel": 88.17,
+    "kerosene": 85.19
+  },
+  {
+    "date": "20250909",
+    "wti": 62.63,
+    "brent": 66.39,
+    "dubai": 69.71,
+    "gasoline": 79.21,
+    "diesel": 88.85,
+    "kerosene": 85.95
+  },
+  {
+    "date": "20250910",
+    "wti": 63.67,
+    "brent": 67.49,
+    "dubai": 70.41,
+    "gasoline": 79.46,
+    "diesel": 88.81,
+    "kerosene": 85.78
+  },
+  {
+    "date": "20250911",
+    "wti": 62.37,
+    "brent": 66.37,
+    "dubai": 70.69,
+    "gasoline": 79.68,
+    "diesel": 89.17,
+    "kerosene": 86.5
+  },
+  {
+    "date": "20250912",
+    "wti": 62.69,
+    "brent": 66.99,
+    "dubai": 69.5,
+    "gasoline": 79.15,
+    "diesel": 88.01,
+    "kerosene": 85.39
+  },
+  {
+    "date": "20250915",
+    "wti": 63.3,
+    "brent": 67.44,
+    "dubai": 70.9,
+    "gasoline": 81.04,
+    "diesel": 88.77,
+    "kerosene": 86.3
+  },
+  {
+    "date": "20250916",
+    "wti": 64.52,
+    "brent": 68.47,
+    "dubai": 70.26,
+    "gasoline": 81.15,
+    "diesel": 88.99,
+    "kerosene": 86.73
+  },
+  {
+    "date": "20250917",
+    "wti": 64.05,
+    "brent": 67.95,
+    "dubai": 70.68,
+    "gasoline": 81.72,
+    "diesel": 90.6,
+    "kerosene": 88.61
+  },
+  {
+    "date": "20250918",
+    "wti": 63.57,
+    "brent": 67.44,
+    "dubai": 70.45,
+    "gasoline": 80.52,
+    "diesel": 89.41,
+    "kerosene": 87.63
+  },
+  {
+    "date": "20250919",
+    "wti": 62.68,
+    "brent": 66.68,
+    "dubai": 69.32,
+    "gasoline": 79.19,
+    "diesel": 88.76,
+    "kerosene": 87.11
+  },
+  {
+    "date": "20250922",
+    "wti": 62.64,
+    "brent": 66.57,
+    "dubai": 68.61,
+    "gasoline": 77.8,
+    "diesel": 88.14,
+    "kerosene": 86.66
+  },
+  {
+    "date": "20250923",
+    "wti": 63.41,
+    "brent": 67.63,
+    "dubai": 68.23,
+    "gasoline": 77.23,
+    "diesel": 87.55,
+    "kerosene": 86.47
+  },
+  {
+    "date": "20250924",
+    "wti": 64.99,
+    "brent": 69.31,
+    "dubai": 69.86,
+    "gasoline": 78.22,
+    "diesel": 89.36,
+    "kerosene": 88.5
+  },
+  {
+    "date": "20250925",
+    "wti": 64.98,
+    "brent": 69.42,
+    "dubai": 70.56,
+    "gasoline": 79.26,
+    "diesel": 90.74,
+    "kerosene": 89.59
+  },
+  {
+    "date": "20250926",
+    "wti": 65.72,
+    "brent": 70.13,
+    "dubai": 70.65,
+    "gasoline": 80.18,
+    "diesel": 92.61,
+    "kerosene": 91.6
+  },
+  {
+    "date": "20250929",
+    "wti": 63.45,
+    "brent": 67.97,
+    "dubai": 69.24,
+    "gasoline": 79.89,
+    "diesel": 91.86,
+    "kerosene": 90.62
+  },
+  {
+    "date": "20250930",
+    "wti": 62.37,
+    "brent": 67.02,
+    "dubai": 69.33,
+    "gasoline": 77.34,
+    "diesel": 88.8,
+    "kerosene": 87.19
+  },
+  {
+    "date": "20251001",
+    "wti": 61.78,
+    "brent": 65.35,
+    "dubai": 66.56,
+    "gasoline": 76.93,
+    "diesel": 90.18,
+    "kerosene": 87.92
+  },
+  {
+    "date": "20251002",
+    "wti": 60.48,
+    "brent": 64.11,
+    "dubai": 65.3,
+    "gasoline": 76.22,
+    "diesel": 89.51,
+    "kerosene": 87.18
+  },
+  {
+    "date": "20251003",
+    "wti": 60.88,
+    "brent": 64.53,
+    "dubai": 64.7,
+    "gasoline": 75.26,
+    "diesel": 88,
+    "kerosene": 85.61
+  },
+  {
+    "date": "20251006",
+    "wti": 61.69,
+    "brent": 65.47,
+    "dubai": 65.63,
+    "gasoline": 75.73,
+    "diesel": 87.82,
+    "kerosene": 85.93
+  },
+  {
+    "date": "20251007",
+    "wti": 61.73,
+    "brent": 65.45,
+    "dubai": 65.69,
+    "gasoline": 76.45,
+    "diesel": 87.73,
+    "kerosene": 86.05
+  },
+  {
+    "date": "20251008",
+    "wti": 62.55,
+    "brent": 66.25,
+    "dubai": 65.86,
+    "gasoline": 76.96,
+    "diesel": 88.52,
+    "kerosene": 86.73
+  },
+  {
+    "date": "20251009",
+    "wti": 61.51,
+    "brent": 65.22,
+    "dubai": 66.43,
+    "gasoline": 77.57,
+    "diesel": 89.57,
+    "kerosene": 87.53
+  },
+  {
+    "date": "20251010",
+    "wti": 58.9,
+    "brent": 62.73,
+    "dubai": 64.86,
+    "gasoline": 76.57,
+    "diesel": 88.26,
+    "kerosene": 86.68
+  },
+  {
+    "date": "20251013",
+    "wti": 59.49,
+    "brent": 63.32,
+    "dubai": 63.44,
+    "gasoline": 75.94,
+    "diesel": 86.87,
+    "kerosene": 85.74
+  },
+  {
+    "date": "20251014",
+    "wti": 58.7,
+    "brent": 62.39,
+    "dubai": 62.51,
+    "gasoline": 75.6,
+    "diesel": 85.62,
+    "kerosene": 84.96
+  },
+  {
+    "date": "20251015",
+    "wti": 58.27,
+    "brent": 61.91,
+    "dubai": 62.54,
+    "gasoline": 75.77,
+    "diesel": 85.24,
+    "kerosene": 84.8
+  },
+  {
+    "date": "20251016",
+    "wti": 57.46,
+    "brent": 61.06,
+    "dubai": 62.45,
+    "gasoline": 76.26,
+    "diesel": 84.71,
+    "kerosene": 84.41
+  },
+  {
+    "date": "20251017",
+    "wti": 57.54,
+    "brent": 61.29,
+    "dubai": 61.34,
+    "gasoline": 74.83,
+    "diesel": 83.39,
+    "kerosene": 83.39
+  },
+  {
+    "date": "20251020",
+    "wti": 57.52,
+    "brent": 61.01,
+    "dubai": null,
+    "gasoline": null,
+    "diesel": null,
+    "kerosene": null
+  },
+  {
+    "date": "20251021",
+    "wti": 57.82,
+    "brent": 61.32,
+    "dubai": 61.82,
+    "gasoline": 74.88,
+    "diesel": 84.45,
+    "kerosene": 84.05
+  },
+  {
+    "date": "20251022",
+    "wti": 58.5,
+    "brent": 62.59,
+    "dubai": 63.47,
+    "gasoline": 75.57,
+    "diesel": 86.12,
+    "kerosene": 85.6
+  },
+  {
+    "date": "20251023",
+    "wti": 61.79,
+    "brent": 65.99,
+    "dubai": 67.74,
+    "gasoline": 78.07,
+    "diesel": 90.51,
+    "kerosene": 89.43
+  },
+  {
+    "date": "20251024",
+    "wti": 61.5,
+    "brent": 65.94,
+    "dubai": 68.82,
+    "gasoline": 79.89,
+    "diesel": 92.92,
+    "kerosene": 91.48
+  },
+  {
+    "date": "20251027",
+    "wti": 61.31,
+    "brent": 65.62,
+    "dubai": 67.67,
+    "gasoline": 79.89,
+    "diesel": 93.44,
+    "kerosene": 91.65
+  },
+  {
+    "date": "20251028",
+    "wti": 60.15,
+    "brent": 64.4,
+    "dubai": 64.95,
+    "gasoline": 79.25,
+    "diesel": 93.68,
+    "kerosene": 92.15
+  },
+  {
+    "date": "20251029",
+    "wti": 60.48,
+    "brent": 64.92,
+    "dubai": 64.15,
+    "gasoline": 79.44,
+    "diesel": 92.13,
+    "kerosene": 89.92
+  },
+  {
+    "date": "20251030",
+    "wti": 60.57,
+    "brent": 65,
+    "dubai": 66.43,
+    "gasoline": 79.78,
+    "diesel": 92.82,
+    "kerosene": 90.7
+  },
+  {
+    "date": "20251031",
+    "wti": 60.98,
+    "brent": 65.07,
+    "dubai": 67.68,
+    "gasoline": 78.99,
+    "diesel": 94.12,
+    "kerosene": 91.53
+  },
+  {
+    "date": "20251103",
+    "wti": 61.05,
+    "brent": 64.89,
+    "dubai": 66.69,
+    "gasoline": 79.82,
+    "diesel": 94.25,
+    "kerosene": 92.09
+  },
+  {
+    "date": "20251104",
+    "wti": 60.56,
+    "brent": 64.44,
+    "dubai": 65.37,
+    "gasoline": 78.4,
+    "diesel": 93.01,
+    "kerosene": 91.21
+  },
+  {
+    "date": "20251105",
+    "wti": 59.6,
+    "brent": 63.52,
+    "dubai": 65.61,
+    "gasoline": 78.06,
+    "diesel": 94.44,
+    "kerosene": 92.67
+  },
+  {
+    "date": "20251106",
+    "wti": 59.43,
+    "brent": 63.38,
+    "dubai": 64.64,
+    "gasoline": 78.54,
+    "diesel": 94.81,
+    "kerosene": 92.81
+  },
+  {
+    "date": "20251107",
+    "wti": 59.75,
+    "brent": 63.63,
+    "dubai": 64.97,
+    "gasoline": 79.18,
+    "diesel": 97.17,
+    "kerosene": 94.87
+  },
+  {
+    "date": "20251110",
+    "wti": 60.13,
+    "brent": 64.06,
+    "dubai": 65.36,
+    "gasoline": 80.09,
+    "diesel": 95.85,
+    "kerosene": 94.08
+  },
+  {
+    "date": "20251111",
+    "wti": 61.04,
+    "brent": 65.16,
+    "dubai": 64.94,
+    "gasoline": 80.05,
+    "diesel": 96.46,
+    "kerosene": 94.46
+  },
+  {
+    "date": "20251112",
+    "wti": 58.49,
+    "brent": 62.71,
+    "dubai": 65.83,
+    "gasoline": 81.46,
+    "diesel": 98.44,
+    "kerosene": 96.92
+  },
+  {
+    "date": "20251113",
+    "wti": 58.69,
+    "brent": 63.01,
+    "dubai": 63.58,
+    "gasoline": 79.21,
+    "diesel": 94.68,
+    "kerosene": 93.98
+  },
+  {
+    "date": "20251114",
+    "wti": 60.09,
+    "brent": 64.39,
+    "dubai": 64.76,
+    "gasoline": 80.29,
+    "diesel": 95.03,
+    "kerosene": 95.3
+  },
+  {
+    "date": "20251117",
+    "wti": 59.91,
+    "brent": 64.2,
+    "dubai": 64.63,
+    "gasoline": 80.47,
+    "diesel": 95.42,
+    "kerosene": 95.7
+  },
+  {
+    "date": "20251118",
+    "wti": 60.74,
+    "brent": 64.89,
+    "dubai": 64.48,
+    "gasoline": 79.87,
+    "diesel": 96.8,
+    "kerosene": 97.33
+  },
+  {
+    "date": "20251119",
+    "wti": 59.44,
+    "brent": 63.51,
+    "dubai": 64.73,
+    "gasoline": 78.16,
+    "diesel": 99.47,
+    "kerosene": 100.48
+  },
+  {
+    "date": "20251120",
+    "wti": 59.14,
+    "brent": 63.38,
+    "dubai": 64.41,
+    "gasoline": 76.58,
+    "diesel": 97.34,
+    "kerosene": 99.11
+  },
+  {
+    "date": "20251121",
+    "wti": 58.06,
+    "brent": 62.56,
+    "dubai": 62.68,
+    "gasoline": 76.14,
+    "diesel": 91.45,
+    "kerosene": 92.53
+  },
+  {
+    "date": "20251124",
+    "wti": 58.84,
+    "brent": 63.37,
+    "dubai": 62.63,
+    "gasoline": 76.05,
+    "diesel": 88.5,
+    "kerosene": 90.16
+  },
+  {
+    "date": "20251125",
+    "wti": 57.95,
+    "brent": 62.48,
+    "dubai": 63.36,
+    "gasoline": 76.42,
+    "diesel": 88.14,
+    "kerosene": 89.8
+  },
+  {
+    "date": "20251126",
+    "wti": 58.65,
+    "brent": 63.13,
+    "dubai": 62.84,
+    "gasoline": 78.32,
+    "diesel": 86.42,
+    "kerosene": 87.95
+  },
+  {
+    "date": "20251127",
+    "wti": null,
+    "brent": 63.34,
+    "dubai": 63.75,
+    "gasoline": 78.54,
+    "diesel": 86.5,
+    "kerosene": 87.57
+  },
+  {
+    "date": "20251128",
+    "wti": 58.55,
+    "brent": 63.2,
+    "dubai": 64.15,
+    "gasoline": 79.05,
+    "diesel": 87.82,
+    "kerosene": 89.08
+  },
+  {
+    "date": "20251201",
+    "wti": 59.32,
+    "brent": 63.17,
+    "dubai": 64.26,
+    "gasoline": 79.77,
+    "diesel": 87.79,
+    "kerosene": 89.54
+  },
+  {
+    "date": "20251202",
+    "wti": 58.64,
+    "brent": 62.45,
+    "dubai": 63.75,
+    "gasoline": 80.69,
+    "diesel": 86.95,
+    "kerosene": 88.84
+  },
+  {
+    "date": "20251203",
+    "wti": 58.95,
+    "brent": 62.67,
+    "dubai": 63.39,
+    "gasoline": 79.5,
+    "diesel": 85.66,
+    "kerosene": 87.82
+  },
+  {
+    "date": "20251204",
+    "wti": 59.67,
+    "brent": 63.26,
+    "dubai": 63.51,
+    "gasoline": 78.69,
+    "diesel": 85.7,
+    "kerosene": 87.66
+  },
+  {
+    "date": "20251205",
+    "wti": 60.08,
+    "brent": 63.75,
+    "dubai": 63.88,
+    "gasoline": 78.55,
+    "diesel": 85.86,
+    "kerosene": 87.75
+  },
+  {
+    "date": "20251208",
+    "wti": 58.88,
+    "brent": 62.49,
+    "dubai": 64.38,
+    "gasoline": 79.36,
+    "diesel": 86.61,
+    "kerosene": 88.26
+  },
+  {
+    "date": "20251209",
+    "wti": 58.25,
+    "brent": 61.94,
+    "dubai": 62.67,
+    "gasoline": 77.65,
+    "diesel": 84.51,
+    "kerosene": 86.46
+  },
+  {
+    "date": "20251210",
+    "wti": 58.46,
+    "brent": 62.21,
+    "dubai": 62.21,
+    "gasoline": 77.57,
+    "diesel": 83.62,
+    "kerosene": 85.64
+  },
+  {
+    "date": "20251211",
+    "wti": 57.6,
+    "brent": 61.28,
+    "dubai": 61.56,
+    "gasoline": 77.59,
+    "diesel": 82.57,
+    "kerosene": 84.41
+  },
+  {
+    "date": "20251212",
+    "wti": 57.44,
+    "brent": 61.12,
+    "dubai": 61.74,
+    "gasoline": 77.58,
+    "diesel": 82.81,
+    "kerosene": 84.83
+  },
+  {
+    "date": "20251215",
+    "wti": 56.82,
+    "brent": 60.56,
+    "dubai": 61.27,
+    "gasoline": 77.45,
+    "diesel": 81.61,
+    "kerosene": 83.68
+  },
+  {
+    "date": "20251216",
+    "wti": 55.27,
+    "brent": 58.92,
+    "dubai": 59.94,
+    "gasoline": 74.65,
+    "diesel": 80.1,
+    "kerosene": 81.97
+  },
+  {
+    "date": "20251217",
+    "wti": 55.94,
+    "brent": 59.68,
+    "dubai": 59.71,
+    "gasoline": 74.29,
+    "diesel": 79.38,
+    "kerosene": 81.16
+  },
+  {
+    "date": "20251218",
+    "wti": 56.15,
+    "brent": 59.82,
+    "dubai": 60.31,
+    "gasoline": 74.16,
+    "diesel": 80.24,
+    "kerosene": 82.16
+  },
+  {
+    "date": "20251219",
+    "wti": 56.66,
+    "brent": 60.47,
+    "dubai": 60.03,
+    "gasoline": 73.17,
+    "diesel": 78.94,
+    "kerosene": 80.9
+  },
+  {
+    "date": "20251222",
+    "wti": 58.01,
+    "brent": 62.07,
+    "dubai": 61.22,
+    "gasoline": 73.35,
+    "diesel": 79.32,
+    "kerosene": 81.34
+  },
+  {
+    "date": "20251223",
+    "wti": 58.38,
+    "brent": 62.38,
+    "dubai": 62.14,
+    "gasoline": 73.29,
+    "diesel": 79.89,
+    "kerosene": 81.97
+  },
+  {
+    "date": "20251224",
+    "wti": 58.35,
+    "brent": 62.24,
+    "dubai": 62.36,
+    "gasoline": 73.2,
+    "diesel": 81.06,
+    "kerosene": 83.28
+  },
+  {
+    "date": "20251226",
+    "wti": 56.74,
+    "brent": 60.64,
+    "dubai": 62.2,
+    "gasoline": 72.59,
+    "diesel": 80.57,
+    "kerosene": 82.52
+  },
+  {
+    "date": "20251229",
+    "wti": 58.08,
+    "brent": 61.94,
+    "dubai": 61.26,
+    "gasoline": 71.52,
+    "diesel": 79.36,
+    "kerosene": 81.34
+  },
+  {
+    "date": "20251230",
+    "wti": 57.95,
+    "brent": 61.92,
+    "dubai": 61.74,
+    "gasoline": 71.73,
+    "diesel": 79.75,
+    "kerosene": 81.8
+  },
+  {
+    "date": "20251231",
+    "wti": 57.42,
+    "brent": 60.85,
+    "dubai": 61.59,
+    "gasoline": 71.74,
+    "diesel": 80.27,
+    "kerosene": 82.05
+  }
+]
