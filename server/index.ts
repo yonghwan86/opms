@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initDb } from "./initDb";
 import { seedDatabase } from "./seed";
+import { seedHistoricalData } from "./seedHistorical";
 import { startOilScheduler } from "./services/oilScheduler";
 
 const app = express();
@@ -76,6 +77,7 @@ app.use((req, res, next) => {
   // DB 테이블 초기화 및 시드 데이터 생성
   await initDb();
   await seedDatabase();
+  await seedHistoricalData();
 
   await registerRoutes(httpServer, app);
 

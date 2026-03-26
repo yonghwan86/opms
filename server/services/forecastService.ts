@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { storage } from "../storage";
 
 const PYTHON_DIR = path.join(process.cwd(), "server", "python");
-const TIMEOUT_MS = 5 * 60 * 1000;
+const TIMEOUT_MS = 15 * 60 * 1000;
 
 function runPythonScript(scriptName: string, args: string[] = []): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve, reject) => {
@@ -108,7 +108,7 @@ async function updateDomesticAvgHistory(): Promise<void> {
         AVG(diesel) FILTER (WHERE diesel IS NOT NULL) as diesel_avg,
         AVG(kerosene) FILTER (WHERE kerosene IS NOT NULL) as kerosene_avg
       FROM oil_price_raw
-      WHERE date >= to_char(NOW() - INTERVAL '90 days', 'YYYYMMDD')
+      WHERE date IS NOT NULL
       GROUP BY date
       ON CONFLICT (date) DO UPDATE SET
         gasoline_avg = EXCLUDED.gasoline_avg,

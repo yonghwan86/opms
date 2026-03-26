@@ -211,7 +211,7 @@ def run_prophet_forecast(fuel_type, domestic_rows, intl_rows, exr_rows, policy_e
             holidays = pd.DataFrame(holiday_list)
 
     m = Prophet(
-        yearly_seasonality=True,
+        yearly_seasonality=False,
         weekly_seasonality=True,
         daily_seasonality=False,
         holidays=holidays,
