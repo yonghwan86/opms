@@ -5,8 +5,8 @@ export const modules: ModuleMap = {
   "./components/mockups/ceiling-trend/CeilingTrendPage.tsx": () => import("../components/mockups/ceiling-trend/CeilingTrendPage.tsx"),
   "./components/mockups/ceiling-trend/PublicDashboardTabs.tsx": () => import("../components/mockups/ceiling-trend/PublicDashboardTabs.tsx"),
   "./components/mockups/ceiling-trend/PublicDashboardTabsMobile.tsx": () => import("../components/mockups/ceiling-trend/PublicDashboardTabsMobile.tsx"),
+  "./components/mockups/legend-demo/LegendDemo.tsx": () => import("../components/mockups/legend-demo/LegendDemo.tsx"),
   "./components/mockups/intl-converted/IntlConvertedChart.tsx": () => import("../components/mockups/intl-converted/IntlConvertedChart.tsx"),
   "./components/mockups/login-mobile/MobileLogin.tsx": () => import("../components/mockups/login-mobile/MobileLogin.tsx"),
-  "./components/mockups/login-mobile/MobileLoginCenter.tsx": () => import("../components/mockups/login-mobile/MobileLoginCenter.tsx"),
-  "./components/mockups/legend-demo/LegendDemo.tsx": () => import("../components/mockups/legend-demo/LegendDemo.tsx")
+  "./components/mockups/login-mobile/MobileLoginCenter.tsx": () => import("../components/mockups/login-mobile/MobileLoginCenter.tsx")
 };
