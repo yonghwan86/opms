@@ -2,9 +2,6 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface IntlRow {
   date: string;
@@ -25,7 +22,7 @@ export async function seedHistoricalData(): Promise<void> {
     const intlCount = parseInt(String((intlCheck.rows[0] as any)?.cnt ?? "0"));
 
     if (intlCount < 200) {
-      const seedPath = path.join(__dirname, "data", "intl_fuel_2025_seed.json");
+      const seedPath = path.join(process.cwd(), "server", "data", "intl_fuel_2025_seed.json");
       if (fs.existsSync(seedPath)) {
         const rows: IntlRow[] = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
         let inserted = 0;
