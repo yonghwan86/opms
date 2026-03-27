@@ -315,10 +315,14 @@ export default function CeilingTrendPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // 선택일 초기화 (최신)
+  // 선택일 초기화: 오늘 기준 현재 적용 공표일의 바로 이전 공표일 (더 긴 기간 기본 표시)
   useEffect(() => {
     if (allCeilings.length && !selectedDate) {
-      setSelectedDate(allCeilings[0].effectiveDate);
+      const todayKey = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const sorted = [...allCeilings].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+      const currentIdx = sorted.findIndex(c => c.effectiveDate.replace(/-/g, "") <= todayKey);
+      const prevIdx = currentIdx >= 0 ? Math.min(currentIdx + 1, sorted.length - 1) : 0;
+      setSelectedDate(sorted[prevIdx].effectiveDate);
     }
   }, [allCeilings, selectedDate]);
 
