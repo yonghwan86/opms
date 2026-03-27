@@ -391,25 +391,12 @@ export default function CeilingTrendPage() {
       sortedCeilings.find(c => c.effectiveDate.replace(/-/g, "") <= dateStr) ?? null;
 
     const selectedKey = selectedDate?.replace(/-/g, "") ?? "";
-    const ceilingChangeDates = new Set(
-      sortedCeilings.map(c => c.effectiveDate.replace(/-/g, ""))
-    );
-
-    // YYYYMMDD 문자열의 다음날 반환
-    const nextDateStr = (ds: string) => {
-      const d = new Date(ds.slice(0, 4) + "-" + ds.slice(4, 6) + "-" + ds.slice(6, 8));
-      d.setDate(d.getDate() + 1);
-      return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-    };
 
     const rows = trendData
       .filter(row => row.date >= selectedKey)
       .map(row => {
       const st = stationMap.get(row.date);
       const active = getActiveCeiling(row.date);
-      // 다음날이 공표일(시작일 제외)이면 현재 행의 ceiling을 null → 수직 연결선 없이 전날에서 끊김
-      const nextDay = nextDateStr(row.date);
-      const isCeilingBreak = ceilingChangeDates.has(nextDay) && nextDay !== selectedKey;
       return {
         ...row,
         label: toLabel(row.date),
@@ -417,9 +404,9 @@ export default function CeilingTrendPage() {
         stationGas: st?.gasoline ?? null,
         stationDsl: st?.diesel ?? null,
         stationKero: st?.kerosene ?? null,
-        ceiling_gasoline: isCeilingBreak ? null : (active?.gasoline ? Number(active.gasoline) : null),
-        ceiling_diesel:   isCeilingBreak ? null : (active?.diesel   ? Number(active.diesel)   : null),
-        ceiling_kerosene: isCeilingBreak ? null : (active?.kerosene ? Number(active.kerosene) : null),
+        ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
+        ceiling_diesel:   active?.diesel   ? Number(active.diesel)   : null,
+        ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
         baseGas: row.baseGas,
         baseDiesel: row.baseDiesel,
         baseKerosene: row.baseKerosene,
@@ -438,8 +425,6 @@ export default function CeilingTrendPage() {
         const ds = `${cur.getFullYear()}${String(cur.getMonth() + 1).padStart(2, "0")}${String(cur.getDate()).padStart(2, "0")}`;
         if (ds > extendEnd) break;
         const active = getActiveCeiling(ds);
-        const nextDs = nextDateStr(ds);
-        const isDummyBreak = ceilingChangeDates.has(nextDs) && nextDs !== selectedKey;
         rows.push({
           date: ds, label: toLabel(ds), dateRaw: ds,
           gasolineAvg: null, dieselAvg: null, keroseneAvg: null,
@@ -447,9 +432,9 @@ export default function CeilingTrendPage() {
           dieselBelow: 0, keroseneAbove: 0, keroseneBelow: 0,
           baseGas: null, baseDiesel: null, baseKerosene: null,
           stationGas: null, stationDsl: null, stationKero: null,
-          ceiling_gasoline: isDummyBreak ? null : (active?.gasoline ? Number(active.gasoline) : null),
-          ceiling_diesel:   isDummyBreak ? null : (active?.diesel   ? Number(active.diesel)   : null),
-          ceiling_kerosene: isDummyBreak ? null : (active?.kerosene ? Number(active.kerosene) : null),
+          ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
+          ceiling_diesel:   active?.diesel   ? Number(active.diesel)   : null,
+          ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
           isFuture: true,
         });
       }
