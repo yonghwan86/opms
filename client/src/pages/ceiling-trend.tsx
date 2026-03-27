@@ -391,11 +391,16 @@ export default function CeilingTrendPage() {
       sortedCeilings.find(c => c.effectiveDate.replace(/-/g, "") <= dateStr) ?? null;
 
     const selectedKey = selectedDate?.replace(/-/g, "") ?? "";
+    const ceilingChangeDates = new Set(
+      sortedCeilings.map(c => c.effectiveDate.replace(/-/g, ""))
+    );
     const rows = trendData
       .filter(row => row.date >= selectedKey)
       .map(row => {
       const st = stationMap.get(row.date);
       const active = getActiveCeiling(row.date);
+      // 공표일 당일(시작일 제외)은 ceiling null → 수직 연결선 제거
+      const isCeilingBreak = ceilingChangeDates.has(row.date) && row.date !== selectedKey;
       return {
         ...row,
         label: toLabel(row.date),
@@ -403,9 +408,9 @@ export default function CeilingTrendPage() {
         stationGas: st?.gasoline ?? null,
         stationDsl: st?.diesel ?? null,
         stationKero: st?.kerosene ?? null,
-        ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
-        ceiling_diesel: active?.diesel ? Number(active.diesel) : null,
-        ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
+        ceiling_gasoline: isCeilingBreak ? null : (active?.gasoline ? Number(active.gasoline) : null),
+        ceiling_diesel:   isCeilingBreak ? null : (active?.diesel   ? Number(active.diesel)   : null),
+        ceiling_kerosene: isCeilingBreak ? null : (active?.kerosene ? Number(active.kerosene) : null),
         baseGas: row.baseGas,
         baseDiesel: row.baseDiesel,
         baseKerosene: row.baseKerosene,
@@ -878,17 +883,17 @@ export default function CeilingTrendPage() {
 
                 {/* 최고가격 계단식 라인 (공표 이력별 구간 표시) */}
                 {fuels.gasoline && (
-                  <Line type="stepAfter" dataKey="ceiling_gasoline" stroke="#6366f1" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_gasoline" connectNulls
+                  <Line type="stepAfter" dataKey="ceiling_gasoline" stroke="#6366f1" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_gasoline"
                     label={firstActiveFuel?.key === "gasoline" ? ceilingEndLabel : undefined}
                   />
                 )}
                 {fuels.diesel && (
-                  <Line type="stepAfter" dataKey="ceiling_diesel" stroke="#8b5cf6" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_diesel" connectNulls
+                  <Line type="stepAfter" dataKey="ceiling_diesel" stroke="#8b5cf6" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_diesel"
                     label={firstActiveFuel?.key === "diesel" ? ceilingEndLabel : undefined}
                   />
                 )}
                 {fuels.kerosene && (
-                  <Line type="stepAfter" dataKey="ceiling_kerosene" stroke="#ec4899" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_kerosene" connectNulls
+                  <Line type="stepAfter" dataKey="ceiling_kerosene" stroke="#ec4899" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_kerosene"
                     label={firstActiveFuel?.key === "kerosene" ? ceilingEndLabel : undefined}
                   />
                 )}
