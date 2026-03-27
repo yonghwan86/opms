@@ -573,7 +573,7 @@ export default function CeilingTrendPage() {
           </div>
           <div>
             <h1 className="text-base md:text-lg font-bold text-foreground">최고가격제 이후 변동추이</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">석유 최고가격 공표 전후 4주(28일) 구간 유가 추이</p>
+            <p className="text-xs text-muted-foreground mt-0.5">석유 최고가격 공표 구간 유가 추이</p>
           </div>
         </div>
 
