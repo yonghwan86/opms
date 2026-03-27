@@ -1,4 +1,5 @@
 import iconv from "iconv-lite";
+import * as XLSX from "xlsx";
 import type { InsertOilPriceRaw } from "@shared/schema";
 
 export interface OilPriceRow {
@@ -18,6 +19,13 @@ export interface OilPriceRow {
 
 function parsePrice(val: string): number | null {
   const n = parseInt(val.trim(), 10);
+  if (isNaN(n) || n === 0) return null;
+  return n;
+}
+
+function parsePriceNum(val: unknown): number | null {
+  if (val === undefined || val === null || val === "") return null;
+  const n = typeof val === "number" ? Math.round(val) : parseInt(String(val).trim(), 10);
   if (isNaN(n) || n === 0) return null;
   return n;
 }
@@ -64,6 +72,65 @@ export function parseOilPriceCSV(buffer: Buffer): OilPriceRow[] {
     });
   }
 
+  return rows;
+}
+
+export function parseOilPriceXLS(buffer: Buffer): OilPriceRow[] {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+
+  // A2 셀: "기준일자 : 20260327" 에서 날짜 추출
+  const a2Val = String(sheet["A2"]?.v ?? "").trim();
+  const dateMatch = a2Val.match(/(\d{8})/);
+  const date = dateMatch ? dateMatch[1] : "";
+
+  if (!date) {
+    console.warn("[OilParser] XLS A2 셀에서 날짜 추출 실패:", a2Val);
+  } else {
+    console.log(`[OilParser] XLS 기준일자: ${date}`);
+  }
+
+  // A1=제목, A2=기준일자, A3=빈행, A4=헤더, A5부터 데이터
+  const rows: OilPriceRow[] = [];
+  let rowIdx = 5;
+
+  while (true) {
+    const stationIdCell = sheet[`A${rowIdx}`];
+    if (!stationIdCell) break;
+
+    const stationId = String(stationIdCell.v ?? "").trim();
+    if (!stationId) break;
+
+    const region = String(sheet[`B${rowIdx}`]?.v ?? "").trim();
+    const stationName = String(sheet[`C${rowIdx}`]?.v ?? "").trim();
+    const address = String(sheet[`D${rowIdx}`]?.v ?? "").trim();
+    const brand = String(sheet[`E${rowIdx}`]?.v ?? "").trim();
+    const selfStr = String(sheet[`F${rowIdx}`]?.v ?? "").trim();
+    const premiumRaw = sheet[`G${rowIdx}`]?.v;
+    const gasolineRaw = sheet[`H${rowIdx}`]?.v;
+    const dieselRaw = sheet[`I${rowIdx}`]?.v;
+    const keroseneRaw = sheet[`J${rowIdx}`]?.v;
+
+    rows.push({
+      stationId,
+      stationName,
+      address,
+      region,
+      sido: extractSido(region),
+      date,
+      brand,
+      isSelf: selfStr === "셀프",
+      premiumGasoline: parsePriceNum(premiumRaw),
+      gasoline: parsePriceNum(gasolineRaw),
+      diesel: parsePriceNum(dieselRaw),
+      kerosene: parsePriceNum(keroseneRaw),
+    });
+
+    rowIdx++;
+  }
+
+  console.log(`[OilParser] XLS 파싱 완료: ${rows.length}건 (기준일: ${date})`);
   return rows;
 }
 

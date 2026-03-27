@@ -1,6 +1,6 @@
 import cron from "node-cron";
-import { downloadOilPriceCSV } from "./oilScraper";
-import { parseOilPriceCSV, toInsertOilPriceRaw, type OilPriceRow } from "./oilParser";
+import { downloadOilPriceXLS } from "./oilScraper";
+import { parseOilPriceXLS, toInsertOilPriceRaw, type OilPriceRow } from "./oilParser";
 import { runAnalysis } from "./oilAnalyzer";
 import { storage } from "../storage";
 import { sendPushToAll } from "./pushService";
@@ -196,13 +196,13 @@ export async function runOilPriceJob(today?: string, yesterday?: string, jobType
   let analysisDurationMs: number | undefined;
 
   try {
-    const buffer = await downloadOilPriceCSV(todayStr, todayStr);
+    const buffer = await downloadOilPriceXLS();
     if (!buffer) {
-      await storage.saveOilCollectionLog({ jobType, status: "failed", targetDate: todayStr, yesterdayDate: yesterdayStr, rawCount: 0, analysisCount: 0, errorMessage: "CSV 다운로드 실패" });
-      return { success: false, rawSaved: false, rawCount: 0, analysisCount: 0, today: todayStr, yesterday: yesterdayStr, error: "CSV 다운로드 실패" };
+      await storage.saveOilCollectionLog({ jobType, status: "failed", targetDate: todayStr, yesterdayDate: yesterdayStr, rawCount: 0, analysisCount: 0, errorMessage: "XLS 다운로드 실패" });
+      return { success: false, rawSaved: false, rawCount: 0, analysisCount: 0, today: todayStr, yesterday: yesterdayStr, error: "XLS 다운로드 실패" };
     }
 
-    const rows = parseOilPriceCSV(buffer);
+    const rows = parseOilPriceXLS(buffer);
     console.log(`[OilScheduler] 파싱 완료: ${rows.length}건`);
 
     const insertRows = toInsertOilPriceRaw(rows);
