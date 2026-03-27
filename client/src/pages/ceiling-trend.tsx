@@ -370,17 +370,13 @@ export default function CeilingTrendPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // 미래 연장 끝 날짜: 선택일 이후 바로 다음 공표일 + 4일 (없으면 오늘 + 4일)
+  // 미래 연장 끝 날짜: 항상 오늘 + 4일 고정
   const extendEnd = useMemo(() => {
     if (!selectedDate) return "";
-    const selectedKey = selectedDate.replace(/-/g, "");
-    const nextCeiling = [...allCeilings]
-      .filter(c => c.effectiveDate.replace(/-/g, "") > selectedKey)
-      .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate))[0];
-    const base = nextCeiling ? new Date(nextCeiling.effectiveDate) : new Date();
+    const base = new Date();
     base.setDate(base.getDate() + 4);
     return `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
-  }, [selectedDate, allCeilings]);
+  }, [selectedDate]);
 
   // 차트 데이터 병합 (+ 미래 더미 행)
   const chartData = useMemo(() => {
