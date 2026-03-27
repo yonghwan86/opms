@@ -441,7 +441,8 @@ export default function CeilingTrendPage() {
     if (!chartData.length) return [];
     const first = chartData[0].dateRaw;
     const last = chartData[chartData.length - 1].dateRaw;
-    const todayKey = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const nowKST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayKey = nowKST.toISOString().slice(0, 10).replace(/-/g, "");
     return sortedCeilings.filter(c => {
       const d = c.effectiveDate.replace(/-/g, "");
       return d >= first && d <= last && d <= todayKey;
