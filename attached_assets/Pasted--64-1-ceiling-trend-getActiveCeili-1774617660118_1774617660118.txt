@@ -1,0 +1,98 @@
+전체 수행 항목 최종 정리
+
+#64 — 최고가격 그래프 이력 라인 및 대시보드 공표일 마커 수정
+이슈 1: ceiling-trend 최고가격 이력 라인
+
+getActiveCeiling 함수로 날짜별 동적 최고가격 계산
+allCeilings 클라이언트 명시적 내림차순 정렬 보장
+chartData deps에 allCeilings 추가
+ReferenceLine 수평선 → Line type="stepAfter"로 교체
+ceilingPrices YAxis 도메인을 allCeilings 전체 이력 기반으로 계산
+CustomTooltip의 ceilingDate: string → ceilingDates: string[] + includes() 비교로 수정
+
+이슈 2: 대시보드 공표일 마커 누락
+
+ceilingRefLabels 필터에서 d <= lastDate 조건 제거
+todayKey 상한 추가 (d <= todayKey)
+
+
+#65 — 최고가격 변동추이 그래프 UX 개선
+Task 1 — chartData 미래 더미 행 추가
+
+extendEnd = 다음 공표일 + 4일 (다음 공표일 없으면 오늘 + 4일)
+trendData 마지막 날 다음날부터 extendEnd까지 더미 행 추가
+더미 행: isFuture: true, 실제 가격 null, ceiling 값만 채움
+toLabel(ds) 포맷이 기존 trendData label과 동일한 "MM-DD" 형식인지 확인
+extendEnd를 chartData useMemo deps에 추가
+
+Task 2 — YAxis 도메인 수정
+
+inRangeCeilings에 todayKey 상한 추가 (미래 공표일 제외)
+
+ts  return d >= first && d <= last && d <= todayKey;
+```
+- `ceilingPrices` 계산을 `sortedCeilings` → `inRangeCeilings` 기반으로 교체
+
+**Task 3 — 커스텀 Legend ceiling 항목 처리**
+- `legendType="none"` 제거 (ceiling 3개 Line)
+- `getLabel`에 한국어 추가
+```
+  ceiling_gasoline → "휘발유 최고가격"
+  ceiling_diesel   → "경유 최고가격"
+  ceiling_kerosene → "등유 최고가격"
+
+DASHED set에 ceiling 3개 추가 (점선 아이콘)
+범례 순서: 지역평균 먼저 → ceiling 나중
+유종 체크 연동 추가
+
+ts  const fuelKey = entry.dataKey.replace("ceiling_", "");
+  if (!fuels[fuelKey]) return null;
+
+CustomTooltip에서 ceiling_ 항목 노출 여부 확인
+
+Task 4 — ReferenceLine 라벨 잘림 방지
+
+nearEndLabels = chartData.slice(-3) 기준으로 처리
+
+ts  position: nearEndLabels.has(lbl) ? "insideTopLeft" : "top"
+```
+
+**Task 5 — ReferenceArea 구간 배경색**
+- `ReferenceArea` import 추가
+- `inRangeCeilings` 오름차순 정렬 후 인접 쌍 사이 교대 배경색 적용
+- 마지막 공표일 ~ 차트 마지막 라벨 구간도 포함
+- `ComposedChart` 자식 중 가장 먼저 렌더링 (CartesianGrid보다 앞)
+- 공표일 1개 케이스: 단색 1개만 표시 (정상 동작)
+
+---
+
+### #66 — 범례·끝점 가격 레이블 복구
+
+**Task 1 — 범례 (위 #65 Task 3과 통합)**
+- 위 내용과 동일, 별도 추가 없음
+
+**Task 2 — 끝점 가격 레이블**
+- `ceiling_gasoline` Line 하나에만 label 렌더러 추가
+- `chartData` 마지막 index에서만 렌더링
+- 활성 유종만 한 줄로 합쳐서 표시
+```
+  "최고가: 휘발유 1,934원, 경유 1,923원"
+```
+- 유종 체크 해제 시 해당 유종 제외
+
+---
+
+### 날짜 범위 유동화 (프론트 + 백엔드)
+
+**프론트엔드**
+- X축 시작 = 선택한 공표일
+- X축 끝 = 다음 공표일 + 4일 (없으면 오늘 + 4일)
+- 공표일이 늘어날수록 그래프 자동 확장
+
+**백엔드 (별도 태스크)**
+- `trendData` 조회 기간: 고정 28일 → 유동 범위로 변경
+```
+  startDate = 선택한 공표일
+  endDate   = 오늘 + 4일
+
+업소 검색 조회 API도 동일 기간으로 맞춰 수정
