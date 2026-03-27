@@ -370,13 +370,17 @@ export default function CeilingTrendPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // 미래 연장 끝 날짜 (selectedDate + 14일 = 백엔드 endDate와 동일)
+  // 미래 연장 끝 날짜: 선택일 이후 바로 다음 공표일 + 4일 (없으면 오늘 + 4일)
   const extendEnd = useMemo(() => {
     if (!selectedDate) return "";
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 14);
-    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-  }, [selectedDate]);
+    const selectedKey = selectedDate.replace(/-/g, "");
+    const nextCeiling = [...allCeilings]
+      .filter(c => c.effectiveDate.replace(/-/g, "") > selectedKey)
+      .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate))[0];
+    const base = nextCeiling ? new Date(nextCeiling.effectiveDate) : new Date();
+    base.setDate(base.getDate() + 4);
+    return `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
+  }, [selectedDate, allCeilings]);
 
   // 차트 데이터 병합 (+ 미래 더미 행)
   const chartData = useMemo(() => {
@@ -386,7 +390,10 @@ export default function CeilingTrendPage() {
     const getActiveCeiling = (dateStr: string) =>
       sortedCeilings.find(c => c.effectiveDate.replace(/-/g, "") <= dateStr) ?? null;
 
-    const rows = trendData.map(row => {
+    const selectedKey = selectedDate?.replace(/-/g, "") ?? "";
+    const rows = trendData
+      .filter(row => row.date >= selectedKey)
+      .map(row => {
       const st = stationMap.get(row.date);
       const active = getActiveCeiling(row.date);
       return {
@@ -479,6 +486,36 @@ export default function CeilingTrendPage() {
   }, []);
 
   const toggleFuel = (f: FuelKey) => setFuels(p => ({ ...p, [f]: !p[f] }));
+
+  // ceiling 라인 끝점 가격 레이블 렌더러 (첫 번째 활성 유종 Line에서만 표시)
+  const firstActiveFuel = FUEL_CONFIG.find(f => fuels[f.key]);
+  const ceilingEndLabel = ({ x, y, index }: any) => {
+    if (!chartData.length || index !== chartData.length - 1) return null;
+    const lastRow = chartData[chartData.length - 1];
+    const parts = FUEL_CONFIG
+      .filter(f => fuels[f.key])
+      .map(f => {
+        const val = lastRow[`ceiling_${f.key}` as keyof typeof lastRow] as number | null;
+        return val ? `${f.label} ${fmt(val)}원` : null;
+      })
+      .filter(Boolean);
+    if (!parts.length) return null;
+    const text = `최고가: ${parts.join(", ")}`;
+    return (
+      <text
+        x={x}
+        y={y}
+        dx={-4}
+        dy={-8}
+        textAnchor="end"
+        fontSize={10}
+        fill="#6366f1"
+        fontWeight={600}
+      >
+        {text}
+      </text>
+    );
+  };
 
   // CSV 다운로드
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -789,21 +826,36 @@ export default function CeilingTrendPage() {
                     const dash = ({ mobile: "3 3", tablet: "4 4", desktop: "5 5" } as const)[bp];
                     const gap  = ({ mobile: "8px", tablet: "10px", desktop: "14px" } as const)[bp];
                     const fs   = ({ mobile: "10px", tablet: "10px", desktop: "11px" } as const)[bp];
-                    const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg"]);
+                    const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg", "ceiling_gasoline", "ceiling_diesel", "ceiling_kerosene"]);
                     const getLabel = (key: string) => {
-                      if (key === "stationGas")  return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
-                      if (key === "stationDsl")  return `${selectedStation?.stationName ?? "주유소"} (경유)`;
-                      if (key === "stationKero") return `${selectedStation?.stationName ?? "주유소"} (등유)`;
-                      if (key === "gasolineAvg") return "휘발유 지역평균";
-                      if (key === "dieselAvg")   return "경유 지역평균";
-                      if (key === "keroseneAvg") return "등유 지역평균";
+                      if (key === "stationGas")        return `${selectedStation?.stationName ?? "주유소"} (휘발유)`;
+                      if (key === "stationDsl")        return `${selectedStation?.stationName ?? "주유소"} (경유)`;
+                      if (key === "stationKero")       return `${selectedStation?.stationName ?? "주유소"} (등유)`;
+                      if (key === "gasolineAvg")       return "휘발유 지역평균";
+                      if (key === "dieselAvg")         return "경유 지역평균";
+                      if (key === "keroseneAvg")       return "등유 지역평균";
+                      if (key === "ceiling_gasoline")  return "휘발유 최고가격";
+                      if (key === "ceiling_diesel")    return "경유 최고가격";
+                      if (key === "ceiling_kerosene")  return "등유 최고가격";
                       return key;
                     };
+                    // 범례 순서: 지역평균 → ceiling → 주유소
+                    const ORDER = ["gasolineAvg", "dieselAvg", "keroseneAvg", "ceiling_gasoline", "ceiling_diesel", "ceiling_kerosene", "stationGas", "stationDsl", "stationKero"];
+                    const sorted = [...payload].sort((a: any, b: any) => {
+                      const ai = ORDER.indexOf(a.dataKey);
+                      const bi = ORDER.indexOf(b.dataKey);
+                      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                    });
                     return (
                       <div style={{ display: "flex", flexWrap: "wrap", gap, justifyContent: "center", paddingTop: "2px" }}>
-                        {payload.filter((entry: any) => !entry.dataKey.startsWith("ceiling_")).map((entry: any) => {
+                        {sorted.map((entry: any) => {
+                          if (entry.dataKey.startsWith("ceiling_")) {
+                            const fuelKey = entry.dataKey.replace("ceiling_", "") as FuelKey;
+                            if (!fuels[fuelKey]) return null;
+                          }
                           const isDashed = DASHED.has(entry.dataKey);
                           const isStation = entry.dataKey.startsWith("station");
+                          const isCeiling = entry.dataKey.startsWith("ceiling_");
                           return (
                             <div key={entry.dataKey} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                               <svg width={svgW} height="10" style={{ flexShrink: 0 }}>
@@ -813,7 +865,7 @@ export default function CeilingTrendPage() {
                                   strokeLinecap="round"
                                 />
                               </svg>
-                              <span style={{ fontSize: fs, color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
+                              <span style={{ fontSize: fs, color: isStation ? "#111827" : isCeiling ? "#6b7280" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
                                 {getLabel(entry.dataKey)}
                               </span>
                             </div>
@@ -826,13 +878,19 @@ export default function CeilingTrendPage() {
 
                 {/* 최고가격 계단식 라인 (공표 이력별 구간 표시) */}
                 {fuels.gasoline && (
-                  <Line type="stepAfter" dataKey="ceiling_gasoline" stroke="#6366f1" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_gasoline" connectNulls legendType="none" />
+                  <Line type="stepAfter" dataKey="ceiling_gasoline" stroke="#6366f1" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_gasoline" connectNulls
+                    label={firstActiveFuel?.key === "gasoline" ? ceilingEndLabel : undefined}
+                  />
                 )}
                 {fuels.diesel && (
-                  <Line type="stepAfter" dataKey="ceiling_diesel" stroke="#8b5cf6" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_diesel" connectNulls legendType="none" />
+                  <Line type="stepAfter" dataKey="ceiling_diesel" stroke="#8b5cf6" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_diesel" connectNulls
+                    label={firstActiveFuel?.key === "diesel" ? ceilingEndLabel : undefined}
+                  />
                 )}
                 {fuels.kerosene && (
-                  <Line type="stepAfter" dataKey="ceiling_kerosene" stroke="#ec4899" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_kerosene" connectNulls legendType="none" />
+                  <Line type="stepAfter" dataKey="ceiling_kerosene" stroke="#ec4899" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_kerosene" connectNulls
+                    label={firstActiveFuel?.key === "kerosene" ? ceilingEndLabel : undefined}
+                  />
                 )}
 
                 {/* 공표일 수직선 (범위 내 모든 공표일) */}

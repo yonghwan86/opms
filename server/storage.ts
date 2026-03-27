@@ -1227,8 +1227,9 @@ export class PostgresStorage implements IStorage {
 
   async getCeilingTrendData(effectiveDate: string, sido?: string, sigungu?: string): Promise<CeilingTrendRow[]> {
     const d = new Date(effectiveDate);
-    const startD = new Date(d); startD.setDate(startD.getDate() - 14);
-    const endD = new Date(d); endD.setDate(endD.getDate() + 14);
+    const startD = new Date(d); // 시작 = 선택한 공표일 당일
+    const endD = new Date();    // 종료 = 오늘 + 4일
+    endD.setDate(endD.getDate() + 4);
     const toYYYYMMDD = (dt: Date) =>
       `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
     const startDate = toYYYYMMDD(startD);
@@ -1287,8 +1288,9 @@ export class PostgresStorage implements IStorage {
 
   async getStationCeilingTrend(effectiveDate: string, stationId: string): Promise<StationTrendRow[]> {
     const d = new Date(effectiveDate);
-    const startD = new Date(d); startD.setDate(startD.getDate() - 14);
-    const endD = new Date(d); endD.setDate(endD.getDate() + 14);
+    const startD = new Date(d); // 시작 = 선택한 공표일 당일
+    const endD = new Date();    // 종료 = 오늘 + 4일
+    endD.setDate(endD.getDate() + 4);
     const toYYYYMMDD = (dt: Date) =>
       `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
     const startDate = toYYYYMMDD(startD);
