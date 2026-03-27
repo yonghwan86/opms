@@ -9,7 +9,11 @@ const DOWNLOAD_PAGE =
   "https://www.opinet.co.kr/user/opdown/opDownload.do";
 const DOWNLOAD_DIR = "/tmp/opinet_downloads";
 
-export async function downloadOilPriceXLS(): Promise<Buffer | null> {
+/**
+ * 오피넷 사업자별 과거 판매가격 CSV 다운로드 (fn_Download(6))
+ * @param targetDate YYYYMMDD 형식 날짜 (START_DT = END_DT = targetDate)
+ */
+export async function downloadOilPriceCSV(targetDate: string): Promise<Buffer | null> {
   let browser;
 
   try {
@@ -17,7 +21,7 @@ export async function downloadOilPriceXLS(): Promise<Buffer | null> {
       mkdirSync(DOWNLOAD_DIR, { recursive: true });
     }
 
-    console.log("[OilScraper] 브라우저 시작 (현재판매가격 XLS)");
+    console.log(`[OilScraper] 브라우저 시작 (과거판매가격 CSV, 날짜: ${targetDate})`);
     browser = await chromium.launch({
       executablePath: CHROMIUM_PATH,
       headless: true,
@@ -77,24 +81,42 @@ export async function downloadOilPriceXLS(): Promise<Buffer | null> {
 
     console.log("[OilScraper] fn_Download 함수 확인 완료");
 
-    console.log("[OilScraper] fn_Download(2) 호출 (사업자별 현재판매가격 엑셀) 및 다운로드 대기 (최대 600초)...");
+    // 날짜 명시 설정 (START_DT = END_DT = targetDate)
+    await page.evaluate((date: string) => {
+      const $ = (window as any).$;
+      $("#span_start_date_picker").val(date);
+      $("#span_end_date_picker").val(date);
+    }, targetDate);
+
+    // 설정 확인
+    const setDate = await page.evaluate(() => ({
+      start: (document.getElementById("span_start_date_picker") as HTMLInputElement)?.value,
+      end: (document.getElementById("span_end_date_picker") as HTMLInputElement)?.value,
+    }));
+    console.log(`[OilScraper] 날짜 설정 확인 — START: ${setDate.start}, END: ${setDate.end}`);
+
+    if (setDate.start !== targetDate || setDate.end !== targetDate) {
+      throw new Error(`날짜 설정 실패 — 기대: ${targetDate}, 실제: ${setDate.start}~${setDate.end}`);
+    }
+
+    console.log(`[OilScraper] fn_Download(6) 호출 (과거판매가격 CSV) 및 다운로드 대기 (최대 600초)...`);
     const [download] = await Promise.all([
       page.waitForEvent("download", { timeout: 600000 }),
-      page.evaluate(() => { (window as any).fn_Download(2); }),
+      page.evaluate(() => { (window as any).fn_Download(6); }),
     ]);
 
-    const suggestedFilename = download.suggestedFilename() || `opinet_current.xls`;
+    const suggestedFilename = download.suggestedFilename() || `opinet_past_${targetDate}.csv`;
     const savePath = path.join(DOWNLOAD_DIR, suggestedFilename);
 
     await download.saveAs(savePath);
     console.log(`[OilScraper] 파일 저장 완료: ${savePath}`);
 
-    const xlsBuffer = await readFile(savePath);
-    console.log(`[OilScraper] 다운로드 완료: ${xlsBuffer.byteLength} bytes, 파일명: ${suggestedFilename}`);
+    const csvBuffer = await readFile(savePath);
+    console.log(`[OilScraper] 다운로드 완료: ${csvBuffer.byteLength} bytes, 파일명: ${suggestedFilename}`);
 
     await unlink(savePath).catch(() => {});
 
-    return xlsBuffer;
+    return csvBuffer;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[OilScraper] 오류:", msg);
