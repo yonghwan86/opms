@@ -394,13 +394,22 @@ export default function CeilingTrendPage() {
     const ceilingChangeDates = new Set(
       sortedCeilings.map(c => c.effectiveDate.replace(/-/g, ""))
     );
+
+    // YYYYMMDD 문자열의 다음날 반환
+    const nextDateStr = (ds: string) => {
+      const d = new Date(ds.slice(0, 4) + "-" + ds.slice(4, 6) + "-" + ds.slice(6, 8));
+      d.setDate(d.getDate() + 1);
+      return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    };
+
     const rows = trendData
       .filter(row => row.date >= selectedKey)
       .map(row => {
       const st = stationMap.get(row.date);
       const active = getActiveCeiling(row.date);
-      // 공표일 당일(시작일 제외)은 ceiling null → 수직 연결선 제거
-      const isCeilingBreak = ceilingChangeDates.has(row.date) && row.date !== selectedKey;
+      // 다음날이 공표일(시작일 제외)이면 현재 행의 ceiling을 null → 수직 연결선 없이 전날에서 끊김
+      const nextDay = nextDateStr(row.date);
+      const isCeilingBreak = ceilingChangeDates.has(nextDay) && nextDay !== selectedKey;
       return {
         ...row,
         label: toLabel(row.date),
