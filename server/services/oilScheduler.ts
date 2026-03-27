@@ -724,6 +724,48 @@ async function checkAndRecoverIntlPriceOnStartup(): Promise<void> {
   }
 }
 
+async function checkAndRecoverWeeklySupplyOnStartup(): Promise<void> {
+  try {
+    const kstNow = getKSTNow();
+    const kstHour = kstNow.getUTCHours();
+    const kstDayOfWeek = kstNow.getUTCDay(); // 0=일, 1=월, ..., 5=금, 6=토
+
+    // 금요일(5) 14:00 이후 또는 토요일(6)에만 점검
+    const isFriday = kstDayOfWeek === 5;
+    const isSaturday = kstDayOfWeek === 6;
+    if (!isFriday && !isSaturday) {
+      return;
+    }
+    if (isFriday && kstHour < 14) {
+      console.log(`[WeeklySupplyRecover] 금요일 14:00 이전 (KST ${kstHour}시) → cron 대기`);
+      return;
+    }
+
+    // 오늘 00:00 KST (= UTC 전날 15:00) 이후 수집 성공 로그 확인
+    const kstMidnight = new Date(kstNow);
+    kstMidnight.setUTCHours(0, 0, 0, 0);
+    const todayStr = getDateStr(kstNow);
+
+    const logResult = await db.execute(
+      sql`SELECT COUNT(*) AS cnt FROM oil_collection_logs
+          WHERE job_type = 'weekly_supply_price'
+            AND status IN ('success', 'partial')
+            AND created_at >= ${kstMidnight.toISOString()}`
+    );
+    const cnt = Number((logResult.rows[0] as any)?.cnt ?? 0);
+
+    if (cnt > 0) {
+      console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 수집 성공 로그 확인됨 → 복구 불필요`);
+      return;
+    }
+
+    console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 주간공급가격 수집 로그 없음 → 즉시 수집 시작`);
+    await runWeeklySupplyJob();
+  } catch (err) {
+    console.error("[WeeklySupplyRecover] 시작 복구 오류:", err);
+  }
+}
+
 export function startOilScheduler(): void {
   // 오전 9:30 — 전날 확정값 수집 (무조건 실행, 잠정값 덮어씌움)
   cron.schedule("30 9 * * *", async () => {
@@ -761,10 +803,10 @@ export function startOilScheduler(): void {
     await fetchOpinetFuelAverages();
   }, { timezone: "Asia/Seoul" });
 
-  // 금요일 13:00 KST — 금요일이 평일이면 수집
-  cron.schedule("0 13 * * 5", async () => {
+  // 금요일 14:00 KST — 금요일이 평일이면 수집 (오피넷 공표 이후)
+  cron.schedule("0 14 * * 5", async () => {
     const today = getKSTNow();
-    console.log(`[WeeklySupplyScheduler] 금요일 13:00 KST 트리거 (${getDateStr(today)})`);
+    console.log(`[WeeklySupplyScheduler] 금요일 14:00 KST 트리거 (${getDateStr(today)})`);
     if (isKoreanHoliday(today)) {
       console.log("[WeeklySupplyScheduler] 오늘은 한국 공휴일 → 수집 건너뜀 (월요일에 수집 예정)");
       await storage.saveOilCollectionLog({ jobType: "weekly_supply_price", status: "skipped", errorMessage: "금요일 공휴일로 인해 건너뜀" });
@@ -773,12 +815,12 @@ export function startOilScheduler(): void {
     await runWeeklySupplyJob();
   }, { timezone: "Asia/Seoul" });
 
-  // 월요일 13:00 KST — 직전 금요일이 공휴일이었으면 수집
-  cron.schedule("0 13 * * 1", async () => {
+  // 월요일 14:00 KST — 직전 금요일이 공휴일이었으면 수집
+  cron.schedule("0 14 * * 1", async () => {
     const today = getKSTNow();
     const lastFriday = new Date(today);
     lastFriday.setUTCDate(lastFriday.getUTCDate() - 3);
-    console.log(`[WeeklySupplyScheduler] 월요일 13:00 KST 트리거 (${getDateStr(today)}), 직전 금요일: ${getDateStr(lastFriday)}`);
+    console.log(`[WeeklySupplyScheduler] 월요일 14:00 KST 트리거 (${getDateStr(today)}), 직전 금요일: ${getDateStr(lastFriday)}`);
     if (!isKoreanHoliday(lastFriday)) {
       console.log("[WeeklySupplyScheduler] 직전 금요일이 평일 → 이미 금요일에 수집됨, 건너뜀");
       await storage.saveOilCollectionLog({ jobType: "weekly_supply_price", status: "skipped", errorMessage: "직전 금요일 평일 수집됨으로 건너뜀" });
@@ -807,12 +849,15 @@ export function startOilScheduler(): void {
     }
   }, { timezone: "Asia/Seoul" });
 
-  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 13:00 KST / 국제제품가격 화~토 08:30 KST / AI 임계값 갱신 매월1일 02:00 KST)");
+  console.log("[OilScheduler] 스케줄러 등록 완료 (오전 확정 09:30 / 오후 잠정 16:30 / 유류 평균 9,12,16,19시 KST / 주간공급가격 금·월 14:00 KST / 국제제품가격 화~토 08:30 KST / AI 임계값 갱신 매월1일 02:00 KST)");
 
   setTimeout(() => checkAndRecoverOnStartup(), 5000);
 
   // 서버 시작 복구: 08:30 이후 시작 시 intl 데이터 누락이면 즉시 수집
   setTimeout(() => checkAndRecoverIntlPriceOnStartup(), 7000);
+
+  // 서버 시작 복구: 금·토 14:00 이후 시작 시 주간공급가격 누락이면 즉시 수집
+  setTimeout(() => checkAndRecoverWeeklySupplyOnStartup(), 9000);
 
   setTimeout(() => {
     console.log("[OpinetScheduler] 서버 시작 직후 유류 평균 즉시 수집");

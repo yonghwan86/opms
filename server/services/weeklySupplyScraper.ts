@@ -223,8 +223,7 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
       weekStart = parsedWeekKey;
       console.log(`[WeeklySupplyScraper] 페이지 기간에서 weekKey 산출: ${weekStart}`);
     } else {
-      weekStart = getMostRecentWeekKey();
-      console.log(`[WeeklySupplyScraper] 기간 파싱 실패, 시스템 날짜 fallback: ${weekStart}`);
+      throw new Error("주차 기간 파싱 실패: 오피넷 페이지에서 주차 정보를 읽을 수 없습니다. 오피넷 미공표 또는 페이지 구조 변경 가능성");
     }
 
     // ── 5단계: 경유(D047) 페이지 파싱 ────────────────────────────────────────────

@@ -93,12 +93,12 @@ function DiffBadge({ val, base }: { val: number | null; base: number | null }) {
   );
 }
 
-function CustomTooltip({ active, payload, label, fuels, stationName, stationData, ceilingDate, effectiveDateRaw }: any) {
+function CustomTooltip({ active, payload, label, fuels, stationName, stationData, ceilingDates, effectiveDateRaw }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
 
-  const isPublishDay = label === ceilingDate;
+  const isPublishDay = Array.isArray(ceilingDates) ? ceilingDates.includes(label) : false;
   const activeFuelConf = FUEL_CONFIG.filter(f => fuels[f.key]);
 
   // 공표일 주유소 기준가격 (해당 주유소의 공표일 실제가격)
@@ -322,10 +322,16 @@ export default function CeilingTrendPage() {
     }
   }, [allCeilings, selectedDate]);
 
+  // allCeilings 명시적 정렬 (effectiveDate 내림차순 보장)
+  const sortedCeilings = useMemo(
+    () => [...allCeilings].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate)),
+    [allCeilings],
+  );
+
   // 선택된 공표일의 최고가격 데이터
   const selectedCeiling = useMemo(
-    () => allCeilings.find(c => c.effectiveDate === selectedDate) ?? null,
-    [allCeilings, selectedDate],
+    () => sortedCeilings.find(c => c.effectiveDate === selectedDate) ?? null,
+    [sortedCeilings, selectedDate],
   );
 
   // 시군구 목록 (sido 변경 시)
@@ -367,12 +373,14 @@ export default function CeilingTrendPage() {
   // 차트 데이터 병합
   const chartData = useMemo(() => {
     const stationMap = new Map<string, StationRow>(stationData.map(r => [r.date, r]));
-    const cGas = selectedCeiling?.gasoline ? Number(selectedCeiling.gasoline) : 0;
-    const cDiesel = selectedCeiling?.diesel ? Number(selectedCeiling.diesel) : 0;
-    const cKero = selectedCeiling?.kerosene ? Number(selectedCeiling.kerosene) : 0;
+
+    // 날짜(YYYYMMDD)에 해당하는 적용 최고가격 찾기 (sortedCeilings: 내림차순)
+    const getActiveCeiling = (dateStr: string) =>
+      sortedCeilings.find(c => c.effectiveDate.replace(/-/g, "") <= dateStr) ?? null;
 
     return trendData.map(row => {
       const st = stationMap.get(row.date);
+      const active = getActiveCeiling(row.date);
       return {
         ...row,
         label: toLabel(row.date),
@@ -380,18 +388,26 @@ export default function CeilingTrendPage() {
         stationGas: st?.gasoline ?? null,
         stationDsl: st?.diesel ?? null,
         stationKero: st?.kerosene ?? null,
-        ceiling_gasoline: cGas || null,
-        ceiling_diesel: cDiesel || null,
-        ceiling_kerosene: cKero || null,
+        ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
+        ceiling_diesel: active?.diesel ? Number(active.diesel) : null,
+        ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
         baseGas: row.baseGas,
         baseDiesel: row.baseDiesel,
         baseKerosene: row.baseKerosene,
       };
     });
-  }, [trendData, stationData, selectedCeiling]);
+  }, [trendData, stationData, sortedCeilings]);
 
-  // 공표일 X축 레이블 (날짜 → MM-DD)
-  const ceilingLabel = selectedDate ? toLabel(selectedDate.replace(/-/g, "")) : "";
+  // 그래프 범위 내 공표일 목록 (수직선 마커 + Tooltip 공표일 표시용)
+  const inRangeCeilings = useMemo(() => {
+    if (!chartData.length) return [];
+    const first = chartData[0].dateRaw;
+    const last = chartData[chartData.length - 1].dateRaw;
+    return sortedCeilings.filter(c => {
+      const d = c.effectiveDate.replace(/-/g, "");
+      return d >= first && d <= last;
+    });
+  }, [chartData, sortedCeilings]);
 
   // YAxis 도메인
   const allPrices = chartData.flatMap(d => [
@@ -402,11 +418,12 @@ export default function CeilingTrendPage() {
     fuels.diesel && selectedStation ? d.stationDsl : null,
     fuels.kerosene && selectedStation ? d.stationKero : null,
   ].filter((v): v is number => v != null));
-  const ceilingPrices = [
-    fuels.gasoline && selectedCeiling?.gasoline ? Number(selectedCeiling.gasoline) : null,
-    fuels.diesel && selectedCeiling?.diesel ? Number(selectedCeiling.diesel) : null,
-    fuels.kerosene && selectedCeiling?.kerosene ? Number(selectedCeiling.kerosene) : null,
-  ].filter((v): v is number => v != null);
+  // 전체 공표 이력의 최고가격 포함 (YAxis 자동 확장 없으므로 모든 구간 포함)
+  const ceilingPrices = sortedCeilings.flatMap(c => [
+    fuels.gasoline && c.gasoline ? Number(c.gasoline) : null,
+    fuels.diesel && c.diesel ? Number(c.diesel) : null,
+    fuels.kerosene && c.kerosene ? Number(c.kerosene) : null,
+  ]).filter((v): v is number => v != null);
   const allVals = [...allPrices, ...ceilingPrices].filter(Boolean);
   const yMin = allVals.length ? Math.floor((Math.min(...allVals) - 30) / 10) * 10 : 1000;
   const yMax = allVals.length ? Math.ceil((Math.max(...allVals) + 30) / 10) * 10 : 2200;
@@ -695,7 +712,7 @@ export default function CeilingTrendPage() {
                       fuels={fuels}
                       stationName={selectedStation?.stationName}
                       stationData={stationData}
-                      ceilingDate={ceilingLabel}
+                      ceilingDates={inRangeCeilings.map(c => toLabel(c.effectiveDate.replace(/-/g, "")))}
                       effectiveDateRaw={selectedDate ? selectedDate.replace(/-/g, "") : ""}
                     />
                   }
@@ -745,32 +762,32 @@ export default function CeilingTrendPage() {
                   }}
                 />
 
-                {/* 최고가격 수평 기준선 */}
-                {selectedCeiling && (() => {
-                  const activeFuels = FUEL_CONFIG.filter(f => fuels[f.key] && selectedCeiling[f.key]);
-                  const combinedLabel = `최고가: ${activeFuels.map(f => `${f.label} ${fmt(Number(selectedCeiling[f.key]))}원`).join(', ')}`;
-                  return activeFuels.map((f, i) => (
-                    <ReferenceLine
-                      key={f.key}
-                      y={Number(selectedCeiling[f.key])}
-                      stroke={f.ceilingColor}
-                      strokeDasharray="6 3"
-                      strokeWidth={1.5}
-                      label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 28 } : undefined}
-                    />
-                  ));
-                })()}
-
-                {/* 공표일 수직선 */}
-                {ceilingLabel && (
-                  <ReferenceLine
-                    x={ceilingLabel}
-                    stroke="#3b82f6"
-                    strokeDasharray="4 4"
-                    strokeWidth={1.5}
-                    label={{ value: "공표일", position: "top", fontSize: 10, fill: "#3b82f6" }}
-                  />
+                {/* 최고가격 계단식 라인 (공표 이력별 구간 표시) */}
+                {fuels.gasoline && (
+                  <Line type="stepAfter" dataKey="ceiling_gasoline" stroke="#6366f1" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_gasoline" connectNulls legendType="none" />
                 )}
+                {fuels.diesel && (
+                  <Line type="stepAfter" dataKey="ceiling_diesel" stroke="#8b5cf6" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_diesel" connectNulls legendType="none" />
+                )}
+                {fuels.kerosene && (
+                  <Line type="stepAfter" dataKey="ceiling_kerosene" stroke="#ec4899" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_kerosene" connectNulls legendType="none" />
+                )}
+
+                {/* 공표일 수직선 (범위 내 모든 공표일) */}
+                {inRangeCeilings.map(c => {
+                  const lbl = toLabel(c.effectiveDate.replace(/-/g, ""));
+                  const isSelected = c.effectiveDate === selectedDate;
+                  return (
+                    <ReferenceLine
+                      key={c.effectiveDate}
+                      x={lbl}
+                      stroke={isSelected ? "#3b82f6" : "#94a3b8"}
+                      strokeDasharray="4 4"
+                      strokeWidth={isSelected ? 1.5 : 1}
+                      label={{ value: "공표일", position: "top", fontSize: 10, fill: isSelected ? "#3b82f6" : "#94a3b8" }}
+                    />
+                  );
+                })}
 
                 {/* 평균 추이 라인 (점선, showAvg 시에만) */}
                 {showAvg && fuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}

@@ -1015,8 +1015,9 @@ export default function DashboardPage() {
               }));
               const firstDate = intlVsDomesticData[0]?.date ?? "0";
               const lastDate = intlVsDomesticData[intlVsDomesticData.length - 1]?.date ?? "99999999";
+              const todayKey = new Date().toISOString().slice(0, 10).replace(/-/g, "");
               const ceilingRefLabels = ceilingData
-                .filter(c => { const d = c.effectiveDate.replace(/-/g, ""); return d >= firstDate && d <= lastDate; })
+                .filter(c => { const d = c.effectiveDate.replace(/-/g, ""); return d >= firstDate && d <= todayKey; })
                 .map(c => c.effectiveDate.slice(5).replace("-", "/"));
               return (
                 <div>
