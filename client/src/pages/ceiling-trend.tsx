@@ -438,6 +438,8 @@ export default function CeilingTrendPage() {
         const ds = `${cur.getFullYear()}${String(cur.getMonth() + 1).padStart(2, "0")}${String(cur.getDate()).padStart(2, "0")}`;
         if (ds > extendEnd) break;
         const active = getActiveCeiling(ds);
+        const nextDs = nextDateStr(ds);
+        const isDummyBreak = ceilingChangeDates.has(nextDs) && nextDs !== selectedKey;
         rows.push({
           date: ds, label: toLabel(ds), dateRaw: ds,
           gasolineAvg: null, dieselAvg: null, keroseneAvg: null,
@@ -445,9 +447,9 @@ export default function CeilingTrendPage() {
           dieselBelow: 0, keroseneAbove: 0, keroseneBelow: 0,
           baseGas: null, baseDiesel: null, baseKerosene: null,
           stationGas: null, stationDsl: null, stationKero: null,
-          ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
-          ceiling_diesel:   active?.diesel   ? Number(active.diesel)   : null,
-          ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
+          ceiling_gasoline: isDummyBreak ? null : (active?.gasoline ? Number(active.gasoline) : null),
+          ceiling_diesel:   isDummyBreak ? null : (active?.diesel   ? Number(active.diesel)   : null),
+          ceiling_kerosene: isDummyBreak ? null : (active?.kerosene ? Number(active.kerosene) : null),
           isFuture: true,
         });
       }
