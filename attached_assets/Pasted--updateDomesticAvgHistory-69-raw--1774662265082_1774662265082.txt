@@ -1,0 +1,133 @@
+찾았습니다. updateDomesticAvgHistory() 함수를 확인했습니다. #69 이슈의 안전성을 좌우하는 결정적 발견입니다.
+
+🚨 계산 로직이 다릅니다
+현재 raw 쿼리 (storage.ts — getOilDomesticHistory)
+sqlROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END))
+0값을 제외, NULL도 제외, 결과를 **ROUND(정수)**로 반환.
+forecastService의 upsert 로직 (updateDomesticAvgHistory)
+sqlAVG(gasoline) FILTER (WHERE gasoline IS NOT NULL)
+0값을 포함, NULL만 제외, ROUND 없이 numeric 그대로 저장.
+이 차이는 두 가지 불일치를 만듭니다.
+첫째, 0값 포함 여부. oil_price_raw에서 gasoline = 0인 행은 "미판매"를 의미합니다(기술보고서에서 확인: "가격 0원 = 미판매로 처리"). 현재 API는 0을 제외하고 평균을 내지만, 집계 테이블은 0을 포함합니다. 미판매 주유소가 많은 날일수록 domestic_avg_price_history의 값이 raw 쿼리 결과보다 낮아집니다.
+둘째, ROUND 여부. raw 쿼리는 ROUND()로 정수를 반환하지만, 집계 테이블에는 소수점이 포함된 numeric이 저장됩니다. ROUND(gasoline_avg)를 교체 쿼리에서 적용하면 이 차이는 해소되지만, 첫 번째 문제는 남습니다.
+
+실제 영향 추정
+등유(kerosene)가 가장 영향이 큽니다. 전국 주유소 중 등유를 판매하지 않는 곳(kerosene = 0)이 상당수이므로, 0을 포함한 평균은 크게 낮아집니다. 휘발유와 경유는 대부분 주유소가 판매하므로 영향이 적지만, 그래도 0이 아닌 차이가 발생합니다.
+
+또 다른 문제: 전체 테이블 풀스캔
+sqlINSERT INTO domestic_avg_price_history (date, gasoline_avg, diesel_avg, kerosene_avg)
+SELECT date, AVG(...), AVG(...), AVG(...)
+FROM oil_price_raw
+WHERE date IS NOT NULL
+GROUP BY date
+ON CONFLICT (date) DO UPDATE SET ...
+이 쿼리는 WHERE date IS NOT NULL만 있으므로 oil_price_raw 전체를 GROUP BY로 풀스캔합니다. 즉 forecastService가 실행될 때마다 #69에서 문제 삼는 것과 동일한 18초짜리 풀스캔이 발생하고 있습니다. 다만 이건 백그라운드 작업이라 사용자 UX에는 직접 영향이 없었을 뿐입니다.
+
+실행 흐름 재확인
+typescriptexport async function runIfNotDoneToday(): Promise<void> {
+  // ① 항상 실행 (매 수집마다)
+  await updateDomesticAvgHistory();    // ← 전체 풀스캔 upsert
+  await updateActualPrices();
+
+  // ② 오늘 예측이 이미 있으면 여기서 종료
+  const alreadyDone = await hasForecastForToday();
+  if (alreadyDone) return;
+
+  // ③ 예측 실행 (하루 1회)
+  // ...
+}
+updateDomesticAvgHistory()는 alreadyDone 체크 이전에 호출됩니다. 즉 매 수집마다 항상 실행됩니다. 이것은 좋은 점(항상 최신)이지만, 전체 풀스캔이라 운영 DB에서 18초 × 하루 2~4회 = 불필요한 부하입니다.
+
+수정된 최종 권장안
+방안: forecastService의 upsert를 수정하고, 스케줄러에도 안전장치 추가
+Step 1 — updateDomesticAvgHistory() 로직 수정 (forecastService.ts)
+0값 제외 + 당일만 upsert하도록 변경합니다:
+typescriptasync function updateDomesticAvgHistory(): Promise<void> {
+  try {
+    // 최신 미반영 날짜만 upsert (전체 풀스캔 방지)
+    await db.execute(sql`
+      INSERT INTO domestic_avg_price_history (date, gasoline_avg, diesel_avg, kerosene_avg)
+      SELECT
+        r.date,
+        AVG(CASE WHEN r.gasoline > 0 THEN r.gasoline END),
+        AVG(CASE WHEN r.diesel > 0 THEN r.diesel END),
+        AVG(CASE WHEN r.kerosene > 0 THEN r.kerosene END)
+      FROM oil_price_raw r
+      WHERE r.date > COALESCE(
+        (SELECT MAX(date) FROM domestic_avg_price_history), '00000000'
+      )
+      GROUP BY r.date
+      ON CONFLICT (date) DO UPDATE SET
+        gasoline_avg = EXCLUDED.gasoline_avg,
+        diesel_avg = EXCLUDED.diesel_avg,
+        kerosene_avg = EXCLUDED.kerosene_avg
+    `);
+    console.log("[ForecastService] domestic_avg_price_history 증분 업데이트 완료");
+  } catch (err) {
+    console.error("[ForecastService] domestic_avg_price_history 업데이트 실패:", err);
+  }
+}
+핵심 변경 두 가지: CASE WHEN gasoline > 0으로 0값 제외(raw 쿼리와 동일 로직), 그리고 WHERE r.date > MAX(date)로 미반영 날짜만 증분 upsert(전체 풀스캔 제거).
+Step 2 — 기존 데이터 일괄 보정 (1회성 마이그레이션)
+현재 domestic_avg_price_history에 이미 잘못된 값(0 포함 평균)이 들어가 있으므로, 교체 전에 전체 재계산이 필요합니다:
+sql-- 1회성 보정 스크립트 (psql에서 실행)
+TRUNCATE domestic_avg_price_history;
+
+INSERT INTO domestic_avg_price_history (date, gasoline_avg, diesel_avg, kerosene_avg)
+SELECT
+  date,
+  AVG(CASE WHEN gasoline > 0 THEN gasoline END),
+  AVG(CASE WHEN diesel > 0 THEN diesel END),
+  AVG(CASE WHEN kerosene > 0 THEN kerosene END)
+FROM oil_price_raw
+WHERE date IS NOT NULL
+GROUP BY date
+ORDER BY date;
+이 작업은 1회만 실행하면 되고, 이후에는 수정된 updateDomesticAvgHistory()가 올바른 로직으로 증분 갱신합니다.
+Step 3 — 이후 Task 2, 3 진행
+보정 완료 후 getOilDomesticHistory()와 intl-vs-domestic 쿼리를 교체합니다.
+
+검증 쿼리 (보정 전에 실행해서 차이 확인)
+sqlSELECT
+  h.date,
+  ROUND(h.gasoline_avg) AS hist_gas,
+  sub.raw_gas,
+  ROUND(h.gasoline_avg) - sub.raw_gas AS diff
+FROM domestic_avg_price_history h
+JOIN (
+  SELECT date,
+    ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS raw_gas
+  FROM oil_price_raw
+  GROUP BY date
+) sub ON h.date = sub.date
+WHERE ROUND(h.gasoline_avg) != sub.raw_gas
+ORDER BY h.date DESC
+LIMIT 20;
+```
+
+이 쿼리가 행을 반환하면 불일치가 존재하는 것이고, 보정이 반드시 필요합니다.
+
+---
+
+### 최종 구현 순서 (수정)
+```
+1. date 인덱스 생성 (CONCURRENTLY, psql)
+   → getOilAvailableDates, getOilRegionalHistory 즉시 개선
+
+2. 검증 쿼리로 데이터 불일치 확인
+   → diff가 있으면 Step 2 보정 실행
+
+3. forecastService.ts의 updateDomesticAvgHistory() 수정
+   → 0값 제외 + 증분 upsert
+
+4. getOilDomesticHistory() 교체 (storage.ts)
+   → domestic_avg_price_history 읽기
+
+5. intl-vs-domestic domestic 쿼리 교체 (routes.ts)
+   → domestic_avg_price_history 읽기
+
+6. 스케줄러 내 getOilAvailableDates() → getOilPriceLatestDate() 교체
+
+7. getOilAvailableDates()에 메모리 캐시 추가
+
+8. 4개 API EXPLAIN ANALYZE before/after 기록

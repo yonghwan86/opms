@@ -1,0 +1,82 @@
+전체 평가: 실행 가능한 수준의 좋은 이슈입니다
+이전 버전 대비 크게 개선된 점이 세 가지 있습니다. EXPLAIN ANALYZE 기반 현황 데이터가 추가되었고, domestic_avg_price_history 테이블의 현황(449행, 오늘 데이터 존재, 스케줄러 자동 갱신)을 사전 확인한 점, 그리고 1단계/2단계 분리로 스코프가 명확해진 점입니다.
+아래는 각 태스크별 세부 검증입니다.
+
+Task 1 — date 인덱스 생성 (CONCURRENTLY)
+판단: 적절합니다. CONCURRENTLY 사용과 트랜잭션 블록 밖 실행 주의사항까지 명시한 것이 좋습니다.
+확인이 필요한 점이 두 가지 있습니다.
+첫째, 실행 방식을 확정해야 합니다. "서버 시작 시 또는 별도 스크립트"라고 되어 있는데, CONCURRENTLY는 트랜잭션 안에서 못 쓰므로 Drizzle이나 ORM의 마이그레이션 러너가 트랜잭션으로 감싸는지 확인이 필요합니다. 대부분의 마이그레이션 도구는 각 마이그레이션을 트랜잭션으로 감싸기 때문에 CONCURRENTLY가 실패합니다. 가장 안전한 방법은 별도 SQL 스크립트를 psql로 직접 실행하는 것입니다.
+둘째, CONCURRENTLY 인덱스 생성이 실패하면 invalid 인덱스가 남습니다. 생성 후 아래 확인 쿼리를 넣어두는 걸 권장합니다:
+sql-- 생성 후 확인
+SELECT indexrelid::regclass, indisvalid 
+FROM pg_index 
+WHERE indexrelid = 'oil_price_raw_date_idx'::regclass;
+indisvalid = false이면 DROP INDEX 후 재시도해야 합니다.
+
+Task 2 — getOilDomesticHistory 쿼리 교체
+판단: 적절합니다. 보완 쿼리 불필요라는 판단 근거(오늘 데이터까지 존재, 스케줄러 자동 갱신)가 명확합니다.
+중요한 검증 사항이 하나 있습니다. 데이터 정합성 확인을 반드시 해야 합니다. 현재 raw 쿼리는 CASE WHEN gasoline > 0 THEN gasoline END으로 0값을 제외하고 평균을 내고 있습니다. domestic_avg_price_history의 gasoline_avg가 같은 로직으로 계산되었는지 확인이 필요합니다. 아래 검증 쿼리를 PR 전에 실행하세요:
+sql-- 특정 날짜 3~5개를 골라 비교
+SELECT 
+  r.date,
+  ROUND(AVG(CASE WHEN r.gasoline > 0 THEN r.gasoline END)) AS raw_gasoline,
+  h.gasoline_avg AS hist_gasoline,
+  ROUND(AVG(CASE WHEN r.diesel > 0 THEN r.diesel END)) AS raw_diesel,
+  h.diesel_avg AS hist_diesel
+FROM oil_price_raw r
+JOIN domestic_avg_price_history h ON r.date = h.date
+WHERE r.date IN ('20260327', '20260301', '20260201')
+GROUP BY r.date, h.gasoline_avg, h.diesel_avg;
+```
+
+만약 수치가 다르면 교체 시 프론트엔드 차트에 미세한 값 변동이 생기게 됩니다. 같은 로직이면 그대로 진행하면 되고, 다르다면 그 차이가 허용 범위인지 판단이 필요합니다.
+
+또한 컬럼 매핑에서 **kerosene이 빠져 있습니다.** 현재 raw 쿼리는 `gasoline`, `diesel`만 반환하는데, `domestic_avg_price_history`에는 `kerosene_avg`도 있습니다. 기존 API 응답에 kerosene이 포함되어 있었는지 확인하고, 포함되어 있었다면 매핑에 추가해야 합니다.
+
+---
+
+### Task 3 — `intl-vs-domestic` domestic 쿼리 교체
+
+**판단: 적절합니다.** Task 2와 같은 방식이므로 일관성이 있습니다.
+
+추가 권장사항으로, 이 기회에 **routes.ts의 인라인 쿼리를 storage 계층으로 이동**시키는 것을 강력히 권장합니다. 이슈 설명에도 "routes.ts 직접 쿼리"라고 문제점을 짚었으니, 쿼리를 교체하면서 `storage.ts`에 `getIntlVsDomestic()` 같은 함수를 만들어 옮기면 좋습니다. 이번 PR 스코프가 커지는 게 부담이면 TODO 주석이라도 남겨두세요.
+
+또한 이 API는 국제 유가 데이터와 JOIN하거나 같이 반환하는 구조일 텐데, domestic 쪽만 교체하고 **international 쪽 쿼리는 그대로 두는 것이 맞는지** 확인하세요. international 데이터가 별도 테이블이라면 문제없지만, 혹시 같은 쿼리 안에서 같이 집계하고 있다면 분리 작업이 필요합니다.
+
+---
+
+### Task 4 — `getOilAvailableDates` 최적화
+
+**판단: 방향은 맞지만, 판단 기준이 모호합니다.** "Index-Only Scan 확인 후, 더 빠른 쪽을 적용한다"는 두 가지 옵션을 열어둔 것인데, 구현 시 혼란이 생길 수 있습니다.
+
+확정 권장안은 다음과 같습니다. `domestic_avg_price_history`에서 읽는 것을 1순위로 하세요. 449행 테이블에서 `SELECT date ORDER BY date DESC LIMIT 365`는 사실상 0ms입니다. raw 테이블의 Index-Only Scan보다 확실하게 빠릅니다.
+
+단, 한 가지 주의할 점이 있습니다. `domestic_avg_price_history`의 날짜 범위가 20250101부터인데, `oil_price_raw`는 20260101부터입니다. 두 테이블의 날짜 범위가 다릅니다. `available-dates` API가 "raw 데이터가 실제로 존재하는 날짜"를 반환하는 용도라면, 집계 테이블에는 있지만 raw에는 없는 2025년 날짜가 반환되면 문제가 됩니다. 이 API를 호출하는 프론트엔드가 반환된 날짜로 다시 raw 테이블을 조회하는 구조인지 확인하세요. 만약 그렇다면 집계 테이블만 사용하는 게 아니라 raw 테이블의 `date` 인덱스 스캔을 쓰는 게 맞습니다.
+
+---
+
+### Task 5 — EXPLAIN ANALYZE 비교 기록
+
+**판단: 좋은 관행입니다.** PR 리뷰어가 개선 효과를 바로 확인할 수 있습니다.
+
+보완 제안으로, 기록 형식을 미리 정해두면 좋겠습니다:
+```
+## 성능 개선 결과 (개발 DB, 87만 행)
+
+| API | Before | After | 개선율 |
+|-----|--------|-------|--------|
+| available-dates | 254ms (Seq Scan) | ?ms (Index Only Scan) | ?% |
+| domestic-history | 444ms (Seq Scan) | ?ms (집계 테이블) | ?% |
+| regional-price-history | 977ms (Seq Scan) | ?ms (Index Scan) | ?% |
+| intl-vs-domestic | ~18s (Seq Scan) | ?ms (집계 테이블) | ?% |
+개발 DB(87만 행)에서는 차이가 드라마틱하지 않을 수 있습니다. 254ms→50ms 같은 수준일 수 있는데, 운영 DB에서의 예상 효과도 함께 기술하면 더 설득력 있습니다.
+
+2단계 분리 판단에 대해
+적절합니다. (sido, date) 복합 인덱스를 2단계로 뺀 건 좋은 판단입니다. 다만 getOilRegionalHistory(쿼리 #3)는 현재 개발 DB에서도 977ms로 4개 중 가장 느립니다. date 단독 인덱스 추가 후에도 90일치 전국 데이터를 집계하면 여전히 수백ms가 나올 수 있습니다. 1단계 적용 후 이 API만 목표(1초 이하)를 못 맞출 가능성을 염두에 두고, 2단계 착수 판단을 빠르게 할 수 있도록 준비해 두세요.
+
+이슈에서 여전히 빠진 것
+하나, 롤백 계획이 없습니다. 쿼리 교체 후 데이터 정합성 문제가 발견되면 어떻게 되돌릴지 한 줄이라도 명시하면 좋겠습니다. 인덱스는 DROP INDEX로 쉽고, 쿼리 교체는 git revert로 가능하지만, 명시해 두는 게 좋습니다.
+둘, domestic_avg_price_history의 date 컬럼이 varchar입니다. 날짜 비교(WHERE date >= cutoffStr)가 문자열 비교로 동작하는데, YYYYMMDD 형식이라면 사전순 = 시간순이라 문제없지만, 혹시 다른 포맷이면 비교 결과가 달라집니다. 포맷을 확인하세요.
+
+종합 결론
+이 이슈는 구현 착수 가능한 수준입니다. 위에서 지적한 사항 중 구현 전에 반드시 확인할 것은 두 가지입니다. 첫째 Task 2의 데이터 정합성 검증(0값 제외 로직 일치 여부), 둘째 Task 4의 날짜 범위 차이(2025년 데이터 반환 여부). 이 두 가지만 확인
