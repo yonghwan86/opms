@@ -9,6 +9,7 @@ import { scrapeWeeklySupplyPrices } from "./weeklySupplyScraper";
 import { isKoreanHoliday } from "./koreanHoliday";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import { invalidateAvailableDatesCache } from "../cache";
 
 function getDateStr(date: Date): string {
   const y = date.getFullYear();
@@ -318,6 +319,7 @@ async function runCollectionWithRetries(opts: RunJobOptions): Promise<void> {
   console.log(`[OilScheduler] ${source} 수집 결과:`, result);
 
   if (result.success && result.analysisCount > 0) {
+    invalidateAvailableDatesCache();
     await sendUserPush(result.today, pushMessage, slot);
     if (notifyMasterOnSuccess) {
       await sendMasterPush(`${source} 수집 성공`, `수집 완료: 원본 ${result.rawCount}건, 분석 ${result.analysisCount}건`);
@@ -370,8 +372,8 @@ async function runCollectionWithRetries(opts: RunJobOptions): Promise<void> {
         return await storage.hasSuccessfulMorningLog(result.today, cutoffUTC);
       } else {
         // 오후: 오늘 날짜 데이터가 DB에 존재하면 성공
-        const availableDates = await storage.getOilAvailableDates();
-        return availableDates.length > 0 && availableDates[0] >= result.today;
+        const latestDate = await storage.getOilPriceLatestDate();
+        return latestDate !== null && latestDate >= result.today;
       }
     } catch {
       return false;
@@ -389,6 +391,7 @@ async function runCollectionWithRetries(opts: RunJobOptions): Promise<void> {
   console.log(`[OilScheduler] ${source} 1차 재시도 결과:`, retry1);
 
   if (retry1.success && retry1.analysisCount > 0) {
+    invalidateAvailableDatesCache();
     await sendUserPush(result.today, pushMessage, slot);
     await sendMasterPush(`${source} 1차 재시도 성공`, `재시도 완료: 분석 ${retry1.analysisCount}건`);
     return;
@@ -408,6 +411,7 @@ async function runCollectionWithRetries(opts: RunJobOptions): Promise<void> {
   console.log(`[OilScheduler] ${source} 2차 재시도 결과:`, retry2);
 
   if (retry2.success && retry2.analysisCount > 0) {
+    invalidateAvailableDatesCache();
     await sendUserPush(result.today, pushMessage, slot);
     await sendMasterPush(`${source} 2차 재시도 성공`, `2차 재시도 완료: 분석 ${retry2.analysisCount}건`);
   } else {
@@ -441,8 +445,7 @@ async function checkAndRecoverOnStartup(): Promise<void> {
 
     // 오후 16:00 이후 → 당일 잠정값도 확인
     if (kstHour >= 16) {
-      const availableDates = await storage.getOilAvailableDates();
-      const latestAvailable = availableDates[0];
+      const latestAvailable = await storage.getOilPriceLatestDate();
 
       if (latestAvailable && latestAvailable >= todayStr) {
         console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 오늘(${todayStr}), 수집 불필요`);
@@ -791,8 +794,7 @@ export function startOilScheduler(): void {
   cron.schedule("30 16 * * *", async () => {
     console.log("[OilScheduler] 오후 수집 확인 (당일 잠정값, 매일 16:30 KST)");
     const todayStr = getKSTDateStr();
-    const availableDates = await storage.getOilAvailableDates();
-    const latestAvailable = availableDates[0];
+    const latestAvailable = await storage.getOilPriceLatestDate();
 
     if (latestAvailable && latestAvailable >= todayStr) {
       console.log(`[OilScheduler] 오후 수집 건너뜀: 오늘(${todayStr}) 데이터 이미 존재`);

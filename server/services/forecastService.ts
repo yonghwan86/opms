@@ -102,20 +102,21 @@ async function updateDomesticAvgHistory(): Promise<void> {
   try {
     await db.execute(sql`
       INSERT INTO domestic_avg_price_history (date, gasoline_avg, diesel_avg, kerosene_avg)
-      SELECT
-        date,
-        AVG(gasoline) FILTER (WHERE gasoline IS NOT NULL) as gasoline_avg,
-        AVG(diesel) FILTER (WHERE diesel IS NOT NULL) as diesel_avg,
-        AVG(kerosene) FILTER (WHERE kerosene IS NOT NULL) as kerosene_avg
-      FROM oil_price_raw
-      WHERE date IS NOT NULL
-      GROUP BY date
+      SELECT r.date,
+        AVG(CASE WHEN r.gasoline > 0 THEN r.gasoline END) AS gasoline_avg,
+        AVG(CASE WHEN r.diesel > 0 THEN r.diesel END) AS diesel_avg,
+        AVG(CASE WHEN r.kerosene > 0 THEN r.kerosene END) AS kerosene_avg
+      FROM oil_price_raw r
+      WHERE r.date >= COALESCE(
+        (SELECT MAX(date) FROM domestic_avg_price_history), '00000000'
+      )
+      GROUP BY r.date
       ON CONFLICT (date) DO UPDATE SET
         gasoline_avg = EXCLUDED.gasoline_avg,
         diesel_avg = EXCLUDED.diesel_avg,
         kerosene_avg = EXCLUDED.kerosene_avg
     `);
-    console.log("[ForecastService] domestic_avg_price_history 업데이트 완료");
+    console.log("[ForecastService] domestic_avg_price_history 업데이트 완료 (증분)");
   } catch (err) {
     console.error("[ForecastService] domestic_avg_price_history 업데이트 실패:", err);
   }

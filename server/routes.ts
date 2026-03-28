@@ -9,6 +9,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import { initPush, getVapidPublicKey, sendPush, sendPushToAll } from "./services/pushService";
+import { getCachedAvailableDates } from "./cache";
 
 const PgStore = connectPgSimple(session);
 
@@ -1066,7 +1067,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/oil-prices/available-dates — 데이터 있는 날짜 목록
   app.get("/api/oil-prices/available-dates", requireAuth, async (req, res) => {
     try {
-      const dates = await storage.getOilAvailableDates();
+      const dates = await getCachedAvailableDates();
       res.json(dates);
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
@@ -1120,7 +1121,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // 이전 날짜 계산 (RISE/FALL용)
       let prevDate: string | undefined;
       if (type === 'RISE' || type === 'FALL') {
-        const dates = await storage.getOilAvailableDates();
+        const dates = await getCachedAvailableDates();
         const idx = dates.indexOf(date);
         prevDate = idx >= 0 && idx + 1 < dates.length ? dates[idx + 1] : undefined;
       }
@@ -1287,7 +1288,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const isCacheFresh = cached !== null;
 
-      const dates = await storage.getOilAvailableDates();
+      const dates = await getCachedAvailableDates();
 
       let averages;
       let averagesDate: string | null = null;
@@ -1331,7 +1332,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/dashboard/regional-averages — 시/도별 평균 유가
   app.get("/api/dashboard/regional-averages", requireAuth, async (req, res) => {
     try {
-      const dates = await storage.getOilAvailableDates();
+      const dates = await getCachedAvailableDates();
       if (dates.length === 0) return res.json([]);
       let sidoFilter: string[] | undefined;
       let regionFilter: string[] | undefined;
@@ -1541,7 +1542,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const { getCachedFuelAverages } = await import("./services/opinetApi");
       const cached = getCachedFuelAverages();
-      const dates = await storage.getOilAvailableDates();
+      const dates = await getCachedAvailableDates();
 
       let averages;
       let averagesDate: string | null = null;
@@ -1585,7 +1586,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // region 파라미터: 공백 없으면 sido(예: 서울), 공백 있으면 시군구(예: 충북 청주시)
   app.get("/api/public/regional-averages", async (req, res) => {
     try {
-      const dates = await storage.getOilAvailableDates();
+      const dates = await getCachedAvailableDates();
       if (dates.length === 0) return res.json([]);
       const { region } = req.query as Record<string, string>;
       let sidoFilter: string[] | undefined;
@@ -1761,53 +1762,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 90);
       const cutoffStr = cutoff.toISOString().slice(0, 10).replace(/-/g, "");
-
-      const [intlRows, domesticRows] = await Promise.all([
-        db.execute(sql`
-          SELECT date, gasoline::text, diesel::text, kerosene::text
-          FROM intl_fuel_prices
-          WHERE date >= ${cutoffStr}
-          ORDER BY date ASC
-        `),
-        db.execute(sql`
-          SELECT date,
-                 ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END))::text as domestic_gasoline,
-                 ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END))::text as domestic_diesel,
-                 ROUND(AVG(CASE WHEN kerosene > 0 THEN kerosene END))::text as domestic_kerosene
-          FROM oil_price_raw
-          WHERE date >= ${cutoffStr}
-          GROUP BY date
-          ORDER BY date ASC
-        `),
-      ]);
-
-      interface IntlRow { date: string; gasoline: string | null; diesel: string | null; kerosene: string | null }
-      interface DomesticRow { date: string; domestic_gasoline: string | null; domestic_diesel: string | null; domestic_kerosene: string | null }
-
-      const intlMap = new Map<string, IntlRow>();
-      for (const r of intlRows.rows as IntlRow[]) {
-        intlMap.set(r.date, r);
-      }
-      const domesticMap = new Map<string, DomesticRow>();
-      for (const r of domesticRows.rows as DomesticRow[]) {
-        domesticMap.set(r.date, r);
-      }
-
-      const allDates = new Set([...Array.from(intlMap.keys()), ...Array.from(domesticMap.keys())]);
-      const sorted = Array.from(allDates).sort();
-      const merged = sorted.map(date => {
-        const intl = intlMap.get(date);
-        const dom = domesticMap.get(date);
-        return {
-          date,
-          intlGasoline: intl?.gasoline ? parseFloat(intl.gasoline) : null,
-          intlDiesel: intl?.diesel ? parseFloat(intl.diesel) : null,
-          intlKerosene: intl?.kerosene ? parseFloat(intl.kerosene) : null,
-          domesticGasoline: dom?.domestic_gasoline ? parseFloat(dom.domestic_gasoline) : null,
-          domesticDiesel: dom?.domestic_diesel ? parseFloat(dom.domestic_diesel) : null,
-          domesticKerosene: dom?.domestic_kerosene ? parseFloat(dom.domestic_kerosene) : null,
-        };
-      });
+      const merged = await storage.getIntlVsDomestic(cutoffStr);
       res.json(merged);
     } catch (e) {
       console.error("[IntlVsDomestic] 오류:", e);

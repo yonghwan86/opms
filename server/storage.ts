@@ -213,6 +213,15 @@ export interface IStorage {
   getOilRegionalAverages(date: string, sidoFilter?: string[], regionFilter?: string[]): Promise<{ sido: string; avgPrice: number; avgDiesel: number | null }[]>;
   getOilDomesticHistory(): Promise<{ date: string; gasoline: number; diesel: number }[]>;
   getOilRegionalHistory(sidoFilter?: string[], regionFilter?: string[]): Promise<{ date: string; gasoline: number | null; diesel: number | null; kerosene: number | null }[]>;
+  getIntlVsDomestic(cutoffStr: string): Promise<{
+    date: string;
+    intlGasoline: number | null;
+    intlDiesel: number | null;
+    intlKerosene: number | null;
+    domesticGasoline: number | null;
+    domesticDiesel: number | null;
+    domesticKerosene: number | null;
+  }[]>;
 
   // 푸시 구독
   savePushSubscription(userId: number, sub: { endpoint: string; p256dh: string; auth: string }): Promise<void>;
@@ -1103,10 +1112,9 @@ export class PostgresStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT
         date,
-        ROUND(AVG(CASE WHEN gasoline > 0 THEN gasoline END)) AS gasoline,
-        ROUND(AVG(CASE WHEN diesel > 0 THEN diesel END)) AS diesel
-      FROM oil_price_raw
-      GROUP BY date
+        ROUND(gasoline_avg) AS gasoline,
+        ROUND(diesel_avg) AS diesel
+      FROM domestic_avg_price_history
       ORDER BY date ASC`);
     return result.rows.map((r: any) => ({
       date: r.date as string,
@@ -1153,6 +1161,54 @@ export class PostgresStorage implements IStorage {
       diesel: r.diesel != null ? Number(r.diesel) : null,
       kerosene: r.kerosene != null ? Number(r.kerosene) : null,
     }));
+  }
+
+  async getIntlVsDomestic(cutoffStr: string) {
+    const [intlRows, domesticRows] = await Promise.all([
+      db.execute(sql`
+        SELECT date, gasoline::text, diesel::text, kerosene::text
+        FROM intl_fuel_prices
+        WHERE date >= ${cutoffStr}
+        ORDER BY date ASC
+      `),
+      db.execute(sql`
+        SELECT date,
+               ROUND(gasoline_avg)::text AS domestic_gasoline,
+               ROUND(diesel_avg)::text AS domestic_diesel,
+               ROUND(kerosene_avg)::text AS domestic_kerosene
+        FROM domestic_avg_price_history
+        WHERE date >= ${cutoffStr}
+        ORDER BY date ASC
+      `),
+    ]);
+
+    interface IntlRow { date: string; gasoline: string | null; diesel: string | null; kerosene: string | null }
+    interface DomesticRow { date: string; domestic_gasoline: string | null; domestic_diesel: string | null; domestic_kerosene: string | null }
+
+    const intlMap = new Map<string, IntlRow>();
+    for (const r of intlRows.rows as IntlRow[]) {
+      intlMap.set(r.date, r);
+    }
+    const domesticMap = new Map<string, DomesticRow>();
+    for (const r of domesticRows.rows as DomesticRow[]) {
+      domesticMap.set(r.date, r);
+    }
+
+    const allDates = new Set([...Array.from(intlMap.keys()), ...Array.from(domesticMap.keys())]);
+    const sorted = Array.from(allDates).sort();
+    return sorted.map(date => {
+      const intl = intlMap.get(date);
+      const dom = domesticMap.get(date);
+      return {
+        date,
+        intlGasoline: intl?.gasoline ? parseFloat(intl.gasoline) : null,
+        intlDiesel: intl?.diesel ? parseFloat(intl.diesel) : null,
+        intlKerosene: intl?.kerosene ? parseFloat(intl.kerosene) : null,
+        domesticGasoline: dom?.domestic_gasoline ? parseFloat(dom.domestic_gasoline) : null,
+        domesticDiesel: dom?.domestic_diesel ? parseFloat(dom.domestic_diesel) : null,
+        domesticKerosene: dom?.domestic_kerosene ? parseFloat(dom.domestic_kerosene) : null,
+      };
+    });
   }
 
   // ── 푸시 구독 ─────────────────────────────────────────────────────────────
