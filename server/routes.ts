@@ -9,7 +9,7 @@ import { db } from "./db";
 import { sql } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import { initPush, getVapidPublicKey, sendPush, sendPushToAll } from "./services/pushService";
-import { getCachedAvailableDates } from "./cache";
+import { getCachedAvailableDates, invalidateAvailableDatesCache } from "./cache";
 
 const PgStore = connectPgSimple(session);
 
@@ -997,6 +997,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } catch (pushErr) {
         console.error("푸시 발송 오류 (수집은 성공):", pushErr);
       }
+      invalidateAvailableDatesCache();
       res.json(result);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "서버 오류";
@@ -1838,6 +1839,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const insertRows = toInsertOilPriceRaw(rows);
       await storage.saveOilPriceRaw(insertRows);
+      invalidateAvailableDatesCache();
 
       const processedDates = new Set<string>();
       let totalAnalysis = 0;
