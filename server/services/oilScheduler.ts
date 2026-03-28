@@ -730,36 +730,45 @@ async function checkAndRecoverWeeklySupplyOnStartup(): Promise<void> {
     const kstHour = kstNow.getUTCHours();
     const kstDayOfWeek = kstNow.getUTCDay(); // 0=일, 1=월, ..., 5=금, 6=토
 
-    // 금요일(5) 14:00 이후 또는 토요일(6)에만 점검
-    const isFriday = kstDayOfWeek === 5;
+    // 수집 예정: 금(5) 14:00, 월(1) 14:00
+    // 복구 점검 허용: 금 14:00 이후, 토(6), 월 14:00 이후, 화(2)
+    const isFriday   = kstDayOfWeek === 5;
     const isSaturday = kstDayOfWeek === 6;
-    if (!isFriday && !isSaturday) {
+    const isMonday   = kstDayOfWeek === 1;
+    const isTuesday  = kstDayOfWeek === 2;
+
+    if (!isFriday && !isSaturday && !isMonday && !isTuesday) {
       return;
     }
-    if (isFriday && kstHour < 14) {
-      console.log(`[WeeklySupplyRecover] 금요일 14:00 이전 (KST ${kstHour}시) → cron 대기`);
+    if ((isFriday || isMonday) && kstHour < 14) {
+      console.log(`[WeeklySupplyRecover] 수집 예정 시각(14:00) 이전 (KST ${kstHour}시) → cron 대기`);
       return;
     }
 
-    // 오늘 00:00 KST (= UTC 전날 15:00) 이후 수집 성공 로그 확인
-    const kstMidnight = new Date(kstNow);
-    kstMidnight.setUTCHours(0, 0, 0, 0);
+    // 기준 시각: 직전 수집 예정일 14:00 KST = 05:00 UTC
+    // 토요일→어제(금요일), 화요일→어제(월요일), 금/월 당일→당일
+    const checkFrom = new Date(kstNow);
+    if (isSaturday || isTuesday) {
+      checkFrom.setUTCDate(checkFrom.getUTCDate() - 1); // 직전 수집 예정일로
+    }
+    checkFrom.setUTCHours(5, 0, 0, 0); // 14:00 KST = 05:00 UTC
+
     const todayStr = getDateStr(kstNow);
 
     const logResult = await db.execute(
       sql`SELECT COUNT(*) AS cnt FROM oil_collection_logs
           WHERE job_type = 'weekly_supply_price'
             AND status IN ('success', 'partial')
-            AND created_at >= ${kstMidnight.toISOString()}`
+            AND created_at >= ${checkFrom.toISOString()}`
     );
     const cnt = Number((logResult.rows[0] as any)?.cnt ?? 0);
 
     if (cnt > 0) {
-      console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 수집 성공 로그 확인됨 → 복구 불필요`);
+      console.log(`[WeeklySupplyRecover] 수집 성공 로그 확인됨 (기준: ${checkFrom.toISOString()}) → 복구 불필요`);
       return;
     }
 
-    console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 주간공급가격 수집 로그 없음 → 즉시 수집 시작`);
+    console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 주간공급가격 수집 로그 없음 (기준: ${checkFrom.toISOString()}) → 즉시 수집 시작`);
     await runWeeklySupplyJob();
   } catch (err) {
     console.error("[WeeklySupplyRecover] 시작 복구 오류:", err);
