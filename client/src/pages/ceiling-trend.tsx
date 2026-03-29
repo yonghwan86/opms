@@ -137,7 +137,7 @@ function CustomTooltip({ active, payload, label, fuels, stationName, stationData
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[200px]">
       <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">
-        {label}{isPublishDay ? " ★공표일" : ""}
+        {label}{isPublishDay ? " ★시행일" : ""}
       </p>
 
       {stationName && (
@@ -568,7 +568,7 @@ export default function CeilingTrendPage() {
 
             {/* 공표일 선택 */}
             <div ref={dateRef} className="relative">
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">공표일</p>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">시행일</p>
               <button
                 onClick={() => setShowDateMenu(p => !p)}
                 className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg"
@@ -759,7 +759,7 @@ export default function CeilingTrendPage() {
             </div>
           ) : trendData.length === 0 ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-              {selectedDate ? "해당 기간의 데이터가 없습니다." : "공표일을 선택하세요."}
+              {selectedDate ? "해당 기간의 데이터가 없습니다." : "시행일을 선택하세요."}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={340}>
@@ -908,7 +908,7 @@ export default function CeilingTrendPage() {
                         strokeDasharray="4 4"
                         strokeWidth={isSelected ? 1.5 : 1}
                         label={{
-                          value: "공표일",
+                          value: "시행일",
                           position: nearEndLabels.has(lbl) ? "insideTopLeft" : "top",
                           fontSize: 10,
                           fill: isSelected ? "#3b82f6" : "#94a3b8",
@@ -941,15 +941,15 @@ export default function CeilingTrendPage() {
           <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground items-center">
             <span className="flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 공표일 평균가격보다 높은 업체 수
+              <span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 시행일 평균가격보다 높은 업체 수
             </span>
             <span className="w-px h-4 bg-border" />
             <span className="flex items-center gap-1.5">
               <TrendingDown className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 공표일 평균가격보다 낮은 업체 수
+              <span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 시행일 평균가격보다 낮은 업체 수
             </span>
             <span className="w-px h-4 bg-border" />
-            <span>주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
+            <span>주유소 검색 시: 최근 시행일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
             <span className="hidden md:inline text-muted-foreground/50 ml-auto">· 오피넷데이터 활용</span>
           </div>
         </div>

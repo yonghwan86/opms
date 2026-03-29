@@ -21,12 +21,12 @@ const FUEL_LABEL: Record<Fuel, string> = {
 };
 
 const FUEL_COLOR: Record<Fuel, string> = {
-  gasoline: "#ca8a04",
-  diesel:   "#16a34a",
-  kerosene: "#0284c7",
+  gasoline: "#eab308",
+  diesel:   "#22c55e",
+  kerosene: "#38bdf8",
 };
 
-const ANNOUNCEMENT_DATES = ["03/13", "03/27"];
+const ENFORCEMENT_DATES = ["03/13", "03/27"];
 
 const rawData = [
   { date: "12/30", intlG: 67.2,  intlD: 79.1,  intlK: 75.1,  exch: 1470, domG: 1728, domD: 1630, domK: 1331 },
@@ -160,7 +160,7 @@ export function TaxAwareChart() {
 
       {/* 차트 */}
       <ResponsiveContainer width="100%" height={330}>
-        <ComposedChart data={data} margin={{ top: 12, right: 16, left: 0, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 32, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
           <XAxis
             dataKey="date"
@@ -181,13 +181,13 @@ export function TaxAwareChart() {
           />
           <Tooltip content={<CustomTooltip fuel={fuel} />} />
 
-          {ANNOUNCEMENT_DATES.map(d => (
+          {ENFORCEMENT_DATES.map(d => (
             <ReferenceLine
               key={d}
               x={d}
               stroke="#d1d5db"
               strokeDasharray="4 3"
-              label={{ value: "공시일", position: "top", fontSize: 10, fill: "#9ca3af" }}
+              label={{ value: "시행일", position: "top", fontSize: 10, fill: "#9ca3af" }}
             />
           ))}
 

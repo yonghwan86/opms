@@ -121,7 +121,7 @@ function CeilTooltip({ active, payload, label, fuels, stationName, stationData, 
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-xl px-3 py-2.5 text-xs min-w-[200px]">
-      <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">{label}{isPublish ? " ★공표일" : ""}</p>
+      <p className="font-bold text-gray-800 mb-1.5 border-b border-gray-100 pb-1">{label}{isPublish ? " ★시행일" : ""}</p>
       {stationName && (
         <div className="mb-1.5 pb-1.5 border-b border-gray-200 bg-blue-50/60 rounded-lg px-2 py-1.5 -mx-1">
           <p className="text-gray-900 text-[11px] font-extrabold mb-1 truncate max-w-[170px]">{stationName}</p>
@@ -1000,7 +1000,7 @@ export default function PublicDashboardPage() {
                         <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
                         {ceilingRefLabels.map(lbl => (
                           <ReferenceLine key={lbl} x={lbl} yAxisId="intl" stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
-                            label={{ value: "공표일", position: "top", fontSize: 10, fill: fuelColor }} />
+                            label={{ value: "시행일", position: "top", fontSize: 10, fill: fuelColor }} />
                         ))}
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -1017,7 +1017,7 @@ export default function PublicDashboardPage() {
               <div className="flex flex-wrap gap-3 items-end">
                 {/* 공표일 */}
                 <div ref={ceilDateRef} className="relative">
-                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">공표일</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5 font-medium">시행일</p>
                   <button onClick={() => setCeilDateMenu(p => !p)}
                     className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg">
                     {ceilDate || "선택 중..."} <ChevronDown className="w-3 h-3" />
@@ -1132,7 +1132,7 @@ export default function PublicDashboardPage() {
                   <div className="space-y-2 py-8"><Skeleton className="h-4 w-full" /><Skeleton className="h-60 w-full" /></div>
                 ) : ceilChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                    {ceilDate ? "해당 기간의 데이터가 없습니다." : "공표일을 선택하세요."}
+                    {ceilDate ? "해당 기간의 데이터가 없습니다." : "시행일을 선택하세요."}
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={320}>
@@ -1205,7 +1205,7 @@ export default function PublicDashboardPage() {
                       })()}
                       {/* 공표일 수직선 */}
                       {ceilLabel && <ReferenceLine x={ceilLabel} stroke="#3b82f6" strokeDasharray="4 4" strokeWidth={1.5}
-                        label={{ value: "공표일", position: "top", fontSize: 10, fill: "#3b82f6" }} />}
+                        label={{ value: "시행일", position: "top", fontSize: 10, fill: "#3b82f6" }} />}
                       {/* 평균 라인 (점선, showCeilAvg 시에만) */}
                       {showCeilAvg && ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
                       {showCeilAvg && ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
@@ -1218,11 +1218,11 @@ export default function PublicDashboardPage() {
                   </ResponsiveContainer>
                 )}
                 <div className="mt-2 pt-2.5 border-t border-border flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground items-center">
-                  <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 공표일 평균가격보다 높은 업체 수</span>
+                  <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-bold">빨간색 ↑</span> = 최근 시행일 평균가격보다 높은 업체 수</span>
                   <span className="w-px h-4 bg-border hidden sm:block" />
-                  <span className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-blue-500" /><span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 공표일 평균가격보다 낮은 업체 수</span>
+                  <span className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-blue-500" /><span className="text-blue-500 font-bold">파란색 ↓</span> = 최근 시행일 평균가격보다 낮은 업체 수</span>
                   <span className="w-px h-4 bg-border hidden sm:block" />
-                  <span className="text-[10px] text-muted-foreground/70">주유소 검색 시: 최근 공표일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
+                  <span className="text-[10px] text-muted-foreground/70">주유소 검색 시: 최근 시행일 해당 주유소가격 기준 해당일 가격 초과/이하 누계 횟수</span>
                   <span className="hidden md:inline text-muted-foreground/50 ml-auto">· 오피넷데이터 활용</span>
                 </div>
               </div>

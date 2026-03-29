@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
                       <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
                       {ceilingRefLabels.map(lbl => (
                         <ReferenceLine key={lbl} x={lbl} yAxisId="intl" stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
-                          label={{ value: "공표일", position: "top", fontSize: 10, fill: fuelColor }} />
+                          label={{ value: "시행일", position: "top", fontSize: 10, fill: fuelColor }} />
                       ))}
                     </ComposedChart>
                   </ResponsiveContainer>
