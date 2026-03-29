@@ -374,11 +374,11 @@ export default function CeilingTrendPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // 미래 연장 끝 날짜: 항상 오늘 + 4일 고정
+  // 미래 연장 끝 날짜: 항상 오늘 + 3일 고정
   const extendEnd = useMemo(() => {
     if (!selectedDate) return "";
     const base = new Date();
-    base.setDate(base.getDate() + 4);
+    base.setDate(base.getDate() + 3);
     return `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
   }, [selectedDate]);
 
