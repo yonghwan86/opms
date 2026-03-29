@@ -669,16 +669,20 @@ export class PostgresStorage implements IStorage {
           },
         });
     }
-    // 청크 루프 완료 후 gas_stations_master 1회 단일 bulk upsert (station_id 기준 중복 제거)
-    // 파라미터 수: 최대 ~11,000 주유소 × 5 컬럼 = 최대 55,000 (PostgreSQL 65,535 제한 이내)
+    // 청크 루프 완료 후 gas_stations_master 동기화 (station_id 기준 중복 제거)
+    // PostgreSQL 파라미터 상한(65,535)을 초과하면 청크 분할 fallback
+    const MASTER_COLS = 5; // stationId, stationName, sido, region, updatedAt
+    const MAX_PG_PARAMS = 65535;
     const uniqueMap = new Map<string, InsertOilPriceRaw>();
     for (const r of rows) {
       if (!uniqueMap.has(r.stationId)) uniqueMap.set(r.stationId, r);
     }
     const stations = Array.from(uniqueMap.values());
-    if (stations.length > 0) {
+    const chunkSize = Math.floor(MAX_PG_PARAMS / MASTER_COLS); // 최대 행 수/청크
+    for (let i = 0; i < stations.length; i += chunkSize) {
+      const chunk = stations.slice(i, i + chunkSize);
       await db.insert(gasStationsMaster).values(
-        stations.map(r => ({
+        chunk.map(r => ({
           stationId: r.stationId,
           stationName: r.stationName,
           sido: r.sido,
