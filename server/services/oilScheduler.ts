@@ -371,9 +371,8 @@ async function runCollectionWithRetries(opts: RunJobOptions): Promise<void> {
         cutoffUTC.setUTCHours(0, 30, 0, 0);
         return await storage.hasSuccessfulMorningLog(result.today, cutoffUTC);
       } else {
-        // 오후: 오늘 날짜 데이터가 DB에 존재하면 성공
-        const latestDate = await storage.getOilPriceLatestDate();
-        return latestDate !== null && latestDate >= result.today;
+        // 오후: 성공 로그 존재 여부로 판단 (partial data 오탐 방지)
+        return await storage.hasSuccessfulAfternoonLog(result.today);
       }
     } catch {
       return false;
@@ -447,8 +446,9 @@ async function checkAndRecoverOnStartup(): Promise<void> {
     if (kstHour >= 16) {
       const latestAvailable = await storage.getOilPriceLatestDate();
 
-      if (latestAvailable && latestAvailable >= todayStr) {
-        console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 오늘(${todayStr}), 수집 불필요`);
+      const hasAfternoonSuccess = await storage.hasSuccessfulAfternoonLog(todayStr);
+      if (latestAvailable && latestAvailable >= todayStr && hasAfternoonSuccess) {
+        console.log(`[OilScheduler] 시작 복구: DB 최신(${latestAvailable}) ≥ 오늘(${todayStr}), 성공 로그 확인됨, 수집 불필요`);
         // 수집은 완료됐으나 예측이 미완료일 수 있으므로 별도 트리거 (runIfNotDoneToday 내부에서 중복 방지)
         setImmediate(() => {
           import("./forecastService")
