@@ -39,11 +39,11 @@ const navItems: NavItem[] = [
   { label: "본부 권한", href: "/region-permissions", icon: MapPin, masterOnly: true },
   { label: "사용자 관리", href: "/users", icon: User2, masterOnly: true },
   { label: "엑셀 업로드(사용자)", href: "/users/upload", icon: FileSpreadsheet, masterOnly: true },
+  { label: "유가 수집 이력", href: "/logs/oil-collection", icon: DatabaseZap, masterOnly: true },
+  { label: "AI 예측 로그", href: "/logs/ai-forecast", icon: BotMessageSquare, masterOnly: true },
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "페이지 뷰 로그", href: "/logs/page-views", icon: Eye, masterOnly: true },
-  { label: "유가 수집 이력", href: "/logs/oil-collection", icon: DatabaseZap, masterOnly: true },
-  { label: "AI 예측 로그", href: "/logs/ai-forecast", icon: BotMessageSquare, masterOnly: true },
   { label: "만족도 조사 결과", href: "/logs/satisfaction", icon: SmilePlus, masterOnly: true },
 ];
 
