@@ -5,6 +5,7 @@ import {
   loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis, oilCollectionLogs,
   pushSubscriptions, oilCeilingPrices, userSatisfactions, oilWeeklySupplyPrices,
+  gasStationsMaster,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -667,6 +668,33 @@ export class PostgresStorage implements IStorage {
             createdAt: sql`now()`,
           },
         });
+    }
+    // 청크 루프 완료 후 gas_stations_master 1회 동기화 (station_id 기준 중복 제거)
+    const uniqueMap = new Map<string, InsertOilPriceRaw>();
+    for (const r of rows) {
+      if (!uniqueMap.has(r.stationId)) uniqueMap.set(r.stationId, r);
+    }
+    const stations = Array.from(uniqueMap.values());
+    const MASTER_CHUNK = 500;
+    for (let i = 0; i < stations.length; i += MASTER_CHUNK) {
+      const chunk = stations.slice(i, i + MASTER_CHUNK);
+      await db.insert(gasStationsMaster).values(
+        chunk.map(r => ({
+          stationId: r.stationId,
+          stationName: r.stationName,
+          sido: r.sido,
+          region: r.region,
+          updatedAt: new Date(),
+        }))
+      ).onConflictDoUpdate({
+        target: gasStationsMaster.stationId,
+        set: {
+          stationName: sql`EXCLUDED.station_name`,
+          sido: sql`EXCLUDED.sido`,
+          region: sql`EXCLUDED.region`,
+          updatedAt: sql`now()`,
+        },
+      });
     }
   }
 
@@ -1532,7 +1560,7 @@ export class PostgresStorage implements IStorage {
         : sql``;
     const result = await db.execute(sql`
       SELECT DISTINCT station_name
-      FROM oil_price_raw
+      FROM gas_stations_master
       WHERE station_name ILIKE ${'%' + q + '%'}
       ${filterCond}
       ORDER BY station_name
@@ -1549,8 +1577,8 @@ export class PostgresStorage implements IStorage {
         ? sql` AND sido = ${sido}`
         : sql``;
     const result = await db.execute(sql`
-      SELECT DISTINCT ON (station_name) station_id, station_name, region
-      FROM oil_price_raw
+      SELECT station_id, station_name, region
+      FROM gas_stations_master
       WHERE station_name ILIKE ${'%' + q + '%'}
       ${filterCond}
       ORDER BY station_name
@@ -1566,7 +1594,7 @@ export class PostgresStorage implements IStorage {
   async getStationSubregions(sido: string): Promise<string[]> {
     const result = await db.execute(sql`
       SELECT DISTINCT region
-      FROM oil_price_raw
+      FROM gas_stations_master
       WHERE sido = ${sido}
         AND region IS NOT NULL
         AND region != sido
@@ -1582,27 +1610,27 @@ export class PostgresStorage implements IStorage {
       : sido
         ? sql` AND sido = ${sido}`
         : sql``;
+
+    // Step 1: gas_stations_master(1만 행)에서 이름·지역 필터로 station_id 목록 조회
+    const masterResult = await db.execute(sql`
+      SELECT station_id
+      FROM gas_stations_master
+      WHERE station_name ILIKE ${'%' + name + '%'}
+      ${filterCond}
+    `);
+    const stationIds = (masterResult.rows as any[]).map(r => r.station_id as string);
+    if (stationIds.length === 0) return [];
+
+    // Step 2: (station_id, date) 복합 인덱스를 활용해 최근 20일치 가격 조회
+    // week_supply_avg는 조회된 날짜 범위의 주차만 필터링해 불필요한 전체 GROUP BY 제거
+    const stationIdList = sql.join(stationIds.map(id => sql`${id}`), sql`, `);
     const result = await db.execute(sql`
-      WITH matching AS (
-        SELECT DISTINCT station_id
-        FROM oil_price_raw
-        WHERE station_name ILIKE ${'%' + name + '%'}
-        ${filterCond}
-      ),
-      latest_dates AS (
+      WITH latest_dates AS (
         SELECT DISTINCT date
         FROM oil_price_raw
-        WHERE station_id IN (SELECT station_id FROM matching)
+        WHERE station_id IN (${stationIdList})
         ORDER BY date DESC
         LIMIT 20
-      ),
-      week_supply_avg AS (
-        SELECT week,
-          ROUND(AVG(gasoline::numeric)) AS avg_gasoline,
-          ROUND(AVG(diesel::numeric))   AS avg_diesel,
-          ROUND(AVG(kerosene::numeric)) AS avg_kerosene
-        FROM oil_weekly_supply_prices
-        GROUP BY week
       ),
       price_rows AS (
         SELECT r.*,
@@ -1610,8 +1638,20 @@ export class PostgresStorage implements IStorage {
           LPAD(CEIL(EXTRACT(DAY FROM TO_DATE(r.date, 'YYYYMMDD')) / 7.0)::text, 2, '0')
           AS week_key
         FROM oil_price_raw r
-        WHERE r.station_id IN (SELECT station_id FROM matching)
+        WHERE r.station_id IN (${stationIdList})
           AND r.date IN (SELECT date FROM latest_dates)
+      ),
+      distinct_weeks AS (
+        SELECT DISTINCT week_key FROM price_rows
+      ),
+      week_supply_avg AS (
+        SELECT week,
+          ROUND(AVG(gasoline::numeric)) AS avg_gasoline,
+          ROUND(AVG(diesel::numeric))   AS avg_diesel,
+          ROUND(AVG(kerosene::numeric)) AS avg_kerosene
+        FROM oil_weekly_supply_prices
+        WHERE week IN (SELECT week_key FROM distinct_weeks)
+        GROUP BY week
       )
       SELECT
         pr.date, pr.station_id, pr.station_name, pr.brand, pr.is_self,
