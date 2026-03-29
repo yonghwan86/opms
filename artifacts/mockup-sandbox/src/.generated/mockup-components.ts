@@ -8,5 +8,6 @@ export const modules: ModuleMap = {
   "./components/mockups/intl-converted/IntlConvertedChart.tsx": () => import("../components/mockups/intl-converted/IntlConvertedChart.tsx"),
   "./components/mockups/legend-demo/LegendDemo.tsx": () => import("../components/mockups/legend-demo/LegendDemo.tsx"),
   "./components/mockups/login-mobile/MobileLogin.tsx": () => import("../components/mockups/login-mobile/MobileLogin.tsx"),
-  "./components/mockups/login-mobile/MobileLoginCenter.tsx": () => import("../components/mockups/login-mobile/MobileLoginCenter.tsx")
+  "./components/mockups/login-mobile/MobileLoginCenter.tsx": () => import("../components/mockups/login-mobile/MobileLoginCenter.tsx"),
+  "./components/mockups/tax-aware-comparison/TaxAwareChart.tsx": () => import("../components/mockups/tax-aware-comparison/TaxAwareChart.tsx")
 };
