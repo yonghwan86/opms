@@ -669,17 +669,16 @@ export class PostgresStorage implements IStorage {
           },
         });
     }
-    // 청크 루프 완료 후 gas_stations_master 1회 동기화 (station_id 기준 중복 제거)
+    // 청크 루프 완료 후 gas_stations_master 1회 단일 bulk upsert (station_id 기준 중복 제거)
+    // 파라미터 수: 최대 ~11,000 주유소 × 5 컬럼 = 최대 55,000 (PostgreSQL 65,535 제한 이내)
     const uniqueMap = new Map<string, InsertOilPriceRaw>();
     for (const r of rows) {
       if (!uniqueMap.has(r.stationId)) uniqueMap.set(r.stationId, r);
     }
     const stations = Array.from(uniqueMap.values());
-    const MASTER_CHUNK = 500;
-    for (let i = 0; i < stations.length; i += MASTER_CHUNK) {
-      const chunk = stations.slice(i, i + MASTER_CHUNK);
+    if (stations.length > 0) {
       await db.insert(gasStationsMaster).values(
-        chunk.map(r => ({
+        stations.map(r => ({
           stationId: r.stationId,
           stationName: r.stationName,
           sido: r.sido,
@@ -696,6 +695,7 @@ export class PostgresStorage implements IStorage {
         },
       });
     }
+    console.log(`[master-sync] gas_stations_master upserted: ${stations.length} rows`);
   }
 
   async getOilPriceRawByDate(date: string): Promise<OilPriceRaw[]> {
@@ -1577,7 +1577,7 @@ export class PostgresStorage implements IStorage {
         ? sql` AND sido = ${sido}`
         : sql``;
     const result = await db.execute(sql`
-      SELECT station_id, station_name, region
+      SELECT DISTINCT ON (station_name) station_id, station_name, region
       FROM gas_stations_master
       WHERE station_name ILIKE ${'%' + q + '%'}
       ${filterCond}
