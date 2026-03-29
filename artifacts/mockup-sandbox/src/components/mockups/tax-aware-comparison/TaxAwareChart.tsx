@@ -145,41 +145,25 @@ export function TaxAwareChart() {
         </div>
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-3 gap-3 mb-4 mt-3">
-        <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">국내 세전가 (최근)</p>
-          <p className="text-lg font-bold" style={{ color }}>{fmt(latest.pretax)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
-          <p className="text-xs text-gray-300 mt-0.5">판매가×(10/11)−고정세금</p>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">국제가 환산 (최근)</p>
-          <p className="text-lg font-bold text-blue-600">{fmt(latest.intlKrw)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
-          <p className="text-xs text-gray-300 mt-0.5">$/Bbl×환율÷158.987</p>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">가격 차이 (세전가 − 국제환산가)</p>
-          <p className={`text-lg font-bold ${latest.margin >= 0 ? "text-orange-600" : "text-blue-600"}`}>
-            {latest.margin >= 0 ? "+" : ""}{fmt(latest.margin)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span>
-          </p>
-          <p className="text-xs text-gray-300 mt-0.5">{latest.margin >= 0 ? "국내가 더 높음" : "국제가가 더 높음"}</p>
-        </div>
-      </div>
-
       {/* 메인 차트 */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mt-3">
+        {/* 차트 상단 바: 수치 + 레전드 */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-gray-400">
-            단위 통일(원/L): 국제가는 <span className="font-medium text-gray-600">$/Bbl × 환율 ÷ 158.987</span> 으로 환산
-          </p>
-          <div className="flex items-center gap-4 text-xs text-gray-500">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-5 h-0.5 bg-blue-500 rounded" />국제가 환산
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />국내 세전가
-            </span>
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded-full bg-blue-500" />
+              <span className="text-xs text-gray-500">국제가 환산</span>
+              <span className="text-sm font-bold text-blue-600 ml-1">{fmt(latest.intlKrw)}원/L</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-xs text-gray-500">국내 세전가</span>
+              <span className="text-sm font-bold ml-1" style={{ color }}>{fmt(latest.pretax)}원/L</span>
+            </div>
           </div>
+          <p className="text-xs text-gray-400">
+            단위: 원/L · 국제가는 $/Bbl × 환율 ÷ 158.987 환산
+          </p>
         </div>
 
         <ResponsiveContainer width="100%" height={340}>
