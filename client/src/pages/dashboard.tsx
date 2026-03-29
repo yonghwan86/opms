@@ -391,7 +391,7 @@ export default function DashboardPage() {
   const TOTAL_SLIDES = 5;
 
   // 유가 분석 카드 탭 (MASTER=국제-국내 연동, HQ_USER=지역별 추이)
-  const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'comparison' | 'regional'>(isMaster ? 'global' : 'regional');
+  const [oilAnalysisTab, setOilAnalysisTab] = useState<'global' | 'comparison' | 'regional'>('comparison');
   const [selectedCrude, setSelectedCrude] = useState<'wti' | 'brent' | 'dubai'>('wti');
   const [comparisonFuel, setComparisonFuel] = useState<'gasoline' | 'diesel' | 'kerosene'>('gasoline');
 
