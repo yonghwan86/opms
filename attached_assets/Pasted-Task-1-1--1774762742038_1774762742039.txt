@@ -1,0 +1,85 @@
+Task 1 — 초기 동기화: 한 가지 보완이 필요합니다
+"최근 날짜 기준으로 추출"이라고 했는데, 어떤 날짜 기준인지 명시하면 좋겠습니다. 최근 1일만 쓰면 당일 미판매 주유소가 누락됩니다. 최근 7일 정도의 DISTINCT station_id를 합산하는 게 안전합니다.
+sqlINSERT INTO gas_stations_master (station_id, station_name, sido, region)
+SELECT DISTINCT ON (station_id)
+  station_id, station_name, sido, region
+FROM oil_price_raw
+WHERE date >= (SELECT MAX(date) FROM oil_price_raw)::text::int - 7
+ORDER BY station_id, date DESC
+ON CONFLICT (station_id) DO UPDATE SET
+  station_name = EXCLUDED.station_name,
+  sido = EXCLUDED.sido,
+  region = EXCLUDED.region,
+  updated_at = now();
+그리고 10,521건이라고 숫자까지 적었는데, 이건 Dev DB 기준이겠죠? 운영 DB는 다를 수 있으므로 "Dev 기준 약 10,500건, 운영은 검증 필요" 정도로 적으면 좋겠습니다.
+또한 gas_stations_master 스키마에 현재 brand 컬럼이 없습니다. searchStations의 반환값에 brand가 포함되어야 하는데, master에서 brand를 가져올 수 없으면 Step 2에서 oil_price_raw JOIN 시 가져와야 합니다. 이건 Task 4에서 처리되겠지만, Task 1의 동기화 시점에 brand도 master에 추가할지 말지 결정해두면 좋습니다. 추가하면 검색 결과 표시가 더 깔끔해지고, 추가하지 않으면 스키마 변경 없이 진행할 수 있습니다.
+
+Task 2 — 자동 upsert: 위치 선택에 주의가 필요합니다
+saveOilPriceRaw() 내부에 넣겠다고 했는데, 이 함수는 500건 단위 청크로 INSERT합니다:
+typescriptasync saveOilPriceRaw(rows: InsertOilPriceRaw[]): Promise<void> {
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    await db.insert(oilPriceRaw).values(chunk).onConflictDoUpdate({...});
+  }
+}
+여기에 master upsert를 넣으면 매 청크(500건)마다 master upsert가 실행됩니다. 전국 주유소 약 1만 건이면 20번 반복 × master upsert = 비효율적입니다.
+더 나은 위치는 saveOilPriceRaw() 외부, 호출 직후입니다. 스케줄러에서 saveOilPriceRaw(insertRows) 호출 후 별도로 master 동기화를 실행하면 1회만 실행됩니다:
+typescript// oilScheduler.ts — saveOilPriceRaw 호출 후
+await storage.saveOilPriceRaw(insertRows);
+await storage.syncGasStationsMaster(insertRows); // 신규 함수
+또는 saveOilPriceRaw() 끝에 한 번만 실행하는 방식도 괜찮습니다:
+typescriptasync saveOilPriceRaw(rows: InsertOilPriceRaw[]): Promise<void> {
+  // ... 기존 청크 INSERT ...
+
+  // 마지막에 master 동기화 (1회)
+  const uniqueStations = new Map<string, InsertOilPriceRaw>();
+  for (const r of rows) {
+    uniqueStations.set(r.stationId, r);
+  }
+  // station_id 기준 중복 제거 후 벌크 upsert
+}
+```
+
+어느 쪽이든 "청크 루프 안이 아니라 밖"에서 실행하세요.
+
+---
+
+### Task 3 — 쿼리 교체: 정확합니다
+
+"기존 파라미터·반환 타입 변경 없이 유지"가 중요합니다. 프론트엔드 변경 없이 드롭인 교체가 되어야 합니다.
+
+한 가지 확인: `suggestStationsDetailed()`는 `station_id`, `station_name`, `region`을 반환합니다. `gas_stations_master`에 이 3개 컬럼이 모두 있으므로 문제없습니다.
+
+`getStationSubregions()`도 `region`과 `sido`만 필요하고, master에 둘 다 있으니 문제없습니다.
+
+---
+
+### Task 4 — searchStations 개선: 방향은 맞지만 보완이 필요합니다
+
+"week_supply_avg CTE는 조회된 날짜 범위로 범위를 제한"이라고 했는데, 이 부분을 좀 더 구체적으로 설계해야 합니다.
+
+현재 `week_supply_avg`는 전체 `oil_weekly_supply_prices`를 GROUP BY하는데, 실제로 필요한 건 **최근 20일에 해당하는 주차**뿐입니다. Step 2에서 날짜 목록을 가져온 후 주차 키를 계산해서 WHERE 조건에 넣으면 됩니다.
+
+그리고 Step 1에서 master로 station_id를 찾고 Step 2에서 `(station_id, date)` 인덱스로 가격을 가져오는 구조는 맞는데, 현재 쿼리가 반환하는 `brand`, `is_self`, `address` 등의 컬럼은 **master에 없고 oil_price_raw에만 있습니다.** Step 2의 JOIN에서 이 컬럼들을 oil_price_raw에서 가져와야 합니다. 이 점은 현재 설계로 커버되지만, Task 설명에 명시하면 구현 시 혼란이 없습니다.
+
+---
+
+### Relevant files — `ceiling-trend.tsx` 포함이 좋습니다
+
+이 파일에서 공개 자동완성 API(`/api/public/stations/suggest`)를 호출하는데, routes.ts에서 이 API가 `suggestStationsDetailed()`를 호출합니다. Task 3에서 함수를 교체하면 이 화면도 자동 개선됩니다. 다만 routes.ts의 공개 API 부분도 Relevant files에 추가하면 좋겠습니다:
+```
+* `server/routes.ts:1177-1220,1418-1430,1468-1480` (공개 suggest/subregions)
+
+빠진 것 — 공개 API 확인
+routes.ts에 주유소 관련 공개 API가 별도로 있습니다:
+typescriptapp.get("/api/public/stations/suggest", ...)     // suggestStationsDetailed 호출
+app.get("/api/public/stations/subregions", ...)   // getStationSubregions 호출
+Task 3에서 함수를 교체하면 이 공개 API도 자동 개선되므로 추가 작업은 없지만, Done looks like에 "공개 대시보드의 주유소 검색도 동일하게 개선된다"를 한 줄 추가하면 검증 범위가 명확해집니다.
+
+종합
+이 이슈는 구현 착수 가능한 수준입니다. 수정하면 좋을 점을 정리하면:
+첫째, Task 1에서 "최근 날짜 기준" → "최근 7일 DISTINCT" 등 구체적 범위를 명시하고, brand 컬럼 추가 여부를 결정하세요.
+둘째, Task 2에서 upsert 위치를 "청크 루프 안"이 아니라 "saveOilPriceRaw 완료 후 1회" 또는 "함수 끝에서 중복 제거 후 1회"로 명시하세요.
+셋째, Done looks like에 공개 대시보드 자동완성도 포함하세요.
+나머지는 그대로 진행하면 됩니다.
