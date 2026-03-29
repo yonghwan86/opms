@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, ReferenceLine,
+  ComposedChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine, Legend,
 } from "recharts";
 
 const LITERS_PER_BARREL = 158.987;
@@ -54,20 +54,11 @@ const rawData = [
 function buildChartData(fuel: Fuel) {
   const tax = FIXED_TAX[fuel];
   return rawData.map(r => {
-    const retail = fuel === "gasoline" ? r.domG : fuel === "diesel" ? r.domD : r.domK;
+    const retail  = fuel === "gasoline" ? r.domG : fuel === "diesel" ? r.domD : r.domK;
     const intlUsd = fuel === "gasoline" ? r.intlG : fuel === "diesel" ? r.intlD : r.intlK;
     const pretax  = Math.round(retail * (10 / 11) - tax);
     const intlKrw = Math.round((intlUsd * r.exch) / LITERS_PER_BARREL);
-    return {
-      date: r.date,
-      retail,
-      pretax,
-      intlKrw,
-      taxBurden: retail - pretax,
-      margin: pretax - intlKrw,
-      exch: r.exch,
-      intlUsd,
-    };
+    return { date: r.date, pretax, intlKrw, exch: r.exch, intlUsd };
   });
 }
 
@@ -78,29 +69,52 @@ function CustomTooltip({ active, payload, label, fuel }: any) {
   const d = payload[0]?.payload;
   if (!d) return null;
   const color = FUEL_COLOR[fuel as Fuel];
+  const diff = d.pretax - d.intlKrw;
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs min-w-[220px]">
-      <p className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-100">{label}</p>
-      <div className="space-y-1.5">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs min-w-[200px]">
+      <p className="font-semibold text-gray-700 mb-1.5 pb-1 border-b border-gray-100">{label}</p>
+      <div className="space-y-1">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-400">국제가 환산</span>
+          <span className="text-blue-500">국제가 환산</span>
           <span className="font-semibold text-blue-600">{fmt(d.intlKrw)}원/L</span>
         </div>
-        <div className="flex justify-between gap-4 text-gray-400 text-[11px]">
-          <span>{d.intlUsd.toFixed(1)}$/Bbl × {fmt(d.exch)}원 ÷ 158.987</span>
+        <div className="text-gray-400 text-[10px] -mt-0.5 mb-0.5">
+          {d.intlUsd.toFixed(1)}$/Bbl × {fmt(d.exch)}원 ÷ 158.987
         </div>
-        <div className="flex justify-between gap-4 pt-1">
-          <span style={{ color }} className="font-medium">국내 세전가</span>
-          <span style={{ color }} className="font-bold">{fmt(d.pretax)}원/L</span>
-        </div>
-        <div className="h-px bg-gray-100 my-1" />
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500 font-medium">가격 차이</span>
-          <span className={`font-bold ${d.margin >= 0 ? "text-orange-600" : "text-blue-600"}`}>
-            {d.margin >= 0 ? "+" : ""}{fmt(d.margin)}원/L
+          <span style={{ color }}>국내 세전가</span>
+          <span className="font-semibold" style={{ color }}>{fmt(d.pretax)}원/L</span>
+        </div>
+        <div className="flex justify-between gap-4 pt-1 border-t border-gray-100 text-gray-500">
+          <span>가격 차이</span>
+          <span className={`font-semibold ${diff >= 0 ? "text-orange-500" : "text-blue-500"}`}>
+            {diff >= 0 ? "+" : ""}{fmt(diff)}원/L
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CustomLegend({ fuel }: { fuel: Fuel }) {
+  const color = FUEL_COLOR[fuel];
+  const label = FUEL_LABEL[fuel];
+  return (
+    <div className="flex justify-center gap-8 mt-1 text-xs text-gray-500">
+      <span className="flex items-center gap-1.5">
+        <svg width="28" height="10">
+          <line x1="0" y1="5" x2="28" y2="5" stroke="#3b82f6" strokeWidth="2" />
+          <circle cx="14" cy="5" r="3" fill="#3b82f6" />
+        </svg>
+        {label} 국제가 환산 (원/L)
+      </span>
+      <span className="flex items-center gap-1.5">
+        <svg width="28" height="10">
+          <line x1="0" y1="5" x2="28" y2="5" stroke={color} strokeWidth="2" />
+          <circle cx="14" cy="5" r="3" fill={color} />
+        </svg>
+        {label} 국내 세전가 (원/L)
+      </span>
     </div>
   );
 }
@@ -109,21 +123,20 @@ export function TaxAwareChart() {
   const [fuel, setFuel] = useState<Fuel>("gasoline");
   const data = buildChartData(fuel);
   const color = FUEL_COLOR[fuel];
-  const latest = data[data.length - 1];
 
   const allVals = data.flatMap(d => [d.pretax, d.intlKrw]);
-  const yMin = Math.floor(Math.min(...allVals) / 100) * 100 - 50;
-  const yMax = Math.ceil(Math.max(...allVals)  / 100) * 100 + 50;
+  const yMin = Math.floor(Math.min(...allVals) / 50) * 50 - 50;
+  const yMax = Math.ceil(Math.max(...allVals)  / 50) * 50 + 50;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-5 font-sans">
+    <div className="bg-white p-5 font-sans">
 
       {/* 헤더 */}
       <div className="flex items-start justify-between mb-1">
         <div>
           <h1 className="text-base font-bold text-gray-900">국제-국내 제품가격 비교</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            국제 석유제품가 환산(원/L) vs 국내 세전가(원/L) — 최근 90일
+            국제 석유제품가(원/L) vs 국내 세전가(원/L), 최근 90일
           </p>
         </div>
         {/* 유종 탭 */}
@@ -134,8 +147,8 @@ export function TaxAwareChart() {
               onClick={() => setFuel(f)}
               className={`px-3 py-1 rounded text-xs font-semibold border transition-all ${
                 fuel === f
-                  ? "text-white border-transparent shadow-sm"
-                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-100"
+                  ? "text-white border-transparent"
+                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
               }`}
               style={fuel === f ? { backgroundColor: FUEL_COLOR[f], borderColor: FUEL_COLOR[f] } : {}}
             >
@@ -145,108 +158,62 @@ export function TaxAwareChart() {
         </div>
       </div>
 
-      {/* 메인 차트 */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mt-3">
-        {/* 차트 상단 바: 수치 + 레전드 */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-5">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-xs text-gray-500">국제가 환산</span>
-              <span className="text-sm font-bold text-blue-600 ml-1">{fmt(latest.intlKrw)}원/L</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-xs text-gray-500">국내 세전가</span>
-              <span className="text-sm font-bold ml-1" style={{ color }}>{fmt(latest.pretax)}원/L</span>
-            </div>
-          </div>
-          <p className="text-xs text-gray-400">
-            단위: 원/L · 국제가는 $/Bbl × 환율 ÷ 158.987 환산
-          </p>
-        </div>
+      {/* 차트 */}
+      <ResponsiveContainer width="100%" height={330}>
+        <ComposedChart data={data} margin={{ top: 12, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11, fill: "#9ca3af" }}
+            tickLine={false}
+            axisLine={{ stroke: "#e5e7eb" }}
+            interval={2}
+            height={28}
+          />
+          <YAxis
+            domain={[yMin, yMax]}
+            tick={{ fontSize: 11, fill: "#9ca3af" }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={v => fmt(v)}
+            width={56}
+            tickCount={7}
+          />
+          <Tooltip content={<CustomTooltip fuel={fuel} />} />
 
-        <ResponsiveContainer width="100%" height={340}>
-          <ComposedChart data={data} margin={{ top: 8, right: 20, left: 10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="marginFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f97316" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#f97316" stopOpacity={0.02} />
-              </linearGradient>
-              <linearGradient id="taxFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.10} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11, fill: "#9ca3af" }}
-              tickLine={false}
-              axisLine={{ stroke: "#e5e7eb" }}
-              interval={2}
-              height={28}
+          {ANNOUNCEMENT_DATES.map(d => (
+            <ReferenceLine
+              key={d}
+              x={d}
+              stroke="#d1d5db"
+              strokeDasharray="4 3"
+              label={{ value: "공시일", position: "top", fontSize: 10, fill: "#9ca3af" }}
             />
-            <YAxis
-              domain={[yMin, yMax]}
-              tick={{ fontSize: 11, fill: "#9ca3af" }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={v => `${fmt(v)}`}
-              width={58}
-              tickCount={7}
-            />
-            <Tooltip content={<CustomTooltip fuel={fuel} />} />
+          ))}
 
-            {/* 공시일 수직선 */}
-            {ANNOUNCEMENT_DATES.map(d => (
-              <ReferenceLine
-                key={d}
-                x={d}
-                stroke="#d1d5db"
-                strokeDasharray="4 3"
-                label={{ value: "공시", position: "top", fontSize: 10, fill: "#9ca3af" }}
-              />
-            ))}
+          <Line
+            type="monotone"
+            dataKey="intlKrw"
+            stroke="#3b82f6"
+            strokeWidth={2}
+            dot={{ r: 2.5, fill: "#3b82f6", strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            legendType="none"
+          />
+          <Line
+            type="monotone"
+            dataKey="pretax"
+            stroke={color}
+            strokeWidth={2}
+            dot={{ r: 2.5, fill: color, strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            legendType="none"
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
 
-            {/* 실선: 국제가 환산 */}
-            <Line
-              type="monotone"
-              dataKey="intlKrw"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-              name="국제가 환산 (원/L)"
-            />
-            {/* 실선: 국내 세전가 */}
-            <Line
-              type="monotone"
-              dataKey="pretax"
-              stroke={color}
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 5 }}
-              name="국내 세전가 (원/L)"
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* 세금 구조 설명 */}
-      <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700 flex gap-6">
-        <div>
-          <span className="font-semibold">국내 세전가:</span>{" "}
-          판매가 × (10/11) − 고정세금({FIXED_TAX[fuel].toFixed(0)}원/L)
-        </div>
-        <div className="text-blue-500">
-          고정세금 = 교통·교육·주행세 (탄력세율 적용, 매주 금요일 자동 갱신)
-        </div>
-        <div className="text-gray-600">
-          국제가: 싱가포르 거래 석유제품가 × 환율 ÷ 158.987L/Bbl
-        </div>
-      </div>
+      {/* 레전드 */}
+      <CustomLegend fuel={fuel} />
     </div>
   );
 }
