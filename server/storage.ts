@@ -222,6 +222,7 @@ export interface IStorage {
     domesticGasoline: number | null;
     domesticDiesel: number | null;
     domesticKerosene: number | null;
+    exchangeRate: number | null;
   }[]>;
 
   // 푸시 구독
@@ -1196,7 +1197,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async getIntlVsDomestic(cutoffStr: string) {
-    const [intlRows, domesticRows] = await Promise.all([
+    const [intlRows, domesticRows, exchRows] = await Promise.all([
       db.execute(sql`
         SELECT date, gasoline::text, diesel::text, kerosene::text
         FROM intl_fuel_prices
@@ -1212,10 +1213,17 @@ export class PostgresStorage implements IStorage {
         WHERE date >= ${cutoffStr}
         ORDER BY date ASC
       `),
+      db.execute(sql`
+        SELECT REPLACE(date::text, '-', '') AS date_key, rate::text
+        FROM exchange_rate_history
+        WHERE REPLACE(date::text, '-', '') >= ${cutoffStr}
+        ORDER BY date ASC
+      `),
     ]);
 
     interface IntlRow { date: string; gasoline: string | null; diesel: string | null; kerosene: string | null }
     interface DomesticRow { date: string; domestic_gasoline: string | null; domestic_diesel: string | null; domestic_kerosene: string | null }
+    interface ExchRow { date_key: string; rate: string | null }
 
     const intlMap = new Map<string, IntlRow>();
     for (const r of intlRows.rows as IntlRow[]) {
@@ -1225,12 +1233,20 @@ export class PostgresStorage implements IStorage {
     for (const r of domesticRows.rows as DomesticRow[]) {
       domesticMap.set(r.date, r);
     }
+    const exchMap = new Map<string, number>();
+    for (const r of exchRows.rows as ExchRow[]) {
+      if (r.rate) exchMap.set(r.date_key, parseFloat(r.rate));
+    }
 
     const allDates = new Set([...Array.from(intlMap.keys()), ...Array.from(domesticMap.keys())]);
     const sorted = Array.from(allDates).sort();
+
+    // 환율 없는 날짜는 직전 유효값으로 전진 보간
+    let lastRate: number | null = null;
     return sorted.map(date => {
       const intl = intlMap.get(date);
       const dom = domesticMap.get(date);
+      if (exchMap.has(date)) lastRate = exchMap.get(date)!;
       return {
         date,
         intlGasoline: intl?.gasoline ? parseFloat(intl.gasoline) : null,
@@ -1239,6 +1255,7 @@ export class PostgresStorage implements IStorage {
         domesticGasoline: dom?.domestic_gasoline ? parseFloat(dom.domestic_gasoline) : null,
         domesticDiesel: dom?.domestic_diesel ? parseFloat(dom.domestic_diesel) : null,
         domesticKerosene: dom?.domestic_kerosene ? parseFloat(dom.domestic_kerosene) : null,
+        exchangeRate: lastRate,
       };
     });
   }

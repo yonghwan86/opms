@@ -103,8 +103,8 @@ function CustomLegend({ fuel }: { fuel: Fuel }) {
     <div className="flex justify-center gap-8 mt-1 text-xs text-gray-500">
       <span className="flex items-center gap-1.5">
         <svg width="28" height="10">
-          <line x1="0" y1="5" x2="28" y2="5" stroke="#3b82f6" strokeWidth="2" />
-          <circle cx="14" cy="5" r="3" fill="#3b82f6" />
+          <line x1="0" y1="5" x2="28" y2="5" stroke="#64748b" strokeWidth="2" />
+          <circle cx="14" cy="5" r="3" fill="#64748b" />
         </svg>
         {label} 국제가 환산 (원/L)
       </span>
@@ -194,9 +194,9 @@ export function TaxAwareChart() {
           <Line
             type="monotone"
             dataKey="intlKrw"
-            stroke="#3b82f6"
+            stroke="#64748b"
             strokeWidth={2}
-            dot={{ r: 2.5, fill: "#3b82f6", strokeWidth: 0 }}
+            dot={{ r: 2.5, fill: "#64748b", strokeWidth: 0 }}
             activeDot={{ r: 5 }}
             legendType="none"
           />

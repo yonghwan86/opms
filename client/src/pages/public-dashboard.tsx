@@ -498,6 +498,7 @@ export default function PublicDashboardPage() {
     date: string;
     intlGasoline: number | null; intlDiesel: number | null; intlKerosene: number | null;
     domesticGasoline: number | null; domesticDiesel: number | null; domesticKerosene: number | null;
+    exchangeRate: number | null;
   };
   const { data: intlVsDomesticData = [] } = useQuery<IntlVsDomesticRow[]>({
     queryKey: ["/api/public/intl-vs-domestic"],
@@ -942,68 +943,94 @@ export default function PublicDashboardPage() {
               </div>
               <div className="px-2 pb-3 pt-1">
                 {(() => {
+                  const LITERS_PER_BBL = 158.987;
+                  const FIXED_TAX: Record<typeof comparisonFuel, number> = { gasoline: 693.72, diesel: 475.88, kerosene: 72.45 };
                   const fuelColor = comparisonFuel === 'gasoline' ? '#eab308' : comparisonFuel === 'diesel' ? '#22c55e' : '#38bdf8';
                   const fuelLabel = comparisonFuel === 'gasoline' ? '휘발유' : comparisonFuel === 'diesel' ? '경유' : '등유';
-                  type FuelSelector = (r: IntlVsDomesticRow) => number | null;
-                  const intlSelector: Record<typeof comparisonFuel, FuelSelector> = {
-                    gasoline: r => r.intlGasoline,
-                    diesel: r => r.intlDiesel,
-                    kerosene: r => r.intlKerosene,
-                  };
-                  const domSelector: Record<typeof comparisonFuel, FuelSelector> = {
-                    gasoline: r => r.domesticGasoline,
-                    diesel: r => r.domesticDiesel,
-                    kerosene: r => r.domesticKerosene,
-                  };
+                  const tax = FIXED_TAX[comparisonFuel];
                   const visibleData = isMobile ? intlVsDomesticData.slice(-30) : intlVsDomesticData;
                   const firstDate = visibleData[0]?.date ?? "0";
                   const lastDate = visibleData[visibleData.length - 1]?.date ?? "99999999";
-                  const chartRows = visibleData.map(row => ({
-                    label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
-                    intl: intlSelector[comparisonFuel](row),
-                    domestic: domSelector[comparisonFuel](row),
-                  }));
-                  // 차트 기간 내 공표일만 필터 → MM/DD 레이블로 변환
+                  const chartRows = visibleData.map(row => {
+                    const intlUsd = comparisonFuel === 'gasoline' ? row.intlGasoline : comparisonFuel === 'diesel' ? row.intlDiesel : row.intlKerosene;
+                    const retail  = comparisonFuel === 'gasoline' ? row.domesticGasoline : comparisonFuel === 'diesel' ? row.domesticDiesel : row.domesticKerosene;
+                    const rate = row.exchangeRate;
+                    return {
+                      label: `${row.date.slice(4, 6)}/${row.date.slice(6, 8)}`,
+                      intlKrw: intlUsd !== null && rate !== null ? Math.round(intlUsd * rate / LITERS_PER_BBL) : null,
+                      pretax:  retail !== null ? Math.round(retail * (10 / 11) - tax) : null,
+                      intlUsd, exch: rate,
+                    };
+                  });
                   const ceilingRefLabels = allCeilings
                     .filter(c => {
                       const d = c.effectiveDate.replace(/-/g, "");
                       return d >= firstDate && d <= lastDate;
                     })
                     .map(c => c.effectiveDate.slice(5).replace("-", "/"));
+                  const allVals = chartRows.flatMap(r => [r.intlKrw, r.pretax]).filter((v): v is number => v !== null);
+                  const yMin = allVals.length ? Math.floor(Math.min(...allVals) / 50) * 50 - 50 : 0;
+                  const yMax = allVals.length ? Math.ceil(Math.max(...allVals)  / 50) * 50 + 50 : 2000;
                   return (
-                    <ResponsiveContainer width="100%" height={340}>
-                      <ComposedChart data={chartRows} margin={{ top: 24, right: 8, left: 10, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                        <XAxis dataKey="label"
-                          tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
-                          tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
-                          interval={isMobile ? Math.max(0, Math.ceil(chartRows.length / 4) - 1) : Math.max(0, Math.floor(chartRows.length / 6) - 1)}
-                          height={36} padding={{ left: 24, right: 24 }} tickMargin={10}
-                        />
-                        <YAxis yAxisId="intl" orientation="left"
-                          tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
-                          tickFormatter={v => `$${v}`} domain={["auto", "auto"]} tickCount={6} width={56} axisLine={false} tickLine={false}
-                        />
-                        <YAxis yAxisId="domestic" orientation="right"
-                          tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
-                          tickFormatter={v => `${fmt(v)}원`} domain={["auto", "auto"]} tickCount={6} width={64} axisLine={false} tickLine={false}
-                        />
-                        <Tooltip formatter={(value: any, name: string) => {
-                          if (name === 'intl') return [`$${typeof value === 'number' ? value.toFixed(2) : value}`, `${fuelLabel} (국제, $/Bbl)`];
-                          if (name === 'domestic') return [`${typeof value === 'number' ? fmt(value) : value}원`, `${fuelLabel} (국내, 원/L)`];
-                          return [value, name];
-                        }} />
-                        <Legend wrapperStyle={{ fontSize: ({ mobile: 11, tablet: 12, desktop: 13 } as const)[bp], paddingTop: 8 }} iconType="line" iconSize={({ mobile: 12, tablet: 14, desktop: 20 } as const)[bp]}
-                          formatter={(val) => val === 'intl' ? `${fuelLabel} 국제 ($/Bbl)` : `${fuelLabel} 국내 (원/L)`}
-                        />
-                        <Line yAxisId="intl" type="monotone" dataKey="intl" stroke="#64748b" strokeWidth={2.5} dot={false} name="intl" connectNulls />
-                        <Line yAxisId="domestic" type="monotone" dataKey="domestic" stroke={fuelColor} strokeWidth={2.5} dot={false} name="domestic" connectNulls />
-                        {ceilingRefLabels.map(lbl => (
-                          <ReferenceLine key={lbl} x={lbl} yAxisId="intl" stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
-                            label={{ value: "시행일", position: "top", fontSize: 10, fill: fuelColor }} />
-                        ))}
-                      </ComposedChart>
-                    </ResponsiveContainer>
+                    <div>
+                      <ResponsiveContainer width="100%" height={340}>
+                        <ComposedChart data={chartRows} margin={{ top: 30, right: 8, left: 10, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                          <XAxis dataKey="label"
+                            tick={{ fontSize: 11, fill: "#111827", fontWeight: 700, textAnchor: "middle" }}
+                            tickLine={false} axisLine={{ stroke: "#e5e7eb" }}
+                            interval={isMobile ? Math.max(0, Math.ceil(chartRows.length / 4) - 1) : Math.max(0, Math.floor(chartRows.length / 6) - 1)}
+                            height={36} padding={{ left: 24, right: 24 }} tickMargin={10}
+                          />
+                          <YAxis domain={[yMin, yMax]}
+                            tick={{ fontSize: 12, fill: "#374151", fontWeight: 700 }}
+                            tickFormatter={v => fmt(v)} tickCount={6} width={60} axisLine={false} tickLine={false}
+                          />
+                          <Tooltip content={({ active, payload, label: lbl }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0]?.payload;
+                            if (!d) return null;
+                            const diff = (d.pretax ?? 0) - (d.intlKrw ?? 0);
+                            return (
+                              <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs min-w-[190px]">
+                                <p className="font-semibold text-gray-700 mb-1.5 pb-1 border-b border-gray-100">{lbl}</p>
+                                <div className="space-y-1">
+                                  {d.intlKrw !== null && <>
+                                    <div className="flex justify-between gap-4"><span className="text-slate-500">국제가 환산</span><span className="font-semibold text-slate-600">{fmt(d.intlKrw)}원/L</span></div>
+                                    {d.intlUsd !== null && d.exch !== null && <div className="text-gray-400 text-[10px] -mt-0.5">{d.intlUsd.toFixed(1)}$/Bbl × {fmt(d.exch)}원 ÷ 158.987</div>}
+                                  </>}
+                                  {d.pretax !== null && <div className="flex justify-between gap-4"><span style={{ color: fuelColor }}>{fuelLabel} 세전가</span><span className="font-semibold" style={{ color: fuelColor }}>{fmt(d.pretax)}원/L</span></div>}
+                                  {d.intlKrw !== null && d.pretax !== null && (
+                                    <div className="flex justify-between gap-4 pt-1 border-t border-gray-100 text-gray-500">
+                                      <span>가격 차이</span>
+                                      <span className={`font-semibold ${diff >= 0 ? "text-orange-500" : "text-blue-500"}`}>{diff >= 0 ? "+" : ""}{fmt(diff)}원/L</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }} />
+                          {ceilingRefLabels.map(lbl => (
+                            <ReferenceLine key={lbl} x={lbl} stroke={fuelColor} strokeDasharray="4 4" strokeWidth={1.5}
+                              label={{ value: "시행일", position: "top", fontSize: 10, fill: fuelColor }} />
+                          ))}
+                          <Line type="monotone" dataKey="intlKrw" stroke="#64748b" strokeWidth={2.5}
+                            dot={{ r: 2.5, fill: "#64748b", strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls />
+                          <Line type="monotone" dataKey="pretax" stroke={fuelColor} strokeWidth={2.5}
+                            dot={{ r: 2.5, fill: fuelColor, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                      <div className="flex justify-center gap-8 text-xs text-gray-500 mt-1">
+                        <span className="flex items-center gap-1.5">
+                          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#64748b" strokeWidth="2" /><circle cx="14" cy="5" r="3" fill="#64748b" /></svg>
+                          {fuelLabel} 국제가 환산 (원/L)
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke={fuelColor} strokeWidth="2" /><circle cx="14" cy="5" r="3" fill={fuelColor} /></svg>
+                          {fuelLabel} 세전가 (원/L)
+                        </span>
+                      </div>
+                    </div>
                   );
                 })()}
               </div>
