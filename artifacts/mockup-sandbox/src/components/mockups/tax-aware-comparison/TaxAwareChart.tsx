@@ -95,8 +95,10 @@ function CustomTooltip({ active, payload, label, fuel }: any) {
         </div>
         <div className="h-px bg-gray-100 my-1" />
         <div className="flex justify-between gap-4">
-          <span className="text-orange-500 font-medium">정제·유통 마진</span>
-          <span className="font-bold text-orange-600">+{fmt(d.margin)}원/L</span>
+          <span className="text-gray-500 font-medium">가격 차이</span>
+          <span className={`font-bold ${d.margin >= 0 ? "text-orange-600" : "text-blue-600"}`}>
+            {d.margin >= 0 ? "+" : ""}{fmt(d.margin)}원/L
+          </span>
         </div>
       </div>
     </div>
@@ -109,7 +111,7 @@ export function TaxAwareChart() {
   const color = FUEL_COLOR[fuel];
   const latest = data[data.length - 1];
 
-  const allVals = data.flatMap(d => [d.retail, d.pretax, d.intlKrw]);
+  const allVals = data.flatMap(d => [d.pretax, d.intlKrw]);
   const yMin = Math.floor(Math.min(...allVals) / 100) * 100 - 50;
   const yMax = Math.ceil(Math.max(...allVals)  / 100) * 100 + 50;
 
@@ -121,7 +123,7 @@ export function TaxAwareChart() {
         <div>
           <h1 className="text-base font-bold text-gray-900">국제-국내 제품가격 비교</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            국제가 환산(원/L) · 국내 세전가(원/L) · 국내 판매가(원/L) — 최근 90일
+            국제 석유제품가 환산(원/L) vs 국내 세전가(원/L) — 최근 90일
           </p>
         </div>
         {/* 유종 탭 */}
@@ -155,10 +157,12 @@ export function TaxAwareChart() {
           <p className="text-lg font-bold text-blue-600">{fmt(latest.intlKrw)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
           <p className="text-xs text-gray-300 mt-0.5">$/Bbl×환율÷158.987</p>
         </div>
-        <div className="bg-white border border-orange-100 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">정제·유통 마진</p>
-          <p className="text-lg font-bold text-orange-600">+{fmt(latest.margin)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
-          <p className="text-xs text-gray-300 mt-0.5">세전가 − 국제환산가</p>
+        <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+          <p className="text-xs text-gray-400 mb-1">가격 차이 (세전가 − 국제환산가)</p>
+          <p className={`text-lg font-bold ${latest.margin >= 0 ? "text-orange-600" : "text-blue-600"}`}>
+            {latest.margin >= 0 ? "+" : ""}{fmt(latest.margin)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span>
+          </p>
+          <p className="text-xs text-gray-300 mt-0.5">{latest.margin >= 0 ? "국내가 더 높음" : "국제가가 더 높음"}</p>
         </div>
       </div>
 
@@ -249,14 +253,14 @@ export function TaxAwareChart() {
       {/* 세금 구조 설명 */}
       <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700 flex gap-6">
         <div>
-          <span className="font-semibold">세전가 공식:</span>{" "}
+          <span className="font-semibold">국내 세전가:</span>{" "}
           판매가 × (10/11) − 고정세금({FIXED_TAX[fuel].toFixed(0)}원/L)
         </div>
         <div className="text-blue-500">
-          고정세금 = 교통·교육·주행세 합산 (탄력세율 적용, 매주 금요일 자동 갱신)
+          고정세금 = 교통·교육·주행세 (탄력세율 적용, 매주 금요일 자동 갱신)
         </div>
-        <div className="text-orange-600 font-medium">
-          두 선 간격 = 정제·유통 마진 (세전가 − 국제환산가)
+        <div className="text-gray-600">
+          국제가: 싱가포르 거래 석유제품가 × 환율 ÷ 158.987L/Bbl
         </div>
       </div>
     </div>
