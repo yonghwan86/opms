@@ -1,0 +1,162 @@
+주유소 검색 관련 함수 4개 분석
+1. searchStations() — 가장 느린 핵심 쿼리
+typescriptasync searchStations(params: { name: string; sido?: string; region?: string }) {
+    const result = await db.execute(sql`
+      WITH matching AS (
+        SELECT DISTINCT station_id
+        FROM oil_price_raw
+        WHERE station_name ILIKE ${'%' + name + '%'}
+        ${filterCond}
+      ),
+      latest_dates AS (
+        SELECT DISTINCT date
+        FROM oil_price_raw
+        WHERE station_id IN (SELECT station_id FROM matching)
+        ORDER BY date DESC
+        LIMIT 20
+      ),
+      week_supply_avg AS (
+        SELECT week,
+          ROUND(AVG(gasoline::numeric)) AS avg_gasoline,
+          ROUND(AVG(diesel::numeric))   AS avg_diesel,
+          ROUND(AVG(kerosene::numeric)) AS avg_kerosene
+        FROM oil_weekly_supply_prices
+        GROUP BY week
+      ),
+      price_rows AS (
+        SELECT r.*,
+          TO_CHAR(TO_DATE(r.date, 'YYYYMMDD'), 'YYYYMM') ||
+          LPAD(CEIL(EXTRACT(DAY FROM TO_DATE(r.date, 'YYYYMMDD')) / 7.0)::text, 2, '0')
+          AS week_key
+        FROM oil_price_raw r
+        WHERE r.station_id IN (SELECT station_id FROM matching)
+          AND r.date IN (SELECT date FROM latest_dates)
+      )
+      SELECT ...
+      FROM price_rows pr
+      LEFT JOIN oil_weekly_supply_prices w ON w.week = pr.week_key AND w.company = pr.brand
+      LEFT JOIN week_supply_avg wa ON wa.week = pr.week_key
+      ORDER BY pr.date DESC, pr.station_name
+    `);
+이 쿼리에 문제가 4개 겹쳐 있습니다.
+문제 1 — ILIKE '%name%' 풀스캔. 앞뒤 와일드카드라 B-tree 인덱스를 쓸 수 없습니다. 수천만 행 전체를 순차 스캔하면서 문자열 비교합니다. 이것만으로 운영 DB에서 10초 이상 걸립니다.
+문제 2 — CTE 4단 체인. matching → latest_dates → price_rows → 최종 JOIN. 각 CTE가 앞 CTE의 결과에 의존하면서 oil_price_raw를 3번 스캔합니다. matching에서 1번(ILIKE 풀스캔), latest_dates에서 1번(station_id IN 서브쿼리), price_rows에서 1번(station_id IN + date IN).
+문제 3 — latest_dates가 불필요하게 넓습니다. "매칭된 모든 주유소의 최근 20개 날짜"를 가져옵니다. 주유소 5개가 매칭되면 5개 × 20일 = 100행이 될 수 있고, oil_price_raw에서 그 100행 조합을 다시 조회합니다.
+문제 4 — week_supply_avg 전체 집계. oil_weekly_supply_prices 테이블 전체를 GROUP BY합니다. 매 검색마다 불필요하게 실행됩니다.
+
+2. suggestStations() — 자동완성
+typescriptasync suggestStations(params: { q: string; sido?: string; region?: string }) {
+    const result = await db.execute(sql`
+      SELECT DISTINCT station_name
+      FROM oil_price_raw
+      WHERE station_name ILIKE ${'%' + q + '%'}
+      ${filterCond}
+      ORDER BY station_name
+      LIMIT 15
+    `);
+문제: ILIKE '%q%' + DISTINCT + ORDER BY. 수천만 행 풀스캔 후 중복 제거 + 정렬. 자동완성은 사용자가 타이핑할 때마다 호출되므로 체감이 가장 나쁩니다.
+3. suggestStationsDetailed() — 상세 자동완성
+typescript      SELECT DISTINCT ON (station_name) station_id, station_name, region
+      FROM oil_price_raw
+      WHERE station_name ILIKE ${'%' + q + '%'}
+      ${filterCond}
+      ORDER BY station_name
+      LIMIT 15
+suggestStations()과 동일한 문제입니다.
+4. getStationSubregions() — 시군구 목록
+typescript      SELECT DISTINCT region
+      FROM oil_price_raw
+      WHERE sido = ${sido}
+        AND region IS NOT NULL
+        AND region != sido
+      ORDER BY region
+sido 인덱스가 없어서 풀스캔합니다. 다만 sido = ? 등호 조건이라 인덱스 추가 시 즉시 개선됩니다.
+
+근본 원인 요약
+모든 주유소 검색 쿼리가 oil_price_raw 테이블을 직접 검색합니다. 이 테이블은 "주유소 × 날짜"별 가격 데이터로, 주유소 1만 곳 × 90일 = 90만 행(Dev), 운영은 수천만 행입니다. 주유소 이름 검색에 가격 이력 테이블을 쓸 이유가 없습니다.
+시스템에 이미 gas_stations_master 테이블이 있습니다:
+typescriptexport const gasStationsMaster = pgTable("gas_stations_master", {
+  stationId: varchar("station_id", { length: 20 }).primaryKey(),
+  stationName: text("station_name").notNull(),
+  gisX: numeric("gis_x"),
+  gisY: numeric("gis_y"),
+  region: text("region"),
+  sido: text("sido"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+주유소당 1행, PK가 station_id입니다. 이름 검색과 지역 필터는 이 테이블에서 하고, 가격 데이터만 oil_price_raw에서 JOIN하면 됩니다.
+
+해결 방안
+방안 1 — gas_stations_master 활용 (가장 효과적)
+자동완성과 검색을 gas_stations_master에서 수행하면 1만 행 테이블이라 인덱스 없이도 빠릅니다.
+suggestStations 교체:
+sqlSELECT DISTINCT station_name
+FROM gas_stations_master
+WHERE station_name ILIKE '%q%'
+  AND (sido = ? OR ? IS NULL)
+ORDER BY station_name
+LIMIT 15
+1만 행에서 ILIKE는 수ms입니다.
+suggestStationsDetailed 교체:
+sqlSELECT station_id, station_name, region
+FROM gas_stations_master
+WHERE station_name ILIKE '%q%'
+  AND (sido = ? OR ? IS NULL)
+ORDER BY station_name
+LIMIT 15
+searchStations 교체 — 2단계 쿼리로 분리:
+sql-- Step 1: master에서 주유소 찾기 (1만 행, 즉시)
+SELECT station_id, station_name, region, sido
+FROM gas_stations_master
+WHERE station_name ILIKE '%name%'
+  AND (sido = ? OR ? IS NULL)
+
+-- Step 2: 찾은 주유소의 최근 가격만 조회 (인덱스 활용)
+SELECT r.date, r.station_id, r.station_name, r.brand, r.is_self,
+       r.address, r.region, r.sido,
+       r.gasoline, r.diesel, r.kerosene
+FROM oil_price_raw r
+WHERE r.station_id IN (찾은 station_id 목록)
+  AND r.date IN (
+    SELECT DISTINCT date FROM oil_price_raw
+    WHERE station_id IN (찾은 station_id 목록)
+    ORDER BY date DESC LIMIT 20
+  )
+ORDER BY r.date DESC, r.station_name
+Step 2는 (station_id, date) 유니크 인덱스를 타므로 빠릅니다.
+getStationSubregions 교체:
+sqlSELECT DISTINCT region
+FROM gas_stations_master
+WHERE sido = ${sido}
+  AND region IS NOT NULL
+  AND region != sido
+ORDER BY region
+방안 2 — GIN 인덱스 (방안 1 불가 시 대안)
+gas_stations_master에 데이터가 충분하지 않거나 brand 등 추가 정보가 필요한 경우:
+sqlCREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX CONCURRENTLY oil_price_raw_station_name_trgm_idx
+  ON oil_price_raw USING gin (station_name gin_trgm_ops);
+ILIKE '%q%'가 이 인덱스를 자동으로 활용합니다. 다만 수천만 행 테이블에 GIN 인덱스를 추가하면 INSERT 성능이 약간 떨어지고, 인덱스 크기도 큽니다.
+
+확인이 필요한 사항
+방안 1을 적용하기 전에 gas_stations_master의 데이터 상태를 확인해야 합니다:
+sql-- 행 수 확인
+SELECT COUNT(*) FROM gas_stations_master;
+
+-- oil_price_raw의 주유소가 master에 모두 있는지
+SELECT COUNT(DISTINCT station_id) AS raw_stations,
+       (SELECT COUNT(*) FROM gas_stations_master) AS master_stations
+FROM oil_price_raw;
+
+-- master에 없는 주유소 확인
+SELECT DISTINCT r.station_id, r.station_name
+FROM oil_price_raw r
+LEFT JOIN gas_stations_master m ON r.station_id = m.station_id
+WHERE m.station_id IS NULL
+LIMIT 10;
+master에 없는 주유소가 많으면 방안 1은 검색 누락이 생깁니다. 그 경우 master 테이블을 먼저 동기화하거나, 방안 2(GIN 인덱스)로 가야 합니다.
+또한 searchStations의 주간공급가 JOIN(week_supply_avg, oil_weekly_supply_prices)은 검색 결과에 공급가를 같이 보여주기 위한 것인데, 이 부분도 별도 쿼리로 분리하면 검색 자체의 응답이 훨씬 빨라집니다.
+
+우선순위
+이 작업은 #69와 별도 이슈로 관리하는 게 맞습니다. #69가 "대시보드·분석 화면 성능"이라면, 이건 "주유소 검색 성능"으로 스코프가 다릅니다.
+즉시 효과 순서로 보면, 자동완성(suggestStations, suggestStationsDetailed)을 gas_stations_master로 교체하는 것이 가장 체감이 크고, 그다음이 searchStations CTE 리팩터링, 마지막이 getStationSubregions 교체입니다.
