@@ -83,25 +83,20 @@ function CustomTooltip({ active, payload, label, fuel }: any) {
       <p className="font-bold text-gray-700 mb-2 pb-1 border-b border-gray-100">{label}</p>
       <div className="space-y-1.5">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-400">국제가 ({d.intlUsd.toFixed(1)}$/Bbl × {fmt(d.exch)}원)</span>
+          <span className="text-gray-400">국제가 환산</span>
           <span className="font-semibold text-blue-600">{fmt(d.intlKrw)}원/L</span>
         </div>
-        <div className="flex justify-between gap-4">
+        <div className="flex justify-between gap-4 text-gray-400 text-[11px]">
+          <span>{d.intlUsd.toFixed(1)}$/Bbl × {fmt(d.exch)}원 ÷ 158.987</span>
+        </div>
+        <div className="flex justify-between gap-4 pt-1">
           <span style={{ color }} className="font-medium">국내 세전가</span>
           <span style={{ color }} className="font-bold">{fmt(d.pretax)}원/L</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-400">국내 판매가</span>
-          <span className="font-semibold text-gray-700">{fmt(d.retail)}원/L</span>
         </div>
         <div className="h-px bg-gray-100 my-1" />
         <div className="flex justify-between gap-4">
           <span className="text-orange-500 font-medium">정제·유통 마진</span>
           <span className="font-bold text-orange-600">+{fmt(d.margin)}원/L</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-gray-400">세금 합계</span>
-          <span className="text-gray-500">{fmt(d.taxBurden)}원/L</span>
         </div>
       </div>
     </div>
@@ -149,18 +144,14 @@ export function TaxAwareChart() {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-4 gap-3 mb-4 mt-3">
+      <div className="grid grid-cols-3 gap-3 mb-4 mt-3">
         <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">국내 판매가 (최근)</p>
-          <p className="text-lg font-bold text-gray-800">{fmt(latest.retail)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">국내 세전가</p>
+          <p className="text-xs text-gray-400 mb-1">국내 세전가 (최근)</p>
           <p className="text-lg font-bold" style={{ color }}>{fmt(latest.pretax)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
-          <p className="text-xs text-gray-300 mt-0.5">판매가×(10/11)−세금</p>
+          <p className="text-xs text-gray-300 mt-0.5">판매가×(10/11)−고정세금</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-          <p className="text-xs text-gray-400 mb-1">국제가 환산</p>
+          <p className="text-xs text-gray-400 mb-1">국제가 환산 (최근)</p>
           <p className="text-lg font-bold text-blue-600">{fmt(latest.intlKrw)}<span className="text-xs font-normal text-gray-400 ml-1">원/L</span></p>
           <p className="text-xs text-gray-300 mt-0.5">$/Bbl×환율÷158.987</p>
         </div>
@@ -182,10 +173,7 @@ export function TaxAwareChart() {
               <span className="inline-block w-5 h-0.5 bg-blue-500 rounded" />국제가 환산
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-5 h-0 border-t-2 border-dashed rounded" style={{ borderColor: color }} />국내 세전가
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />국내 판매가
+              <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />국내 세전가
             </span>
           </div>
         </div>
@@ -234,18 +222,7 @@ export function TaxAwareChart() {
               />
             ))}
 
-            {/* 세전가~판매가 사이 세금 음영 */}
-            <Area
-              type="monotone"
-              dataKey="retail"
-              stackId="none"
-              stroke="none"
-              fill="url(#taxFill)"
-              legendType="none"
-              baseLine={data.map(d => d.pretax)}
-            />
-
-            {/* 세선: 국제가 환산 */}
+            {/* 실선: 국제가 환산 */}
             <Line
               type="monotone"
               dataKey="intlKrw"
@@ -255,26 +232,15 @@ export function TaxAwareChart() {
               activeDot={{ r: 4 }}
               name="국제가 환산 (원/L)"
             />
-            {/* 점선: 국내 세전가 */}
+            {/* 실선: 국내 세전가 */}
             <Line
               type="monotone"
               dataKey="pretax"
               stroke={color}
-              strokeWidth={2}
-              strokeDasharray="6 3"
-              dot={false}
-              activeDot={{ r: 4 }}
-              name="국내 세전가 (원/L)"
-            />
-            {/* 실선: 국내 판매가 */}
-            <Line
-              type="monotone"
-              dataKey="retail"
-              stroke={color}
               strokeWidth={2.5}
               dot={false}
               activeDot={{ r: 5 }}
-              name="국내 판매가 (원/L)"
+              name="국내 세전가 (원/L)"
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -290,7 +256,7 @@ export function TaxAwareChart() {
           고정세금 = 교통·교육·주행세 합산 (탄력세율 적용, 매주 금요일 자동 갱신)
         </div>
         <div className="text-orange-600 font-medium">
-          실선↔점선 간격 = 세금 | 점선↔파란선 간격 = 정제·유통 마진
+          두 선 간격 = 정제·유통 마진 (세전가 − 국제환산가)
         </div>
       </div>
     </div>
