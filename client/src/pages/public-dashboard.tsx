@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Minus, Globe, Fuel, BarChart2, ShieldCheck,
-  MapPin, Loader2, Search, ChevronDown, DollarSign, ClipboardList, CheckCircle2,
+  MapPin, Loader2, Search, ChevronDown, DollarSign, ClipboardList, CheckCircle2, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -423,6 +423,7 @@ function PublicDashboardContent() {
   const [ceilStationSearch, setCeilStationSearch] = useState("");
   const [ceilStation, setCeilStation] = useState<StationSuggest | null>(null);
   const [showCeilAvg, setShowCeilAvg] = useState(true);
+  const [ceilHistoryOpen, setCeilHistoryOpen] = useState(false);
   const ceilDateRef = useRef<HTMLDivElement>(null);
   const ceilSidoRef = useRef<HTMLDivElement>(null);
 
@@ -1186,7 +1187,17 @@ function PublicDashboardContent() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
+                      <button
+                        onClick={() => setCeilHistoryOpen(true)}
+                        data-testid="button-pub-ceiling-history"
+                        className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-md px-2 py-0.5 bg-card hover:bg-muted transition-colors"
+                      >
+                        <History className="w-3 h-3" />
+                        최고가 이력
+                      </button>
+                    </div>
                     <p className="text-xs text-muted-foreground">수평 점선: 최고가격 기준</p>
                   </div>
                 </div>
@@ -1382,6 +1393,40 @@ function PublicDashboardContent() {
           <p className="mt-1">© 한국석유관리원 유가 모니터링 상황판</p>
         </div>
       </div>
+
+      {/* ── 최고가 이력 다이얼로그 ──────────────────────────────────── */}
+      <Dialog open={ceilHistoryOpen} onOpenChange={setCeilHistoryOpen}>
+        <DialogContent className="max-w-md w-full" data-testid="dialog-pub-ceiling-history">
+          <DialogHeader>
+            <DialogTitle>최고가 이력</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-96">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 px-3 text-left text-muted-foreground font-medium">일자</th>
+                  <th className="py-2 px-3 text-right text-muted-foreground font-medium">휘발유</th>
+                  <th className="py-2 px-3 text-right text-muted-foreground font-medium">경유</th>
+                  <th className="py-2 px-3 text-right text-muted-foreground font-medium">등유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...allCeilings].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate)).map((c) => {
+                  const datePart = c.effectiveDate.slice(5);
+                  return (
+                    <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                      <td className="py-1.5 px-3 text-foreground font-medium" data-testid={`text-pub-history-date-${c.id}`}>{datePart}</td>
+                      <td className="py-1.5 px-3 text-right text-foreground" data-testid={`text-pub-history-gas-${c.id}`}>{c.gasoline ? `${fmt(Number(c.gasoline))}원` : "-"}</td>
+                      <td className="py-1.5 px-3 text-right text-foreground" data-testid={`text-pub-history-dsl-${c.id}`}>{c.diesel ? `${fmt(Number(c.diesel))}원` : "-"}</td>
+                      <td className="py-1.5 px-3 text-right text-foreground" data-testid={`text-pub-history-kero-${c.id}`}>{c.kerosene ? `${fmt(Number(c.kerosene))}원` : "-"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── 만족도 조사 모달 ─────────────────────────────────────── */}
       <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
