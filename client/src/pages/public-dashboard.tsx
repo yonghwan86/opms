@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  ComposedChart, Line, BarChart, Bar, ReferenceLine,
+  ComposedChart, Line, BarChart, Bar, ReferenceLine, ReferenceArea,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from "recharts";
@@ -83,11 +83,11 @@ function DiffBadge({ val, base }: { val: number | null; base: number | null }) {
 }
 
 // ─── 최고가격제 툴팁 ──────────────────────────────────────────────────────────
-function CeilTooltip({ active, payload, label, fuels, stationName, stationData, ceilingLabel, effectiveDateRaw }: any) {
+function CeilTooltip({ active, payload, label, fuels, stationName, stationData, ceilingDates, effectiveDateRaw }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
-  const isPublish = label === ceilingLabel;
+  const isPublish = (ceilingDates as string[])?.includes(label);
   const activeFuels = CEIL_FUEL_CONFIG.filter(f => fuels[f.key]);
 
   // 공표일 주유소 기준가격
@@ -509,16 +509,20 @@ function PublicDashboardContent() {
     staleTime: 10 * 60 * 1000,
   });
 
-  // ceilDate 초기화 (최신 공표일)
+  // ceilDate 초기화: 현재 적용 공표일의 바로 이전 공표일 (더 긴 기간 기본 표시)
   useEffect(() => {
-    if (allCeilings.length && !ceilDate && chartTab === 'ceiling') {
-      setCeilDate(allCeilings[0].effectiveDate);
+    if (allCeilings.length && !ceilDate) {
+      const todayKey = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const sorted = [...allCeilings].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+      const currentIdx = sorted.findIndex(c => c.effectiveDate.replace(/-/g, "") <= todayKey);
+      const prevIdx = currentIdx >= 0 ? Math.min(currentIdx + 1, sorted.length - 1) : 0;
+      setCeilDate(sorted[prevIdx].effectiveDate);
     }
-  }, [allCeilings, ceilDate, chartTab]);
+  }, [allCeilings, ceilDate]);
 
-  const selectedCeiling = useMemo(
-    () => allCeilings.find(c => c.effectiveDate === ceilDate) ?? null,
-    [allCeilings, ceilDate],
+  const ceilSortedCeilings = useMemo(
+    () => [...allCeilings].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate)),
+    [allCeilings],
   );
 
   // 시군구 목록
@@ -568,28 +572,81 @@ function PublicDashboardContent() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // 차트 데이터 병합 (최고가격제 탭)
+  // 미래 연장 끝 날짜: 오늘 + 3일
+  const ceilExtendEnd = useMemo(() => {
+    if (!ceilDate) return "";
+    const base = new Date();
+    base.setDate(base.getDate() + 3);
+    return `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
+  }, [ceilDate]);
+
+  // 차트 데이터 병합 (최고가격제 탭) — getActiveCeiling 기반 + 미래 더미 행
   const ceilChartData = useMemo(() => {
     const stMap = new Map<string, StationRow>(ceilStationData.map(r => [r.date, r]));
-    return ceilTrendData.map(row => {
-      const st = stMap.get(row.date);
-      return {
-        ...row,
-        label: toLabel8(row.date),
-        dateRaw: row.date,
-        baseGas: row.baseGas,
-        baseDiesel: row.baseDiesel,
-        baseKerosene: row.baseKerosene,
-        stationGas:  st?.gasoline ?? null,
-        stationDsl:  st?.diesel ?? null,
-        stationKero: st?.kerosene ?? null,
-      };
+    const getActiveCeiling = (dateStr: string) =>
+      ceilSortedCeilings.find(c => c.effectiveDate.replace(/-/g, "") <= dateStr) ?? null;
+    const selectedKey = ceilDate?.replace(/-/g, "") ?? "";
+
+    const rows = ceilTrendData
+      .filter(row => row.date >= selectedKey)
+      .map(row => {
+        const st = stMap.get(row.date);
+        const active = getActiveCeiling(row.date);
+        return {
+          ...row,
+          label: toLabel8(row.date),
+          dateRaw: row.date,
+          stationGas:  st?.gasoline ?? null,
+          stationDsl:  st?.diesel ?? null,
+          stationKero: st?.kerosene ?? null,
+          ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
+          ceiling_diesel:   active?.diesel   ? Number(active.diesel)   : null,
+          ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
+          isFuture: false,
+        };
+      });
+
+    const lastActualDate = ceilTrendData.length ? ceilTrendData[ceilTrendData.length - 1].date : "";
+    if (lastActualDate && ceilExtendEnd && lastActualDate < ceilExtendEnd) {
+      const cur = new Date(
+        lastActualDate.slice(0, 4) + "-" + lastActualDate.slice(4, 6) + "-" + lastActualDate.slice(6, 8)
+      );
+      while (true) {
+        cur.setDate(cur.getDate() + 1);
+        const ds = `${cur.getFullYear()}${String(cur.getMonth() + 1).padStart(2, "0")}${String(cur.getDate()).padStart(2, "0")}`;
+        if (ds > ceilExtendEnd) break;
+        const active = getActiveCeiling(ds);
+        rows.push({
+          date: ds, label: toLabel8(ds), dateRaw: ds,
+          gasolineAvg: null, dieselAvg: null, keroseneAvg: null,
+          gasolineAbove: 0, gasolineBelow: 0, dieselAbove: 0,
+          dieselBelow: 0, keroseneAbove: 0, keroseneBelow: 0,
+          baseGas: null, baseDiesel: null, baseKerosene: null,
+          stationGas: null, stationDsl: null, stationKero: null,
+          ceiling_gasoline: active?.gasoline ? Number(active.gasoline) : null,
+          ceiling_diesel:   active?.diesel   ? Number(active.diesel)   : null,
+          ceiling_kerosene: active?.kerosene ? Number(active.kerosene) : null,
+          isFuture: true,
+        });
+      }
+    }
+    return rows;
+  }, [ceilTrendData, ceilStationData, ceilSortedCeilings, ceilExtendEnd, ceilDate]);
+
+  // 그래프 범위 내 공표일 목록 (수직선 + Tooltip 표시용, 오늘 이전만)
+  const ceilInRangeCeilings = useMemo(() => {
+    if (!ceilChartData.length) return [];
+    const first = ceilChartData[0].dateRaw;
+    const last = ceilChartData[ceilChartData.length - 1].dateRaw;
+    const nowKST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayKey = nowKST.toISOString().slice(0, 10).replace(/-/g, "");
+    return ceilSortedCeilings.filter(c => {
+      const d = c.effectiveDate.replace(/-/g, "");
+      return d >= first && d <= last && d <= todayKey;
     });
-  }, [ceilTrendData, ceilStationData]);
+  }, [ceilChartData, ceilSortedCeilings]);
 
-  const ceilLabel = ceilDate ? toLabel8(ceilDate.replace(/-/g, "")) : "";
-
-  // YAxis 도메인 (최고가격제)
+  // YAxis 도메인 (최고가격제) — inRangeCeilings 기반
   const ceilAllPrices = ceilChartData.flatMap(d => [
     ceilFuels.gasoline ? d.gasolineAvg : null,
     ceilFuels.diesel   ? d.dieselAvg   : null,
@@ -598,14 +655,34 @@ function PublicDashboardContent() {
     ceilFuels.diesel   && ceilStation ? d.stationDsl  : null,
     ceilFuels.kerosene && ceilStation ? d.stationKero : null,
   ].filter((v): v is number => v != null));
-  const ceilPriceVals = [
-    ceilFuels.gasoline && selectedCeiling?.gasoline ? Number(selectedCeiling.gasoline) : null,
-    ceilFuels.diesel   && selectedCeiling?.diesel   ? Number(selectedCeiling.diesel)   : null,
-    ceilFuels.kerosene && selectedCeiling?.kerosene ? Number(selectedCeiling.kerosene) : null,
-  ].filter((v): v is number => v != null);
+  const ceilPriceVals = ceilInRangeCeilings.flatMap(c => [
+    ceilFuels.gasoline && c.gasoline ? Number(c.gasoline) : null,
+    ceilFuels.diesel   && c.diesel   ? Number(c.diesel)   : null,
+    ceilFuels.kerosene && c.kerosene ? Number(c.kerosene) : null,
+  ]).filter((v): v is number => v != null);
   const ceilYVals = [...ceilAllPrices, ...ceilPriceVals];
   const ceilYMin = ceilYVals.length ? Math.floor((Math.min(...ceilYVals) - 30) / 10) * 10 : 1000;
   const ceilYMax = ceilYVals.length ? Math.ceil((Math.max(...ceilYVals) + 30) / 10) * 10 : 2200;
+
+  // ceiling 끝점 레이블 렌더러 (첫 번째 활성 유종 Line에서만 표시)
+  const ceilFirstActiveFuel = CEIL_FUEL_CONFIG.find(f => ceilFuels[f.key]);
+  const ceilEndLabel = ({ x, y, index }: any) => {
+    if (!ceilChartData.length || index !== ceilChartData.length - 1) return <text />;
+    const lastRow = ceilChartData[ceilChartData.length - 1];
+    const parts = CEIL_FUEL_CONFIG
+      .filter(f => ceilFuels[f.key])
+      .map(f => {
+        const val = (lastRow as any)[`ceiling_${f.key}`] as number | null;
+        return val ? `${f.label} ${fmt(val)}원` : null;
+      })
+      .filter(Boolean);
+    if (!parts.length) return <text />;
+    return (
+      <text x={x} y={y} dx={-4} dy={-8} textAnchor="end" fontSize={10} fill="#6366f1" fontWeight={600}>
+        {`최고가: ${parts.join(", ")}`}
+      </text>
+    );
+  };
 
   // 외부 클릭 닫기 (최고가격제 탭 드롭다운)
   useEffect(() => {
@@ -1198,7 +1275,7 @@ function PublicDashboardContent() {
                         최고가 이력
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">수평 점선: 최고가격 기준</p>
+                    <p className="text-xs text-muted-foreground">계단식 점선: 구간별 최고가격 기준</p>
                   </div>
                 </div>
                 {ceilTrendLoading ? (
@@ -1210,6 +1287,28 @@ function PublicDashboardContent() {
                 ) : (
                   <ResponsiveContainer width="100%" height={320}>
                     <ComposedChart data={ceilChartData} margin={{ top: 30, right: 8, left: 0, bottom: 20 }}>
+                      {/* 공표일 구간 교대 배경색 */}
+                      {(() => {
+                        if (!ceilChartData.length) return null;
+                        const firstLabel = ceilChartData[0].label;
+                        const lastLabel  = ceilChartData[ceilChartData.length - 1].label;
+                        const ascCeilings = [...ceilInRangeCeilings].sort(
+                          (a, b) => a.effectiveDate.localeCompare(b.effectiveDate)
+                        );
+                        if (ascCeilings.length === 0) {
+                          return <ReferenceArea key="ra-all" x1={firstLabel} x2={lastLabel} fill="#f3f4f6" fillOpacity={0.45} strokeOpacity={0} />;
+                        }
+                        return ascCeilings.map((c, i) => {
+                          const x1 = toLabel8(c.effectiveDate.replace(/-/g, ""));
+                          const x2 = ascCeilings[i + 1]
+                            ? toLabel8(ascCeilings[i + 1].effectiveDate.replace(/-/g, ""))
+                            : lastLabel;
+                          const fill = i % 2 === 0 ? "#f3f4f6" : "#ede9fe";
+                          return (
+                            <ReferenceArea key={`ra-${c.effectiveDate}`} x1={x1} x2={x2} fill={fill} fillOpacity={0.45} strokeOpacity={0} />
+                          );
+                        });
+                      })()}
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                       <XAxis dataKey="label"
                         tick={{ fontSize: 11, fill: "#374151", fontWeight: 600 }}
@@ -1222,7 +1321,7 @@ function PublicDashboardContent() {
                         tickFormatter={v => `${fmt(v)}원`}
                         domain={[ceilYMin, ceilYMax]} tickCount={7} width={72} axisLine={false} tickLine={false}
                       />
-                      <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} stationData={ceilStationData} ceilingLabel={ceilLabel} effectiveDateRaw={ceilDate ? ceilDate.replace(/-/g, "") : ""} />} />
+                      <Tooltip content={<CeilTooltip fuels={ceilFuels} stationName={ceilStation?.stationName} stationData={ceilStationData} ceilingDates={ceilInRangeCeilings.map(c => toLabel8(c.effectiveDate.replace(/-/g, "")))} effectiveDateRaw={ceilDate ? ceilDate.replace(/-/g, "") : ""} />} />
                       <Legend
                         wrapperStyle={{ paddingTop: 8 }}
                         content={(props: any) => {
@@ -1233,21 +1332,35 @@ function PublicDashboardContent() {
                           const dash = ({ mobile: "3 3", tablet: "4 4", desktop: "5 5" } as const)[bp];
                           const gap  = ({ mobile: "8px", tablet: "10px", desktop: "14px" } as const)[bp];
                           const fs   = ({ mobile: "10px", tablet: "10px", desktop: "11px" } as const)[bp];
-                          const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg"]);
+                          const DASHED = new Set(["gasolineAvg", "dieselAvg", "keroseneAvg", "ceiling_gasoline", "ceiling_diesel", "ceiling_kerosene"]);
                           const getLabel = (key: string) => {
-                            if (key === "stationGas")  return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
-                            if (key === "stationDsl")  return `${ceilStation?.stationName ?? "주유소"} (경유)`;
-                            if (key === "stationKero") return `${ceilStation?.stationName ?? "주유소"} (등유)`;
-                            if (key === "gasolineAvg") return "휘발유 평균";
-                            if (key === "dieselAvg")   return "경유 평균";
-                            if (key === "keroseneAvg") return "등유 평균";
+                            if (key === "stationGas")       return `${ceilStation?.stationName ?? "주유소"} (휘발유)`;
+                            if (key === "stationDsl")       return `${ceilStation?.stationName ?? "주유소"} (경유)`;
+                            if (key === "stationKero")      return `${ceilStation?.stationName ?? "주유소"} (등유)`;
+                            if (key === "gasolineAvg")      return "휘발유 지역평균";
+                            if (key === "dieselAvg")        return "경유 지역평균";
+                            if (key === "keroseneAvg")      return "등유 지역평균";
+                            if (key === "ceiling_gasoline") return "휘발유 최고가격";
+                            if (key === "ceiling_diesel")   return "경유 최고가격";
+                            if (key === "ceiling_kerosene") return "등유 최고가격";
                             return key;
                           };
+                          const ORDER = ["gasolineAvg", "dieselAvg", "keroseneAvg", "ceiling_gasoline", "ceiling_diesel", "ceiling_kerosene", "stationGas", "stationDsl", "stationKero"];
+                          const sorted = [...payload].sort((a: any, b: any) => {
+                            const ai = ORDER.indexOf(a.dataKey);
+                            const bi = ORDER.indexOf(b.dataKey);
+                            return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                          });
                           return (
                             <div style={{ display: "flex", flexWrap: "wrap", gap, justifyContent: "center", paddingTop: "2px" }}>
-                              {payload.map((entry: any) => {
+                              {sorted.map((entry: any) => {
+                                if (entry.dataKey.startsWith("ceiling_")) {
+                                  const fk = entry.dataKey.replace("ceiling_", "");
+                                  if (!ceilFuels[fk as keyof typeof ceilFuels]) return null;
+                                }
                                 const isDashed = DASHED.has(entry.dataKey);
                                 const isStation = entry.dataKey.startsWith("station");
+                                const isCeiling = entry.dataKey.startsWith("ceiling_");
                                 return (
                                   <div key={entry.dataKey} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                                     <svg width={svgW} height="10" style={{ flexShrink: 0 }}>
@@ -1257,7 +1370,7 @@ function PublicDashboardContent() {
                                         strokeLinecap="round"
                                       />
                                     </svg>
-                                    <span style={{ fontSize: fs, color: isStation ? "#111827" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
+                                    <span style={{ fontSize: fs, color: isStation ? "#111827" : isCeiling ? "#6b7280" : "#9ca3af", fontWeight: isStation ? 700 : 400 }}>
                                       {getLabel(entry.dataKey)}
                                     </span>
                                   </div>
@@ -1267,18 +1380,45 @@ function PublicDashboardContent() {
                           );
                         }}
                       />
-                      {/* 최고가 기준선 */}
-                      {selectedCeiling && (() => {
-                        const activeFuels = CEIL_FUEL_CONFIG.filter(f => ceilFuels[f.key] && selectedCeiling[f.key]);
-                        const combinedLabel = `최고가: ${activeFuels.map(f => `${f.label} ${fmt(Number(selectedCeiling[f.key]))}원`).join(', ')}`;
-                        return activeFuels.map((f, i) => (
-                          <ReferenceLine key={f.key} y={Number(selectedCeiling[f.key])} stroke={f.ceilingColor} strokeDasharray="6 3" strokeWidth={1.5}
-                            label={i === 0 ? { value: combinedLabel, position: "insideBottomRight", fontSize: 9, fill: "#6b7280", dy: 28 } : undefined} />
-                        ));
+                      {/* 최고가격 계단식 라인 (공표 이력별 구간) */}
+                      {ceilFuels.gasoline && (
+                        <Line type="stepAfter" dataKey="ceiling_gasoline" stroke="#6366f1" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_gasoline"
+                          label={ceilFirstActiveFuel?.key === "gasoline" ? ceilEndLabel : undefined}
+                        />
+                      )}
+                      {ceilFuels.diesel && (
+                        <Line type="stepAfter" dataKey="ceiling_diesel" stroke="#8b5cf6" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_diesel"
+                          label={ceilFirstActiveFuel?.key === "diesel" ? ceilEndLabel : undefined}
+                        />
+                      )}
+                      {ceilFuels.kerosene && (
+                        <Line type="stepAfter" dataKey="ceiling_kerosene" stroke="#ec4899" strokeDasharray="6 3" strokeWidth={1.5} dot={false} name="ceiling_kerosene"
+                          label={ceilFirstActiveFuel?.key === "kerosene" ? ceilEndLabel : undefined}
+                        />
+                      )}
+                      {/* 공표일 수직선 (범위 내 모든 공표일) */}
+                      {(() => {
+                        const nearEndLabels = new Set(ceilChartData.slice(-3).map(r => r.label));
+                        return ceilInRangeCeilings.map(c => {
+                          const lbl = toLabel8(c.effectiveDate.replace(/-/g, ""));
+                          const isSelected = c.effectiveDate === ceilDate;
+                          return (
+                            <ReferenceLine
+                              key={c.effectiveDate}
+                              x={lbl}
+                              stroke={isSelected ? "#3b82f6" : "#94a3b8"}
+                              strokeDasharray="4 4"
+                              strokeWidth={isSelected ? 1.5 : 1}
+                              label={{
+                                value: "시행일",
+                                position: nearEndLabels.has(lbl) ? "insideTopLeft" : "top",
+                                fontSize: 10,
+                                fill: isSelected ? "#3b82f6" : "#94a3b8",
+                              }}
+                            />
+                          );
+                        });
                       })()}
-                      {/* 공표일 수직선 */}
-                      {ceilLabel && <ReferenceLine x={ceilLabel} stroke="#3b82f6" strokeDasharray="4 4" strokeWidth={1.5}
-                        label={{ value: "시행일", position: "top", fontSize: 10, fill: "#3b82f6" }} />}
                       {/* 평균 라인 (점선, showCeilAvg 시에만) */}
                       {showCeilAvg && ceilFuels.gasoline && <Line type="monotone" dataKey="gasolineAvg" stroke="#eab308" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="gasolineAvg" connectNulls />}
                       {showCeilAvg && ceilFuels.diesel   && <Line type="monotone" dataKey="dieselAvg"   stroke="#22c55e" strokeWidth={2.5} strokeDasharray="5 2" dot={false} name="dieselAvg"   connectNulls />}
