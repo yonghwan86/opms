@@ -7,7 +7,13 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Search, ChevronDown, ShieldCheck, Download, History } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -305,6 +311,7 @@ export default function CeilingTrendPage() {
   const [stationSearch, setStationSearch] = useState("");
   const [selectedStation, setSelectedStation] = useState<{ stationId: string; stationName: string } | null>(null);
   const [showAvg, setShowAvg] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const dateRef = useRef<HTMLDivElement>(null);
   const sidoRef = useRef<HTMLDivElement>(null);
@@ -330,12 +337,6 @@ export default function CeilingTrendPage() {
   const sortedCeilings = useMemo(
     () => [...allCeilings].sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate)),
     [allCeilings],
-  );
-
-  // 선택된 공표일의 최고가격 데이터
-  const selectedCeiling = useMemo(
-    () => sortedCeilings.find(c => c.effectiveDate === selectedDate) ?? null,
-    [sortedCeilings, selectedDate],
   );
 
   // 시군구 목록 (sido 변경 시)
@@ -689,29 +690,21 @@ export default function CeilingTrendPage() {
           </div>
         </div>
 
-        {/* 선택된 최고가격 표시 */}
-        {selectedCeiling && (
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-            <span className="text-muted-foreground font-medium whitespace-nowrap">- 최고가 :</span>
-            {FUEL_CONFIG.map((f, i) => {
-              const val = selectedCeiling[f.key];
-              return val ? (
-                <span key={f.key} className="flex items-center gap-1 whitespace-nowrap">
-                  {i > 0 && <span className="text-muted-foreground mr-0.5">,</span>}
-                  <span className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", f.dot)} />
-                  <span className="text-foreground">{f.label}</span>
-                  <span className="font-bold text-foreground">{fmt(Number(val))}원</span>
-                </span>
-              ) : null;
-            })}
-          </div>
-        )}
-
         {/* 차트 카드 */}
         <div className="bg-card rounded-xl border border-border shadow-sm p-4">
           <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
             <div>
-              <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">최고가격 공표 전후 유가 변동</p>
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  data-testid="button-ceiling-history"
+                  className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-md px-2 py-0.5 bg-card hover:bg-muted transition-colors"
+                >
+                  <History className="w-3 h-3" />
+                  최고가 이력
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">수평 점선: 최고가격 기준</p>
             </div>
             {/* 지역평균선 체크박스 + 유종 토글 */}
@@ -954,6 +947,40 @@ export default function CeilingTrendPage() {
           </div>
         </div>
       </div>
+
+      {/* 최고가 이력 다이얼로그 */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-md w-full" data-testid="dialog-ceiling-history">
+          <DialogHeader>
+            <DialogTitle>최고가 이력</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-96">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 px-3 text-left text-muted-foreground font-medium">일자</th>
+                  <th className="py-2 px-3 text-right text-muted-foreground font-medium">휘발유</th>
+                  <th className="py-2 px-3 text-right text-muted-foreground font-medium">경유</th>
+                  <th className="py-2 px-3 text-right text-muted-foreground font-medium">등유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...sortedCeilings].reverse().map((c) => {
+                  const datePart = c.effectiveDate.slice(5);
+                  return (
+                    <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/50">
+                      <td className="py-1.5 px-3 text-foreground font-medium" data-testid={`text-history-date-${c.id}`}>{datePart}</td>
+                      <td className="py-1.5 px-3 text-right text-foreground" data-testid={`text-history-gas-${c.id}`}>{c.gasoline ? `${fmt(Number(c.gasoline))}원` : "-"}</td>
+                      <td className="py-1.5 px-3 text-right text-foreground" data-testid={`text-history-dsl-${c.id}`}>{c.diesel ? `${fmt(Number(c.diesel))}원` : "-"}</td>
+                      <td className="py-1.5 px-3 text-right text-foreground" data-testid={`text-history-kero-${c.id}`}>{c.kerosene ? `${fmt(Number(c.kerosene))}원` : "-"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </Layout>
   );
