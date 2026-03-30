@@ -672,7 +672,7 @@ function PublicDashboardContent() {
     const parts = CEIL_FUEL_CONFIG
       .filter(f => ceilFuels[f.key])
       .map(f => {
-        const val = (lastRow as any)[`ceiling_${f.key}`] as number | null;
+        const val = lastRow[`ceiling_${f.key}` as keyof typeof lastRow] as number | null;
         return val ? `${f.label} ${fmt(val)}원` : null;
       })
       .filter(Boolean);
