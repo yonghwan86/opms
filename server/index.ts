@@ -7,6 +7,14 @@ import { seedDatabase } from "./seed";
 import { seedHistoricalData } from "./seedHistorical";
 import { startOilScheduler } from "./services/oilScheduler";
 
+process.on("unhandledRejection", (reason) => {
+  console.error("[UnhandledRejection] 미처리 프로미스 거부 (서버 유지):", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[UncaughtException] 미처리 예외 (서버 유지):", err);
+});
+
 const app = express();
 app.set("trust proxy", 1);
 const httpServer = createServer(app);

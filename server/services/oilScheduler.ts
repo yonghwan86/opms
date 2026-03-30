@@ -759,19 +759,28 @@ async function checkAndRecoverWeeklySupplyOnStartup(): Promise<void> {
     const todayStr = getDateStr(kstNow);
 
     const logResult = await db.execute(
-      sql`SELECT COUNT(*) AS cnt FROM oil_collection_logs
+      sql`SELECT
+            SUM(CASE WHEN status IN ('success', 'partial') THEN 1 ELSE 0 END) AS success_cnt,
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_cnt
+          FROM oil_collection_logs
           WHERE job_type = 'weekly_supply_price'
-            AND status IN ('success', 'partial')
             AND created_at >= ${checkFrom.toISOString()}`
     );
-    const cnt = Number((logResult.rows[0] as any)?.cnt ?? 0);
+    const successCnt = Number((logResult.rows[0] as any)?.success_cnt ?? 0);
+    const failedCnt  = Number((logResult.rows[0] as any)?.failed_cnt  ?? 0);
 
-    if (cnt > 0) {
+    if (successCnt > 0) {
       console.log(`[WeeklySupplyRecover] 수집 성공 로그 확인됨 (기준: ${checkFrom.toISOString()}) → 복구 불필요`);
       return;
     }
 
-    console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 주간공급가격 수집 로그 없음 (기준: ${checkFrom.toISOString()}) → 즉시 수집 시작`);
+    const MAX_FAILED_ATTEMPTS = 3;
+    if (failedCnt >= MAX_FAILED_ATTEMPTS) {
+      console.warn(`[WeeklySupplyRecover] 실패 로그 ${failedCnt}건 (>=${MAX_FAILED_ATTEMPTS}) — 자동 복구 중단, 수동 확인 필요 (기준: ${checkFrom.toISOString()})`);
+      return;
+    }
+
+    console.log(`[WeeklySupplyRecover] 오늘(${todayStr}) 주간공급가격 수집 로그 없음 (성공 0건, 실패 ${failedCnt}건, 기준: ${checkFrom.toISOString()}) → 즉시 수집 시작`);
     await runWeeklySupplyJob();
   } catch (err) {
     console.error("[WeeklySupplyRecover] 시작 복구 오류:", err);

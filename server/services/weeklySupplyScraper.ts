@@ -188,34 +188,16 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
     });
     await page.waitForTimeout(5000);
 
-    console.log("[WeeklySupplyScraper] 2단계: NetFunnel → 제품별 주간공급가격 페이지");
-    const nav1 = page.waitForNavigation({ waitUntil: "load", timeout: 60000 });
-    await page.evaluate(() => {
-      (window as any).NetFunnel_Action({ action_id: "B3" }, function () {
-        window.location.href = "/user/dopdavcow/dopAvcowSelect.do";
-      });
-    });
-    await nav1;
-    await page.waitForTimeout(3000);
-    console.log("[WeeklySupplyScraper] 제품별 페이지 로딩 완료:", page.url());
-
-    console.log("[WeeklySupplyScraper] 3단계: 회사별 탭 이동 (fnOpenURL) - 휘발유(B034)");
-    const nav2 = page.waitForNavigation({ waitUntil: "load", timeout: 60000 });
-    await page.evaluate(() => {
-      (window as any).fnOpenURL("/user/dopavcow/dopAvcowCompanyList.do?prodCd=B034", "B3");
-    });
-    await nav2;
-    await page.waitForTimeout(3000);
+    console.log("[WeeklySupplyScraper] 2단계: 휘발유(B034) 회사별 페이지 직접 이동");
+    await page.goto(
+      "https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=B034",
+      { waitUntil: "load", timeout: 60000 }
+    );
+    await page.waitForTimeout(2000);
     console.log("[WeeklySupplyScraper] 휘발유 회사별 페이지 로딩 완료:", page.url());
 
-    const title = await page.title();
-    const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 500) || "");
-    if (title.toLowerCase().includes("error") || bodyText.includes("The service is not available")) {
-      throw new Error(`회사별 페이지 로딩 실패 (title: ${title}, body: ${bodyText.slice(0, 100)})`);
-    }
-
-    // ── 4단계: 휘발유 페이지 파싱 ────────────────────────────────────────────────
-    console.log("[WeeklySupplyScraper] 4단계: 휘발유 테이블 데이터 파싱");
+    // ── 3단계: 휘발유 페이지 파싱 ────────────────────────────────────────────────
+    console.log("[WeeklySupplyScraper] 3단계: 휘발유 테이블 데이터 파싱");
     const { weekKey: parsedWeekKey, rows: gasolineRows } = await parseCompanyTable(page);
 
     let weekStart: string;
@@ -226,13 +208,13 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
       throw new Error("주차 기간 파싱 실패: 오피넷 페이지에서 주차 정보를 읽을 수 없습니다. 오피넷 미공표 또는 페이지 구조 변경 가능성");
     }
 
-    // ── 5단계: 경유(D047) 페이지 파싱 ────────────────────────────────────────────
+    // ── 4단계: 경유(D047) 페이지 파싱 ────────────────────────────────────────────
     const dieselPrices = await scrapeAdditionalFuelPage(page, "D047", "경유");
 
-    // ── 6단계: 등유(C004) 페이지 파싱 ────────────────────────────────────────────
+    // ── 5단계: 등유(C004) 페이지 파싱 ────────────────────────────────────────────
     const kerosenePrices = await scrapeAdditionalFuelPage(page, "C004", "등유");
 
-    // ── 7단계: 결과 병합 ───────────────────────────────────────────────────────
+    // ── 6단계: 결과 병합 ───────────────────────────────────────────────────────
     const results: WeeklySupplyRow[] = [];
 
     for (const company of TARGET_COMPANIES) {
