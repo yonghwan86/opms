@@ -1,11 +1,12 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Layout, PageHeader } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings2, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 
 interface SystemSetting {
   key: string;
@@ -42,56 +43,50 @@ export default function SystemSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Settings2 className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">시스템 설정</h1>
-          <p className="text-sm text-muted-foreground">서비스 전반의 시스템 동작을 제어합니다.</p>
-        </div>
-      </div>
+    <Layout>
+      <PageHeader title="시스템 설정" description="서비스 전반의 시스템 동작을 제어합니다." />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            공개 대시보드
-          </CardTitle>
-          <CardDescription>
-            외부 방문자가 접근 가능한 공개 대시보드 페이지의 활성화 여부를 제어합니다.
-            OFF 상태에서는 &ldquo;서비스 준비 중&rdquo; 메시지가 표시됩니다.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-6 w-11 rounded-full" />
-              <Skeleton className="h-4 w-32" />
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Switch
-                id="public-dashboard-toggle"
-                data-testid="toggle-public-dashboard"
-                checked={getValue("public_dashboard_enabled")}
-                onCheckedChange={() =>
-                  handleToggle("public_dashboard_enabled", getValue("public_dashboard_enabled"))
-                }
-                disabled={mutation.isPending}
-              />
-              <Label htmlFor="public-dashboard-toggle" className="cursor-pointer select-none">
-                {getValue("public_dashboard_enabled") ? (
-                  <span className="text-green-600 font-semibold">ON — 공개 대시보드 활성화</span>
-                ) : (
-                  <span className="text-muted-foreground">OFF — 서비스 준비 중 표시</span>
-                )}
-              </Label>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+      <div className="max-w-2xl">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              공개 대시보드
+            </CardTitle>
+            <CardDescription>
+              외부 방문자가 접근 가능한 공개 대시보드 페이지의 활성화 여부를 제어합니다.
+              OFF 상태에서는 &ldquo;서비스 준비 중&rdquo; 메시지가 표시됩니다.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-6 w-11 rounded-full" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="public-dashboard-toggle"
+                  data-testid="toggle-public-dashboard"
+                  checked={getValue("public_dashboard_enabled")}
+                  onCheckedChange={() =>
+                    handleToggle("public_dashboard_enabled", getValue("public_dashboard_enabled"))
+                  }
+                  disabled={mutation.isPending}
+                />
+                <Label htmlFor="public-dashboard-toggle" className="cursor-pointer select-none">
+                  {getValue("public_dashboard_enabled") ? (
+                    <span className="text-green-600 font-semibold">ON — 공개 대시보드 활성화</span>
+                  ) : (
+                    <span className="text-muted-foreground">OFF — 서비스 준비 중 표시</span>
+                  )}
+                </Label>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
   );
 }

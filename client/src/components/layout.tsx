@@ -65,6 +65,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/logs/oil-collection": "유가 수집 이력",
   "/logs/ai-forecast": "AI 예측 로그",
   "/logs/satisfaction": "만족도 조사 결과",
+  "/system-settings": "시스템 설정",
   "/my-info": "내 정보",
 };
 
