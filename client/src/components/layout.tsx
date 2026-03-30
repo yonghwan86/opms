@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Shield, FileSpreadsheet,
   MapPin, ClipboardList, LogOut, Menu, X, Activity, User2, ChevronRight, Fuel,
   Bell, BellOff, Upload, Eye, DatabaseZap, Search, SmilePlus, Globe, TrendingUp,
-  BrainCircuit, BotMessageSquare,
+  BrainCircuit, BotMessageSquare, Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +45,7 @@ const navItems: NavItem[] = [
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "페이지 뷰 로그", href: "/logs/page-views", icon: Eye, masterOnly: true },
   { label: "만족도 조사 결과", href: "/logs/satisfaction", icon: SmilePlus, masterOnly: true },
+  { label: "시스템 설정", href: "/system-settings", icon: Settings2, masterOnly: true },
 ];
 
 const PAGE_LABELS: Record<string, string> = {

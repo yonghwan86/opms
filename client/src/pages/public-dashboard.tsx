@@ -317,8 +317,43 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
-// ─── 메인 ────────────────────────────────────────────────────────────────────
+// ─── 공개 대시보드 게이트 (활성화 여부 확인) ─────────────────────────────────
 export default function PublicDashboardPage() {
+  const { data: enabledData, isLoading: enabledLoading } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/public/dashboard-enabled"],
+    queryFn: () =>
+      fetch("/api/public/dashboard-enabled")
+        .then((r) => (r.ok ? r.json() : { enabled: false }))
+        .catch(() => ({ enabled: false })),
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  if (enabledLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!enabledData?.enabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-2 px-6">
+          <p className="text-2xl font-bold text-foreground">서비스 준비 중</p>
+          <p className="text-muted-foreground">현재 공개 대시보드를 개편하고 있습니다.</p>
+          <p className="text-sm text-muted-foreground">빠른 시일 내에 더 나은 모습으로 찾아뵙겠습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <PublicDashboardContent />;
+}
+
+// ─── 메인 대시보드 콘텐츠 ─────────────────────────────────────────────────────
+function PublicDashboardContent() {
   const { toast } = useToast();
   const geoData = useGeoRegion(); // undefined=감지중, null=전국, {region,sido}=성공
   const isGeoLoading = geoData === undefined;

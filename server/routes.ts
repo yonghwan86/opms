@@ -2512,5 +2512,44 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── 시스템 설정 (마스터 전용) ────────────────────────────────────────────────
+
+  // GET /api/system-settings — 전체 조회
+  app.get("/api/system-settings", requireMaster, async (_req, res) => {
+    try {
+      const rows = await storage.getAllSystemSettings();
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // PATCH /api/system-settings/:key — 값 변경
+  app.patch("/api/system-settings/:key", requireMaster, async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { value } = req.body;
+      if (value === undefined || value === null) {
+        return res.status(400).json({ message: "value가 필요합니다." });
+      }
+      await storage.setSystemSetting(key, String(value));
+      await storage.createAuditLog(req.session.userId!, "UPDATE", "system_setting", undefined, { key, value });
+      res.json({ key, value: String(value) });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/public/dashboard-enabled — 공개 접근 (인증 불필요)
+  app.get("/api/public/dashboard-enabled", async (_req, res) => {
+    try {
+      const value = await storage.getSystemSetting("public_dashboard_enabled");
+      const enabled = value === "true";
+      res.json({ enabled });
+    } catch (e) {
+      res.json({ enabled: false });
+    }
+  });
+
   return httpServer;
 }

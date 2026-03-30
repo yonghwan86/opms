@@ -5,7 +5,7 @@ import {
   loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis, oilCollectionLogs,
   pushSubscriptions, oilCeilingPrices, userSatisfactions, oilWeeklySupplyPrices,
-  gasStationsMaster,
+  gasStationsMaster, systemSettings,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -265,6 +265,11 @@ export interface IStorage {
   upsertWeeklySupplyFuelColumn(rows: { week: string; company: string; price: number | null }[], fuelType: 'gasoline' | 'diesel' | 'kerosene'): Promise<number>;
   getWeeklySupplyPrices(limitWeeks?: number): Promise<OilWeeklySupplyPrice[]>;
   getLatestWeeklySupplyWeek(): Promise<string | null>;
+
+  // 시스템 설정
+  getSystemSetting(key: string): Promise<string | null>;
+  setSystemSetting(key: string, value: string): Promise<void>;
+  getAllSystemSettings(): Promise<{ key: string; value: string }[]>;
 }
 
 export interface StationSearchRow {
@@ -1813,6 +1818,27 @@ export class PostgresStorage implements IStorage {
       .orderBy(desc(oilWeeklySupplyPrices.week))
       .limit(1);
     return rows[0]?.week ?? null;
+  }
+
+  // ── 시스템 설정 ────────────────────────────────────────────────────────────
+  async getSystemSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setSystemSetting(key: string, value: string): Promise<void> {
+    await db
+      .insert(systemSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: { value, updatedAt: new Date() },
+      });
+  }
+
+  async getAllSystemSettings(): Promise<{ key: string; value: string }[]> {
+    const rows = await db.select({ key: systemSettings.key, value: systemSettings.value }).from(systemSettings);
+    return rows;
   }
 }
 

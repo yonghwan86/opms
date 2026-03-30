@@ -355,3 +355,11 @@ export const aiForecastSettings = pgTable("ai_forecast_settings", {
   thresholdWon: numeric("threshold_won"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// ─── 시스템 설정 (key-value) ───────────────────────────────────────────────────
+export const systemSettings = pgTable("system_settings", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type SystemSetting = typeof systemSettings.$inferSelect;

@@ -20,7 +20,8 @@ import OilUploadPage from "@/pages/oil-upload";
 import OilCollectionLogsPage from "@/pages/oil-collection-logs";
 import StationSearchPage from "@/pages/station-search";
 import SatisfactionLogPage from "@/pages/satisfaction-log";
-import PublicDashboardPage from "@/pages/public-dashboard"; // 준비 중 차단 중 — 복구 시 라우트에서 재사용
+import PublicDashboardPage from "@/pages/public-dashboard";
+import SystemSettingsPage from "@/pages/system-settings";
 import CeilingTrendPage from "@/pages/ceiling-trend";
 import AiForecastPage from "@/pages/ai-forecast";
 import AiForecastLogsPage from "@/pages/ai-forecast-logs";
@@ -85,15 +86,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/public" component={() => (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center space-y-2 px-6">
-            <p className="text-2xl font-bold text-foreground">서비스 준비 중</p>
-            <p className="text-muted-foreground">현재 공개 대시보드를 개편하고 있습니다.</p>
-            <p className="text-sm text-muted-foreground">빠른 시일 내에 더 나은 모습으로 찾아뵙겠습니다.</p>
-          </div>
-        </div>
-      )} />
+      <Route path="/public" component={PublicDashboardPage} />
       <Route path="/" component={HomeRoute} />
       <Route path="/users" component={() => <ProtectedRoute component={UsersPage} masterOnly />} />
       <Route path="/users/upload" component={() => <ProtectedRoute component={UsersUploadPage} masterOnly />} />
@@ -110,6 +103,7 @@ function Router() {
       <Route path="/ceiling-trend" component={() => <ProtectedRoute component={CeilingTrendPage} />} />
       <Route path="/ai-forecast" component={() => <ProtectedRoute component={AiForecastPage} masterOnly />} />
       <Route path="/logs/ai-forecast" component={() => <ProtectedRoute component={AiForecastLogsPage} masterOnly />} />
+      <Route path="/system-settings" component={() => <ProtectedRoute component={SystemSettingsPage} masterOnly />} />
       <Route component={NotFound} />
     </Switch>
   );
