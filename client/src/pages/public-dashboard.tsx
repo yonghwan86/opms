@@ -409,7 +409,7 @@ function PublicDashboardContent() {
   const [spreadTab, setSpreadTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalTab, setRegionalTab] = useState<'gasoline' | 'diesel'>('gasoline');
   const [regionalScope, setRegionalScope] = useState<'local' | 'national'>('local');
-  const [chartTab, setChartTab] = useState<'intl' | 'comparison' | 'ceiling'>('intl');
+  const [chartTab, setChartTab] = useState<'intl' | 'comparison' | 'ceiling'>('ceiling');
   const [selectedCrude, setSelectedCrude] = useState<'wti' | 'brent' | 'dubai'>('wti');
   const [comparisonFuel, setComparisonFuel] = useState<'gasoline' | 'diesel' | 'kerosene'>('gasoline');
 
