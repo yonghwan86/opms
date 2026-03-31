@@ -750,9 +750,18 @@ async function checkAndRecoverWeeklySupplyOnStartup(): Promise<void> {
 
     // 기준 시각: 직전 수집 예정일 14:00 KST = 05:00 UTC
     // 토요일→어제(금요일), 화요일→어제(월요일), 금/월 당일→당일
+    // 월요일(비공휴일 금요일): checkFrom = 3일 전(금요일) — 금요일에 이미 수집됐으므로
+    // 월요일(공휴일 금요일): checkFrom = 오늘(월요일) — 월요일에 수집해야 하므로
     const checkFrom = new Date(kstNow);
     if (isSaturday || isTuesday) {
       checkFrom.setUTCDate(checkFrom.getUTCDate() - 1); // 직전 수집 예정일로
+    } else if (isMonday) {
+      const lastFriday = new Date(kstNow);
+      lastFriday.setUTCDate(lastFriday.getUTCDate() - 3);
+      if (!isKoreanHoliday(lastFriday)) {
+        checkFrom.setUTCDate(checkFrom.getUTCDate() - 3); // 금요일에 수집됐으므로 금요일 14:00부터 확인
+      }
+      // 공휴일 금요일이면 checkFrom = 오늘(월요일) 14:00 유지 → 월요일 수집 실행
     }
     checkFrom.setUTCHours(5, 0, 0, 0); // 14:00 KST = 05:00 UTC
 
