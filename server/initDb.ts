@@ -250,12 +250,6 @@ export async function initDb() {
       CREATE INDEX IF NOT EXISTS public_access_logs_accessed_at_idx ON public_access_logs (accessed_at);
     `);
 
-    // public_access_logs 90일 초과 데이터 자동 삭제
-    await client.query(`
-      DELETE FROM public_access_logs
-      WHERE accessed_at < NOW() - INTERVAL '90 days';
-    `);
-
     console.log("DB 테이블 초기화 완료");
   } finally {
     client.release();
