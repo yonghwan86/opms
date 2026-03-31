@@ -6,6 +6,7 @@ import { initDb } from "./initDb";
 import { seedDatabase } from "./seed";
 import { seedHistoricalData } from "./seedHistorical";
 import { startOilScheduler } from "./services/oilScheduler";
+import { pool } from "./db";
 
 process.on("unhandledRejection", (reason) => {
   console.error("[UnhandledRejection] 미처리 프로미스 거부 (서버 유지):", reason);
@@ -91,6 +92,23 @@ app.use((req, res, next) => {
 
   // 유가 수집 스케줄러 시작
   startOilScheduler();
+
+  // 공개 접속 로그 90일 초과분 매일 자정 자동 삭제
+  const cleanPublicAccessLogs = () => {
+    pool.query("DELETE FROM public_access_logs WHERE accessed_at < NOW() - INTERVAL '90 days'")
+      .then(r => { if (r.rowCount && r.rowCount > 0) console.log(`[PublicAccessLogs] 90일 초과 로그 ${r.rowCount}건 삭제`); })
+      .catch(e => console.error("[PublicAccessLogs] 자동 삭제 오류:", e));
+  };
+  const msUntilMidnight = () => {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    return midnight.getTime() - now.getTime();
+  };
+  setTimeout(() => {
+    cleanPublicAccessLogs();
+    setInterval(cleanPublicAccessLogs, 24 * 60 * 60 * 1000);
+  }, msUntilMidnight());
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -44,6 +44,7 @@ const navItems: NavItem[] = [
   { label: "로그인 로그", href: "/logs/login", icon: Activity, masterOnly: true },
   { label: "감사 로그", href: "/logs/audit", icon: ClipboardList, masterOnly: true },
   { label: "페이지 뷰 로그", href: "/logs/page-views", icon: Eye, masterOnly: true },
+  { label: "공개 대시보드 접속 로그", href: "/logs/public-access", icon: Globe, masterOnly: true },
   { label: "만족도 조사 결과", href: "/logs/satisfaction", icon: SmilePlus, masterOnly: true },
   { label: "시스템 설정", href: "/system-settings", icon: Settings2, masterOnly: true },
 ];
@@ -64,6 +65,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/logs/page-views": "페이지 뷰 로그",
   "/logs/oil-collection": "유가 수집 이력",
   "/logs/ai-forecast": "AI 예측 로그",
+  "/logs/public-access": "공개 대시보드 접속 로그",
   "/logs/satisfaction": "만족도 조사 결과",
   "/system-settings": "시스템 설정",
   "/my-info": "내 정보",

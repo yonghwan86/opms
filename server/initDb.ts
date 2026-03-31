@@ -231,6 +231,31 @@ export async function initDb() {
       );
     `);
 
+    // user_satisfactions 테이블에 comment 컬럼 추가 (기존 DB에 없는 경우)
+    await client.query(`
+      ALTER TABLE user_satisfactions
+        ADD COLUMN IF NOT EXISTS comment VARCHAR(200);
+    `);
+
+    // public_access_logs 테이블 생성 (공개 대시보드 접속 로그)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public_access_logs (
+        id SERIAL PRIMARY KEY,
+        accessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        ip_address VARCHAR(50),
+        device VARCHAR(10) NOT NULL DEFAULT 'pc',
+        user_agent TEXT,
+        endpoint VARCHAR(200) NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS public_access_logs_accessed_at_idx ON public_access_logs (accessed_at);
+    `);
+
+    // public_access_logs 90일 초과 데이터 자동 삭제
+    await client.query(`
+      DELETE FROM public_access_logs
+      WHERE accessed_at < NOW() - INTERVAL '90 days';
+    `);
+
     console.log("DB 테이블 초기화 완료");
   } finally {
     client.release();

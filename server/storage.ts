@@ -5,7 +5,7 @@ import {
   loginLogs, auditLogs, pageViews,
   oilPriceRaw, oilPriceAnalysis, oilCollectionLogs,
   pushSubscriptions, oilCeilingPrices, userSatisfactions, oilWeeklySupplyPrices,
-  gasStationsMaster, systemSettings,
+  gasStationsMaster, systemSettings, publicAccessLogs,
   type Headquarters, type InsertHeadquarters,
   type Team, type InsertTeam,
   type User, type InsertUser,
@@ -17,6 +17,7 @@ import {
   type OilCeilingPrices, type InsertOilCeilingPrices,
   type InsertOilCollectionLog, type OilCollectionLog,
   type InsertOilWeeklySupplyPrice, type OilWeeklySupplyPrice,
+  type PublicAccessLog,
 } from "@shared/schema";
 
 // ─── 최고가격제 변동추이 타입 ──────────────────────────────────────────────────
@@ -249,10 +250,16 @@ export interface IStorage {
   getOilCollectionLogs(params?: { page?: number; pageSize?: number; status?: string; jobType?: string }): Promise<{ data: OilCollectionLog[]; total: number; page: number; totalPages: number }>;
 
   // 만족도 조사
-  saveSatisfaction(userId: number, rating: string): Promise<void>;
-  savePublicSatisfaction(rating: string): Promise<void>;
+  saveSatisfaction(userId: number, rating: string, comment?: string): Promise<void>;
+  savePublicSatisfaction(rating: string, comment?: string): Promise<void>;
   hasSatisfactionToday(userId: number): Promise<boolean>;
   getSatisfactionList(params: { page: number; pageSize: number; search?: string }): Promise<{ data: any[]; total: number }>;
+
+  // 공개 대시보드 접속 로그
+  createPublicAccessLog(data: { ipAddress?: string; device: string; userAgent?: string; endpoint: string }): Promise<void>;
+  getPublicAccessLogs(params: { page: number; pageSize: number; dateFrom?: string; dateTo?: string; device?: string; endpoint?: string }): Promise<{ data: PublicAccessLog[]; total: number; page: number; totalPages: number }>;
+  getPublicAccessLogStats(): Promise<{ todayVisits: number; weekVisits: number; mobilePercent: number }>;
+  getAllPublicAccessLogsForCsv(params?: { dateFrom?: string; dateTo?: string; device?: string; endpoint?: string }): Promise<PublicAccessLog[]>;
 
   // 주유소 가격 검색
   searchStations(params: { name: string; sido?: string; region?: string }): Promise<StationSearchRow[]>;
@@ -1544,12 +1551,12 @@ export class PostgresStorage implements IStorage {
   }
 
   // ── 만족도 조사 ──────────────────────────────────────────────────────────
-  async saveSatisfaction(userId: number, rating: string): Promise<void> {
-    await db.insert(userSatisfactions).values({ userId, rating });
+  async saveSatisfaction(userId: number, rating: string, comment?: string): Promise<void> {
+    await db.insert(userSatisfactions).values({ userId, rating, comment: comment?.slice(0, 200) || null });
   }
 
-  async savePublicSatisfaction(rating: string): Promise<void> {
-    await db.insert(userSatisfactions).values({ userId: null, rating });
+  async savePublicSatisfaction(rating: string, comment?: string): Promise<void> {
+    await db.insert(userSatisfactions).values({ userId: null, rating, comment: comment?.slice(0, 200) || null });
   }
 
   async getSatisfactionList({ page, pageSize, search }: { page: number; pageSize: number; search?: string }): Promise<{ data: any[]; total: number }> {
@@ -1558,7 +1565,7 @@ export class PostgresStorage implements IStorage {
       ? sql` AND (u.username ILIKE ${'%' + search + '%'} OR u.display_name ILIKE ${'%' + search + '%'})`
       : sql``;
     const rows = await db.execute(
-      sql`SELECT s.id, s.rating, s.created_at, u.username, u.display_name
+      sql`SELECT s.id, s.rating, s.comment, s.created_at, u.username, u.display_name
           FROM user_satisfactions s
           LEFT JOIN users u ON u.id = s.user_id
           WHERE 1=1 ${searchCond}
@@ -1573,6 +1580,67 @@ export class PostgresStorage implements IStorage {
     );
     const total = Number((countResult.rows[0] as any)?.cnt ?? 0);
     return { data: rows.rows as any[], total };
+  }
+
+  // ── 공개 대시보드 접속 로그 ──────────────────────────────────────────────
+  async createPublicAccessLog(data: { ipAddress?: string; device: string; userAgent?: string; endpoint: string }): Promise<void> {
+    await db.insert(publicAccessLogs).values({
+      ipAddress: data.ipAddress,
+      device: data.device,
+      userAgent: data.userAgent,
+      endpoint: data.endpoint,
+    });
+  }
+
+  async getPublicAccessLogs(params: { page: number; pageSize: number; dateFrom?: string; dateTo?: string; device?: string; endpoint?: string }): Promise<{ data: PublicAccessLog[]; total: number; page: number; totalPages: number }> {
+    const { page, pageSize, dateFrom, dateTo, device, endpoint } = params;
+    const offset = (page - 1) * pageSize;
+    const conditions = [];
+    if (dateFrom) conditions.push(sql`accessed_at >= ${new Date(dateFrom + 'T00:00:00+09:00')}`);
+    if (dateTo) {
+      const nextDay = new Date(dateTo + 'T00:00:00+09:00');
+      nextDay.setDate(nextDay.getDate() + 1);
+      conditions.push(sql`accessed_at < ${nextDay}`);
+    }
+    if (device && device !== 'all') conditions.push(eq(publicAccessLogs.device, device));
+    if (endpoint && endpoint !== 'all') conditions.push(eq(publicAccessLogs.endpoint, endpoint));
+    const where = conditions.length ? and(...conditions) : undefined;
+    const [rows, [{ total }]] = await Promise.all([
+      db.select().from(publicAccessLogs).where(where).orderBy(desc(publicAccessLogs.accessedAt)).limit(pageSize).offset(offset),
+      db.select({ total: count() }).from(publicAccessLogs).where(where),
+    ]);
+    return { data: rows, total: Number(total), page, totalPages: Math.ceil(Number(total) / pageSize) };
+  }
+
+  async getPublicAccessLogStats(): Promise<{ todayVisits: number; weekVisits: number; mobilePercent: number }> {
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(DISTINCT CASE WHEN accessed_at >= (NOW() AT TIME ZONE 'Asia/Seoul')::date AT TIME ZONE 'Asia/Seoul' THEN ip_address END) AS today_visits,
+        COUNT(DISTINCT CASE WHEN accessed_at >= DATE_TRUNC('week', NOW() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul' THEN ip_address END) AS week_visits,
+        ROUND(100.0 * SUM(CASE WHEN device = 'mobile' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS mobile_percent
+      FROM public_access_logs
+      WHERE accessed_at >= NOW() - INTERVAL '7 days'
+    `);
+    const row = result.rows[0] as any;
+    return {
+      todayVisits: Number(row?.today_visits ?? 0),
+      weekVisits: Number(row?.week_visits ?? 0),
+      mobilePercent: Number(row?.mobile_percent ?? 0),
+    };
+  }
+
+  async getAllPublicAccessLogsForCsv(params?: { dateFrom?: string; dateTo?: string; device?: string; endpoint?: string }): Promise<PublicAccessLog[]> {
+    const conditions = [];
+    if (params?.dateFrom) conditions.push(sql`accessed_at >= ${new Date(params.dateFrom + 'T00:00:00+09:00')}`);
+    if (params?.dateTo) {
+      const nextDay = new Date(params.dateTo + 'T00:00:00+09:00');
+      nextDay.setDate(nextDay.getDate() + 1);
+      conditions.push(sql`accessed_at < ${nextDay}`);
+    }
+    if (params?.device && params.device !== 'all') conditions.push(eq(publicAccessLogs.device, params.device));
+    if (params?.endpoint && params.endpoint !== 'all') conditions.push(eq(publicAccessLogs.endpoint, params.endpoint));
+    const where = conditions.length ? and(...conditions) : undefined;
+    return db.select().from(publicAccessLogs).where(where).orderBy(desc(publicAccessLogs.accessedAt));
   }
 
   async hasSatisfactionToday(userId: number): Promise<boolean> {

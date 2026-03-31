@@ -207,12 +207,27 @@ export const userSatisfactions = pgTable("user_satisfactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
   rating: varchar("rating", { length: 20 }).notNull(),
+  comment: varchar("comment", { length: 200 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const insertUserSatisfactionSchema = createInsertSchema(userSatisfactions).omit({ id: true, createdAt: true });
 export type InsertUserSatisfaction = z.infer<typeof insertUserSatisfactionSchema>;
 export type UserSatisfaction = typeof userSatisfactions.$inferSelect;
+
+// ─── 공개 대시보드 접속 로그 (Public Access Logs) ─────────────────────────────
+export const publicAccessLogs = pgTable("public_access_logs", {
+  id: serial("id").primaryKey(),
+  accessedAt: timestamp("accessed_at").notNull().defaultNow(),
+  ipAddress: varchar("ip_address", { length: 50 }),
+  device: varchar("device", { length: 10 }).notNull().default("pc"),
+  userAgent: text("user_agent"),
+  endpoint: varchar("endpoint", { length: 200 }).notNull(),
+});
+
+export const insertPublicAccessLogSchema = createInsertSchema(publicAccessLogs).omit({ id: true, accessedAt: true });
+export type InsertPublicAccessLog = z.infer<typeof insertPublicAccessLogSchema>;
+export type PublicAccessLog = typeof publicAccessLogs.$inferSelect;
 
 // ─── 주간공급가격 (Oil Weekly Supply Prices) ─────────────────────────────────
 export const oilWeeklySupplyPrices = pgTable("oil_weekly_supply_prices", {

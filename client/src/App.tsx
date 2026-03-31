@@ -25,6 +25,7 @@ import SystemSettingsPage from "@/pages/system-settings";
 import CeilingTrendPage from "@/pages/ceiling-trend";
 import AiForecastPage from "@/pages/ai-forecast";
 import AiForecastLogsPage from "@/pages/ai-forecast-logs";
+import PublicAccessLogsPage from "@/pages/public-access-logs";
 import NotFound from "@/pages/not-found";
 
 function LoadingScreen() {
@@ -103,6 +104,7 @@ function Router() {
       <Route path="/ceiling-trend" component={() => <ProtectedRoute component={CeilingTrendPage} />} />
       <Route path="/ai-forecast" component={() => <ProtectedRoute component={AiForecastPage} masterOnly />} />
       <Route path="/logs/ai-forecast" component={() => <ProtectedRoute component={AiForecastLogsPage} masterOnly />} />
+      <Route path="/logs/public-access" component={() => <ProtectedRoute component={PublicAccessLogsPage} masterOnly />} />
       <Route path="/system-settings" component={() => <ProtectedRoute component={SystemSettingsPage} masterOnly />} />
       <Route component={NotFound} />
     </Switch>

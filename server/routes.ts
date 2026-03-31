@@ -46,6 +46,28 @@ function requireMaster(req: Request, res: Response, next: NextFunction) {
 // ─── 멀티파트 업로드 설정 (메모리에 저장) ─────────────────────────────────────
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+// ─── 봇/크롤러 UA 패턴 ────────────────────────────────────────────────────────
+const BOT_UA_RE = /bot|crawl|spider|slurp|bingpreview|facebookexternalhit|linkedinbot|twitterbot|whatsapp|googlebot|yandex|baidu|duckduckbot|baiduspider|semrush|ahrefsbot|mj12bot|dotbot|rogerbot|screaming|pingdom|uptimerobot|newrelic|siteimprove|curl|python-requests|axios|got|node-fetch/i;
+
+// 기기 감지 헬퍼 (User-Agent 기반)
+function detectDevice(ua: string | undefined): 'mobile' | 'pc' {
+  if (!ua) return 'pc';
+  return /android|iphone|ipad|ipod|mobile|tablet/i.test(ua) ? 'mobile' : 'pc';
+}
+
+// ─── 공개 대시보드 접속 로그 미들웨어 ─────────────────────────────────────────
+// /api/public/* 요청마다 엔드포인트별 로그 적재 (봇 제외)
+function publicAccessLogMiddleware(req: Request, _res: Response, next: NextFunction) {
+  const ua = req.headers['user-agent'] ?? '';
+  if (!BOT_UA_RE.test(ua)) {
+    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
+    const device = detectDevice(ua);
+    const endpoint = req.originalUrl.split('?')[0]; // e.g. /api/public/fuel-stats
+    storage.createPublicAccessLog({ ipAddress: ip, device, userAgent: ua, endpoint }).catch(() => {});
+  }
+  next();
+}
+
 // multer 오류를 JSON으로 변환하는 래퍼
 function handleUpload(middleware: ReturnType<typeof multer>["array"] | ReturnType<typeof multer>["single"]) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -83,6 +105,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }));
+
+  // 공개 API 전체에 접속 로그 미들웨어 적용
+  app.use("/api/public", publicAccessLogMiddleware);
 
   // ── 인증 ─────────────────────────────────────────────────────────────────
 
@@ -2098,7 +2123,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/public/satisfaction — 비로그인 공개 만족도 저장
   app.post("/api/public/satisfaction", async (req, res) => {
     try {
-      const { rating } = req.body;
+      const { rating, comment } = req.body;
       const valid = ["매우만족", "만족", "보통", "불만족", "매우불만족"];
       if (!rating || !valid.includes(rating)) {
         return res.status(400).json({ message: "올바른 만족도를 선택해주세요." });
@@ -2108,7 +2133,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (sess.publicSurveyDate === kstToday) {
         return res.status(400).json({ message: "오늘은 이미 만족도 조사에 참여하셨습니다." });
       }
-      await storage.savePublicSatisfaction(rating);
+      const safeComment = comment ? String(comment).slice(0, 200) : undefined;
+      await storage.savePublicSatisfaction(rating, safeComment);
       sess.publicSurveyDate = kstToday;
       res.json({ ok: true });
     } catch (e) {
@@ -2149,12 +2175,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (already) {
         return res.status(400).json({ message: "오늘은 이미 만족도 조사에 참여하셨습니다." });
       }
-      const { rating } = req.body;
+      const { rating, comment } = req.body;
       const valid = ["매우만족", "만족", "보통", "불만족", "매우불만족"];
       if (!rating || !valid.includes(rating)) {
         return res.status(400).json({ message: "올바른 만족도를 선택해주세요." });
       }
-      await storage.saveSatisfaction(userId, rating);
+      const safeComment = comment ? String(comment).slice(0, 200) : undefined;
+      await storage.saveSatisfaction(userId, rating, safeComment);
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
@@ -2507,6 +2534,60 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }));
 
       res.json({ data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // ── 공개 대시보드 접속 로그 (관리자 전용) ──────────────────────────────────────
+
+  // GET /api/admin/public-access-logs/stats — 요약 카드 (오늘/이번주 방문 수, 모바일 비율)
+  app.get("/api/admin/public-access-logs/stats", requireMaster, async (_req, res) => {
+    try {
+      const stats = await storage.getPublicAccessLogStats();
+      res.json(stats);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/admin/public-access-logs — 페이지네이션+필터 조회
+  app.get("/api/admin/public-access-logs", requireMaster, async (req, res) => {
+    try {
+      const page = Math.max(1, parseInt(String(req.query.page ?? "1")));
+      const pageSize = Math.max(1, Math.min(100, parseInt(String(req.query.pageSize ?? "20"))));
+      const dateFrom = req.query.dateFrom ? String(req.query.dateFrom) : undefined;
+      const dateTo = req.query.dateTo ? String(req.query.dateTo) : undefined;
+      const device = req.query.device ? String(req.query.device) : undefined;
+      const endpoint = req.query.endpoint ? String(req.query.endpoint) : undefined;
+      const result = await storage.getPublicAccessLogs({ page, pageSize, dateFrom, dateTo, device, endpoint });
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ message: "서버 오류" });
+    }
+  });
+
+  // GET /api/admin/public-access-logs/csv — CSV 다운로드
+  app.get("/api/admin/public-access-logs/csv", requireMaster, async (req, res) => {
+    try {
+      const dateFrom = req.query.dateFrom ? String(req.query.dateFrom) : undefined;
+      const dateTo = req.query.dateTo ? String(req.query.dateTo) : undefined;
+      const device = req.query.device ? String(req.query.device) : undefined;
+      const endpoint = req.query.endpoint ? String(req.query.endpoint) : undefined;
+      const rows = await storage.getAllPublicAccessLogsForCsv({ dateFrom, dateTo, device, endpoint });
+      const BOM = "\uFEFF";
+      const header = csvRow(["ID", "접속 일시", "IP 주소", "기기", "User-Agent", "엔드포인트"]);
+      const lines = rows.map(r => csvRow([
+        String(r.id),
+        new Date(r.accessedAt).toLocaleString("ko-KR"),
+        r.ipAddress ?? "",
+        r.device === "mobile" ? "모바일" : "PC",
+        r.userAgent ?? "",
+        r.endpoint,
+      ]));
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename=public_access_logs_${new Date().toISOString().slice(0,10)}.csv`);
+      res.send(BOM + [header, ...lines].join("\r\n"));
     } catch (e) {
       res.status(500).json({ message: "서버 오류" });
     }

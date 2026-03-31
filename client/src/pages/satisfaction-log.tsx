@@ -12,6 +12,7 @@ import { Search, SmilePlus, ChevronLeft, ChevronRight, Download } from "lucide-r
 interface SatisfactionRow {
   id: number;
   rating: string;
+  comment: string | null;
   created_at: string;
   username: string;
   display_name: string;
@@ -106,6 +107,7 @@ export default function SatisfactionLogPage() {
                 <TableHead>사용자</TableHead>
                 <TableHead>이름</TableHead>
                 <TableHead>만족도</TableHead>
+                <TableHead>의견</TableHead>
                 <TableHead>응답 일시</TableHead>
               </TableRow>
             </TableHeader>
@@ -113,14 +115,14 @@ export default function SatisfactionLogPage() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : data?.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                     <SmilePlus className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     만족도 조사 응답이 없습니다.
                   </TableCell>
@@ -129,9 +131,14 @@ export default function SatisfactionLogPage() {
                 data?.data.map((row) => (
                   <TableRow key={row.id} className="hover:bg-muted/20" data-testid={`row-satisfaction-${row.id}`}>
                     <TableCell className="text-muted-foreground text-xs">{row.id}</TableCell>
-                    <TableCell className="font-mono text-sm">{row.username}</TableCell>
-                    <TableCell>{row.display_name}</TableCell>
+                    <TableCell className="font-mono text-sm">{row.username ?? <span className="text-muted-foreground text-xs">공개</span>}</TableCell>
+                    <TableCell>{row.display_name ?? <span className="text-muted-foreground text-xs">비회원</span>}</TableCell>
                     <TableCell><RatingBadge rating={row.rating} /></TableCell>
+                    <TableCell className="max-w-[220px]">
+                      {row.comment
+                        ? <p className="text-xs text-foreground truncate" title={row.comment} data-testid={`text-comment-${row.id}`}>{row.comment}</p>
+                        : <span className="text-xs text-muted-foreground">-</span>}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(row.created_at).toLocaleString("ko-KR")}
                     </TableCell>

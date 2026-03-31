@@ -361,17 +361,20 @@ function PublicDashboardContent() {
   // ── 만족도 조사 ────────────────────────────────────────────────────────────
   const [surveyOpen, setSurveyOpen] = useState(false);
   const [surveyRating, setSurveyRating] = useState<string>("");
+  const [surveyComment, setSurveyComment] = useState<string>("");
   const kstToday = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [surveySubmitted, setSurveySubmitted] = useState<boolean>(() => {
     try { return localStorage.getItem("pub_survey_date") === kstToday; } catch { return false; }
   });
   const surveyMutation = useMutation({
-    mutationFn: (rating: string) => apiRequest("POST", "/api/public/satisfaction", { rating }),
+    mutationFn: ({ rating, comment }: { rating: string; comment?: string }) =>
+      apiRequest("POST", "/api/public/satisfaction", { rating, comment: comment || undefined }),
     onSuccess: () => {
       try { localStorage.setItem("pub_survey_date", kstToday); } catch {}
       setSurveySubmitted(true);
       setSurveyOpen(false);
       setSurveyRating("");
+      setSurveyComment("");
       toast({ title: "소중한 의견 감사합니다 🙏", description: "만족도 조사에 참여해 주셨습니다." });
     },
     onError: () => toast({ title: "제출 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" }),
@@ -1569,7 +1572,7 @@ function PublicDashboardContent() {
       </Dialog>
 
       {/* ── 만족도 조사 모달 ─────────────────────────────────────── */}
-      <Dialog open={surveyOpen} onOpenChange={setSurveyOpen}>
+      <Dialog open={surveyOpen} onOpenChange={(o) => { setSurveyOpen(o); if (!o) { setSurveyRating(""); setSurveyComment(""); } }}>
         <DialogContent className="max-w-sm" data-testid="dialog-public-survey">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1611,10 +1614,27 @@ function PublicDashboardContent() {
               </label>
             ))}
           </div>
+          {surveyRating && (
+            <div className="mt-2">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                어떤 기능이 있었으면 좋겠나요? <span className="text-muted-foreground/60">(선택, 최대 200자)</span>
+              </label>
+              <textarea
+                value={surveyComment}
+                onChange={e => setSurveyComment(e.target.value)}
+                maxLength={200}
+                rows={3}
+                placeholder="원하시는 기능이나 개선 사항을 자유롭게 적어주세요."
+                className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 resize-none bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-green-500"
+                data-testid="textarea-public-survey-comment"
+              />
+              <p className="text-right text-[10px] text-gray-400 mt-0.5">{surveyComment.length}/200</p>
+            </div>
+          )}
           <Button
             className="w-full mt-1 !bg-green-600 hover:!bg-green-700 text-white"
             disabled={!surveyRating || surveyMutation.isPending}
-            onClick={() => surveyRating && surveyMutation.mutate(surveyRating)}
+            onClick={() => surveyRating && surveyMutation.mutate({ rating: surveyRating, comment: surveyComment || undefined })}
             data-testid="button-public-survey-submit"
           >
             {surveyMutation.isPending ? "제출 중..." : "제출하기"}
