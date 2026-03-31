@@ -56,14 +56,25 @@ function detectDevice(ua: string | undefined): 'mobile' | 'pc' {
 }
 
 // ─── 공개 대시보드 접속 로그 미들웨어 ─────────────────────────────────────────
-// /api/public/* 요청마다 엔드포인트별 로그 적재 (봇 제외)
+// /api/public/* 최초 진입 1건만 적재 (봇·로그인 사용자 제외, IP 기준 5분 dedup)
+const PUBLIC_LOG_DEDUP_MS = 5 * 60 * 1000; // 5분
+const publicLogLastSeen = new Map<string, number>(); // ip → 마지막 로그 시각(ms)
+
 function publicAccessLogMiddleware(req: Request, _res: Response, next: NextFunction) {
+  // 로그인된 사용자는 제외
+  if (req.session?.userId) { next(); return; }
+
   const ua = req.headers['user-agent'] ?? '';
   if (!BOT_UA_RE.test(ua)) {
-    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress;
-    const device = detectDevice(ua);
-    const endpoint = req.originalUrl.split('?')[0]; // e.g. /api/public/fuel-stats
-    storage.createPublicAccessLog({ ipAddress: ip, device, userAgent: ua, endpoint }).catch(() => {});
+    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const last = publicLogLastSeen.get(ip) ?? 0;
+    if (now - last >= PUBLIC_LOG_DEDUP_MS) {
+      publicLogLastSeen.set(ip, now);
+      const device = detectDevice(ua);
+      const endpoint = req.originalUrl.split('?')[0];
+      storage.createPublicAccessLog({ ipAddress: ip, device, userAgent: ua, endpoint }).catch(() => {});
+    }
   }
   next();
 }
