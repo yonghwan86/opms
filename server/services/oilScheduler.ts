@@ -769,7 +769,11 @@ async function checkAndRecoverWeeklySupplyOnStartup(): Promise<void> {
 
     const logResult = await db.execute(
       sql`SELECT
-            SUM(CASE WHEN status IN ('success', 'partial') THEN 1 ELSE 0 END) AS success_cnt,
+            SUM(CASE
+              WHEN status IN ('success', 'partial') THEN 1
+              WHEN status = 'skipped' AND error_message LIKE '%직전 금요일%' THEN 1
+              ELSE 0
+            END) AS success_cnt,
             SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_cnt
           FROM oil_collection_logs
           WHERE job_type = 'weekly_supply_price'
