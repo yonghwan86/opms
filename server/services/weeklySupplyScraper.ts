@@ -34,9 +34,10 @@ function getMostRecentWeekKey(): string {
 }
 
 function deriveWeekKey(periodText: string): string | null {
-  const match = periodText.match(/(\d{2})년\s*(\d{2})월\s*(\d+)주/);
+  const match = periodText.match(/(\d{2,4})년\s*(\d{1,2})월\s*(\d+)주/);
   if (!match) return null;
-  const yyyy = String(2000 + parseInt(match[1], 10));
+  const rawYear = parseInt(match[1], 10);
+  const yyyy = String(rawYear < 100 ? 2000 + rawYear : rawYear);
   const mm = match[2].padStart(2, "0");
   const ww = match[3].padStart(2, "0");
   return `${yyyy}${mm}${ww}`;
@@ -50,7 +51,7 @@ function parseTableFromHtml(
   html: string
 ): { weekKey: string | null; rows: Record<string, string[]> } {
   const periodMatch = html.match(
-    /(\d{2})년\s*(\d{2})월\s*(\d+)주\s*~\s*(\d{2})년\s*(\d{2})월\s*(\d+)주/
+    /(\d{2,4})년\s*(\d{1,2})월\s*(\d+)주\s*~\s*(\d{2,4})년\s*(\d{1,2})월\s*(\d+)주/
   );
   const periodText = periodMatch ? periodMatch[0] : null;
 
