@@ -1,8 +1,4 @@
-import { chromium } from "playwright";
-import type { Page } from "playwright";
-
-const CHROMIUM_PATH =
-  "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium";
+import * as iconv from "iconv-lite";
 
 const TARGET_COMPANIES = ["SK에너지", "GS칼텍스", "HD현대오일뱅크", "S-OIL"];
 
@@ -46,173 +42,120 @@ function deriveWeekKey(periodText: string): string | null {
   return `${yyyy}${mm}${ww}`;
 }
 
-// Parse the table on the current page, returning all cell values per company row
-async function parseCompanyTable(page: Page): Promise<{
-  weekKey: string | null;
-  rows: Record<string, string[]>;
-}> {
-  const result = await page.evaluate((companies: string[]) => {
-    // Extract period text for week key
-    const body = document.body?.innerText || "";
-    const periodMatch = body.match(/(\d{2})년\s*(\d{2})월\s*(\d+)주\s*~\s*(\d{2})년\s*(\d{2})월\s*(\d+)주/);
-    const periodText = periodMatch ? periodMatch[0] : null;
-
-    // Find the company price table
-    const tables = document.querySelectorAll("table");
-    for (let i = 0; i < tables.length; i++) {
-      const table = tables[i];
-      const rows = Array.from(table.querySelectorAll("tr"));
-      if (rows.length < 2) continue;
-
-      const headerCells = Array.from(rows[0].querySelectorAll("td, th"))
-        .map((c) => (c as HTMLElement).textContent?.trim() || "");
-
-      const hasCompanyHeader = headerCells.some(
-        (h) => h.includes("구분") || h.includes("정유사")
-      );
-      const hasPriceHeader = headerCells.some(
-        (h) => h.includes("휘발유") || h.includes("경유") || h.includes("등유") || h.includes("가격")
-      );
-      if (!hasCompanyHeader || !hasPriceHeader) continue;
-
-      const hasTargetCompany = rows.some((tr) => {
-        const firstCell = tr.querySelector("td, th");
-        const text = (firstCell as HTMLElement)?.textContent?.trim() || "";
-        return companies.includes(text);
-      });
-      if (!hasTargetCompany) continue;
-
-      const companyRows: Record<string, string[]> = {};
-      for (const row of rows) {
-        const cells = Array.from(row.querySelectorAll("td, th")).map(
-          (c) => (c as HTMLElement).textContent?.trim() || ""
-        );
-        if (cells.length > 0 && companies.includes(cells[0])) {
-          companyRows[cells[0]] = cells.slice(1);
-        }
-      }
-
-      return { weekKey: periodText, rows: companyRows };
-    }
-    return { weekKey: null, rows: {} };
-  }, TARGET_COMPANIES);
-
-  return {
-    weekKey: result.weekKey ? deriveWeekKey(result.weekKey) : null,
-    rows: result.rows,
-  };
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").trim();
 }
 
-// Navigate to a fuel-type-specific page and extract the first numeric price per company
-async function scrapeAdditionalFuelPage(
-  page: Page,
-  prodCd: string,
-  label: string
-): Promise<Record<string, number | null>> {
-  try {
-    const url = `https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=${prodCd}`;
-    console.log(`[WeeklySupplyScraper] ${label} 페이지 이동: ${url}`);
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForTimeout(2000);
+function parseTableFromHtml(
+  html: string
+): { weekKey: string | null; rows: Record<string, string[]> } {
+  const periodMatch = html.match(
+    /(\d{2})년\s*(\d{2})월\s*(\d+)주\s*~\s*(\d{2})년\s*(\d{2})월\s*(\d+)주/
+  );
+  const periodText = periodMatch ? periodMatch[0] : null;
 
-    const { rows } = await parseCompanyTable(page);
-    const prices: Record<string, number | null> = {};
+  const rows: Record<string, string[]> = {};
 
-    for (const company of TARGET_COMPANIES) {
-      const cells = rows[company] ?? [];
-      // Find the first cell that parses as a valid price
-      let price: number | null = null;
-      for (const cell of cells) {
-        const p = parsePrice(cell);
-        if (p !== null) { price = p; break; }
-      }
-      prices[company] = price;
+  const trRegex = /<tr[\s\S]*?>([\s\S]*?)<\/tr>/gi;
+  let trMatch: RegExpExecArray | null;
+  while ((trMatch = trRegex.exec(html)) !== null) {
+    const rowHtml = trMatch[1];
+    const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+    const cells: string[] = [];
+    let cellMatch: RegExpExecArray | null;
+    while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+      cells.push(stripTags(cellMatch[1]));
     }
-
-    console.log(
-      `[WeeklySupplyScraper] ${label} 파싱 완료:`,
-      Object.entries(prices).map(([c, p]) => `${c}=${p}`).join(", ")
-    );
-    return prices;
-  } catch (err) {
-    console.warn(`[WeeklySupplyScraper] ${label} 페이지 파싱 실패 (무시):`, err instanceof Error ? err.message : String(err));
-    return {};
+    if (cells.length > 1 && TARGET_COMPANIES.includes(cells[0])) {
+      rows[cells[0]] = cells.slice(1);
+    }
   }
+
+  return { weekKey: periodText, rows };
+}
+
+async function fetchOpinetPage(prodCd: string): Promise<string> {
+  const url = `https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=${prodCd}`;
+  console.log(`[WeeklySupplyScraper] fetch: ${url}`);
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      Connection: "keep-alive",
+      Referer: "https://www.opinet.co.kr/user/main/mainView.do",
+    },
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status} (prodCd=${prodCd})`);
+
+  const contentType = res.headers.get("content-type") || "";
+  const buf = Buffer.from(await res.arrayBuffer());
+
+  // Detect EUC-KR encoding
+  if (/euc-kr|ks_c_5601/i.test(contentType)) {
+    return iconv.decode(buf, "euc-kr");
+  }
+  const preview = buf.toString("binary", 0, 2000);
+  if (/charset=EUC-KR|charset=ks_c/i.test(preview)) {
+    return iconv.decode(buf, "euc-kr");
+  }
+
+  return buf.toString("utf-8");
 }
 
 export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
-  let browser;
   try {
-    console.log("[WeeklySupplyScraper] 브라우저 시작");
-    browser = await chromium.launch({
-      executablePath: CHROMIUM_PATH,
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-software-rasterizer",
-        "--disable-setuid-sandbox",
-        "--no-first-run",
-        "--no-zygote",
-        "--disable-extensions",
-        "--disable-background-networking",
-        "--disable-default-apps",
-        "--disable-sync",
-        "--disable-translate",
-        "--hide-scrollbars",
-        "--metrics-recording-only",
-        "--mute-audio",
-        "--safebrowsing-disable-auto-update",
-      ],
-    });
+    // ── 1단계: 휘발유(B034) 페이지 fetch + 파싱 ─────────────────────────────
+    console.log("[WeeklySupplyScraper] 1단계: 휘발유(B034) 페이지 fetch");
+    const gasolineHtml = await fetchOpinetPage("B034");
+    const { weekKey: parsedWeekKey, rows: gasolineRows } =
+      parseTableFromHtml(gasolineHtml);
 
-    const context = await browser.newContext({
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-      locale: "ko-KR",
-      acceptDownloads: true,
-    });
-
-    const page = await context.newPage();
-
-    page.on("dialog", async (dialog) => {
-      console.log(`[WeeklySupplyScraper] 다이얼로그 수락: ${dialog.message().substring(0, 80)}`);
-      await dialog.accept();
-    });
-
-    console.log("[WeeklySupplyScraper] 1단계: 휘발유(B034) 회사별 페이지 직접 이동");
-    await page.goto(
-      "https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=B034",
-      { waitUntil: "domcontentloaded", timeout: 60000 }
+    console.log(
+      `[WeeklySupplyScraper] 휘발유 파싱 — weekKey raw: ${parsedWeekKey}, 회사 수: ${Object.keys(gasolineRows).length}`
     );
-    await page.waitForTimeout(2000);
-    console.log("[WeeklySupplyScraper] 휘발유 회사별 페이지 로딩 완료:", page.url());
-
-    // ── 2단계: 휘발유 페이지 파싱 ────────────────────────────────────────────────
-    console.log("[WeeklySupplyScraper] 2단계: 휘발유 테이블 데이터 파싱");
-    const { weekKey: parsedWeekKey, rows: gasolineRows } = await parseCompanyTable(page);
 
     let weekStart: string;
     if (parsedWeekKey) {
-      weekStart = parsedWeekKey;
-      console.log(`[WeeklySupplyScraper] 페이지 기간에서 weekKey 산출: ${weekStart}`);
+      const derived = deriveWeekKey(parsedWeekKey);
+      if (!derived)
+        throw new Error(
+          `weekKey 산출 실패: "${parsedWeekKey}" — 오피넷 미공표 또는 HTML 구조 변경`
+        );
+      weekStart = derived;
+      console.log(`[WeeklySupplyScraper] weekKey 산출: ${weekStart}`);
     } else {
-      throw new Error("주차 기간 파싱 실패: 오피넷 페이지에서 주차 정보를 읽을 수 없습니다. 오피넷 미공표 또는 페이지 구조 변경 가능성");
+      throw new Error(
+        "주차 기간 파싱 실패: 오피넷 페이지에서 주차 정보를 읽을 수 없습니다. " +
+          "오피넷 미공표 또는 페이지 구조 변경 가능성"
+      );
     }
 
-    // ── 3단계: 경유(D047) 페이지 파싱 ────────────────────────────────────────────
-    const dieselPrices = await scrapeAdditionalFuelPage(page, "D047", "경유");
+    if (Object.keys(gasolineRows).length === 0) {
+      throw new Error(
+        "정유사 데이터 없음: 페이지가 JavaScript로 렌더링되거나 NetFunnel에 막혔을 가능성"
+      );
+    }
 
-    // ── 4단계: 등유(C004) 페이지 파싱 ────────────────────────────────────────────
-    const kerosenePrices = await scrapeAdditionalFuelPage(page, "C004", "등유");
+    // ── 2단계: 경유(D047) 페이지 fetch + 파싱 ─────────────────────────────
+    console.log("[WeeklySupplyScraper] 2단계: 경유(D047) 페이지 fetch");
+    const dieselPrices = await fetchFuelPrices("D047", "경유");
 
-    // ── 5단계: 결과 병합 ───────────────────────────────────────────────────────
+    // ── 3단계: 등유(C004) 페이지 fetch + 파싱 ─────────────────────────────
+    console.log("[WeeklySupplyScraper] 3단계: 등유(C004) 페이지 fetch");
+    const kerosenePrices = await fetchFuelPrices("C004", "등유");
+
+    // ── 4단계: 결과 병합 ────────────────────────────────────────────────────
     const results: WeeklySupplyRow[] = [];
 
     for (const company of TARGET_COMPANIES) {
       const cells = gasolineRows[company] ?? [];
-      // 휘발유 페이지: col[0]=고급휘발유, col[1]=보통휘발유 (또는 col[0]=보통휘발유)
       let premiumGasoline: number | null = null;
       let gasoline: number | null = null;
       if (cells.length >= 2) {
@@ -232,14 +175,19 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
       });
     }
 
-    // 누락된 회사 경고
-    const found = results.filter((r) => r.gasoline !== null || r.diesel !== null).map((r) => r.company);
+    const found = results
+      .filter((r) => r.gasoline !== null || r.diesel !== null)
+      .map((r) => r.company);
     const missing = TARGET_COMPANIES.filter((c) => !found.includes(c));
     if (missing.length > 0) {
-      console.warn(`[WeeklySupplyScraper] 경고: 일부 정유사 데이터 없음 — 누락: [${missing.join(", ")}]`);
+      console.warn(
+        `[WeeklySupplyScraper] 경고: 일부 정유사 데이터 없음 — 누락: [${missing.join(", ")}]`
+      );
     }
 
-    console.log(`[WeeklySupplyScraper] 파싱 완료: ${results.length}건 (기준주: ${weekStart})`);
+    console.log(
+      `[WeeklySupplyScraper] 파싱 완료: ${results.length}건 (기준주: ${weekStart})`
+    );
     results.forEach((r) =>
       console.log(
         `  ${r.company}: 고급=${r.premiumGasoline}, 보통=${r.gasoline}, 경유=${r.diesel}, 등유=${r.kerosene}`
@@ -251,7 +199,43 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[WeeklySupplyScraper] 오류:", msg);
     throw err;
-  } finally {
-    if (browser) await browser.close().catch(() => {});
+  }
+}
+
+async function fetchFuelPrices(
+  prodCd: string,
+  label: string
+): Promise<Record<string, number | null>> {
+  try {
+    const html = await fetchOpinetPage(prodCd);
+    const { rows } = parseTableFromHtml(html);
+    const prices: Record<string, number | null> = {};
+
+    for (const company of TARGET_COMPANIES) {
+      const cells = rows[company] ?? [];
+      let price: number | null = null;
+      for (const cell of cells) {
+        const p = parsePrice(cell);
+        if (p !== null) {
+          price = p;
+          break;
+        }
+      }
+      prices[company] = price;
+    }
+
+    console.log(
+      `[WeeklySupplyScraper] ${label} 파싱 완료:`,
+      Object.entries(prices)
+        .map(([c, p]) => `${c}=${p}`)
+        .join(", ")
+    );
+    return prices;
+  } catch (err) {
+    console.warn(
+      `[WeeklySupplyScraper] ${label} 페이지 파싱 실패 (무시):`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return {};
   }
 }
