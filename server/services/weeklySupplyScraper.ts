@@ -181,14 +181,7 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
       await dialog.accept();
     });
 
-    console.log("[WeeklySupplyScraper] 1단계: 메인 페이지 방문 (세션 생성)");
-    await page.goto("https://www.opinet.co.kr/user/main/mainView.do", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
-    await page.waitForTimeout(5000);
-
-    console.log("[WeeklySupplyScraper] 2단계: 휘발유(B034) 회사별 페이지 직접 이동");
+    console.log("[WeeklySupplyScraper] 1단계: 휘발유(B034) 회사별 페이지 직접 이동");
     await page.goto(
       "https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=B034",
       { waitUntil: "domcontentloaded", timeout: 60000 }
@@ -196,8 +189,8 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
     await page.waitForTimeout(2000);
     console.log("[WeeklySupplyScraper] 휘발유 회사별 페이지 로딩 완료:", page.url());
 
-    // ── 3단계: 휘발유 페이지 파싱 ────────────────────────────────────────────────
-    console.log("[WeeklySupplyScraper] 3단계: 휘발유 테이블 데이터 파싱");
+    // ── 2단계: 휘발유 페이지 파싱 ────────────────────────────────────────────────
+    console.log("[WeeklySupplyScraper] 2단계: 휘발유 테이블 데이터 파싱");
     const { weekKey: parsedWeekKey, rows: gasolineRows } = await parseCompanyTable(page);
 
     let weekStart: string;
@@ -208,13 +201,13 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
       throw new Error("주차 기간 파싱 실패: 오피넷 페이지에서 주차 정보를 읽을 수 없습니다. 오피넷 미공표 또는 페이지 구조 변경 가능성");
     }
 
-    // ── 4단계: 경유(D047) 페이지 파싱 ────────────────────────────────────────────
+    // ── 3단계: 경유(D047) 페이지 파싱 ────────────────────────────────────────────
     const dieselPrices = await scrapeAdditionalFuelPage(page, "D047", "경유");
 
-    // ── 5단계: 등유(C004) 페이지 파싱 ────────────────────────────────────────────
+    // ── 4단계: 등유(C004) 페이지 파싱 ────────────────────────────────────────────
     const kerosenePrices = await scrapeAdditionalFuelPage(page, "C004", "등유");
 
-    // ── 6단계: 결과 병합 ───────────────────────────────────────────────────────
+    // ── 5단계: 결과 병합 ───────────────────────────────────────────────────────
     const results: WeeklySupplyRow[] = [];
 
     for (const company of TARGET_COMPANIES) {
