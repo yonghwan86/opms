@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Building2, MapPin, Globe } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, Loader2, Building2, MapPin, Globe, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 
@@ -316,8 +316,32 @@ function SupplyPriceSection() {
   const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<SupplyUploadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isAutoCollecting, setIsAutoCollecting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleAutoCollect = async () => {
+    setIsAutoCollecting(true);
+    try {
+      const res = await fetch("/api/oil/weekly-supply/collect", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "수집 요청 실패");
+      }
+      toast({
+        title: "오피넷 자동 수집 시작됨",
+        description: "수집 결과는 유가 수집 이력에서 확인하세요.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/oil-collection-logs"] });
+    } catch (e: any) {
+      toast({ title: "수집 요청 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setIsAutoCollecting(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
@@ -459,6 +483,37 @@ function SupplyPriceSection() {
             <li>유종별로 개별 업로드하세요. 같은 주차·회사 데이터는 해당 유종만 덮어씁니다.</li>
             <li>파일 인코딩은 EUC-KR 또는 UTF-8 모두 지원합니다.</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      <div className="relative flex items-center gap-3 my-1">
+        <div className="flex-1 border-t border-border" />
+        <span className="text-xs text-muted-foreground">또는</span>
+        <div className="flex-1 border-t border-border" />
+      </div>
+
+      <Card>
+        <CardContent className="p-5 space-y-3">
+          <div>
+            <p className="text-sm font-medium">오피넷 자동 수집</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              오피넷에서 4개 정유사(SK·GS·현대·S-OIL) 주간공급가격을 자동으로 수집합니다.
+              수집은 백그라운드로 진행되며 결과는 유가 수집 이력에서 확인하세요.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleAutoCollect}
+            disabled={isAutoCollecting}
+            data-testid="button-weekly-supply-auto-collect"
+          >
+            {isAutoCollecting ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />수집 요청 중...</>
+            ) : (
+              <><RefreshCw className="w-4 h-4 mr-2" />오피넷 자동 수집 시작</>
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
