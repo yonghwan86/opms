@@ -112,7 +112,7 @@ async function scrapeAdditionalFuelPage(
   try {
     const url = `https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=${prodCd}`;
     console.log(`[WeeklySupplyScraper] ${label} 페이지 이동: ${url}`);
-    await page.goto(url, { waitUntil: "load", timeout: 60000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForTimeout(2000);
 
     const { rows } = await parseCompanyTable(page);
@@ -183,7 +183,7 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
 
     console.log("[WeeklySupplyScraper] 1단계: 메인 페이지 방문 (세션 생성)");
     await page.goto("https://www.opinet.co.kr/user/main/mainView.do", {
-      waitUntil: "load",
+      waitUntil: "domcontentloaded",
       timeout: 60000,
     });
     await page.waitForTimeout(5000);
@@ -191,7 +191,7 @@ export async function scrapeWeeklySupplyPrices(): Promise<WeeklySupplyRow[]> {
     console.log("[WeeklySupplyScraper] 2단계: 휘발유(B034) 회사별 페이지 직접 이동");
     await page.goto(
       "https://www.opinet.co.kr/user/dopavcow/dopAvcowCompanyList.do?prodCd=B034",
-      { waitUntil: "load", timeout: 60000 }
+      { waitUntil: "domcontentloaded", timeout: 60000 }
     );
     await page.waitForTimeout(2000);
     console.log("[WeeklySupplyScraper] 휘발유 회사별 페이지 로딩 완료:", page.url());
